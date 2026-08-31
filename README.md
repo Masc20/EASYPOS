@@ -102,3 +102,83 @@
 │   └── Unit/
 └── composer.json
 ```
+
+## Conventions
+
+- Add feature behavior to its domain slice before adding shared code.
+- Keep routes and page views thin, compose pages from Livewire components.
+- Put reusable, business-agnostic UI in `app/Livewire` and keep feature behavior in `app/Domains`.
+- Add migrations and tests alongside each new capability.
+
+## Running locally with XAMPP
+
+### Prerequisites
+
+- XAMPP with Apache, MySQL, and PHP 8.2 or later.
+- [Composer](https://getcomposer.org/) available from the command line.
+- Node.js 20 or later and npm.
+
+### Install the project
+
+Clone or copy the project into XAMPP's `htdocs` directory:
+
+```powershell
+cd C:\xampp\htdocs
+git clone <repository-url> EASYPOS
+cd EASYPOS
+```
+
+Install the PHP and frontend dependencies, then create the local environment file:
+
+```powershell
+composer install
+npm install
+Copy-Item .env.example .env
+php artisan key:generate
+```
+
+### Configure MySQL
+
+1. Start **Apache** and **MySQL** from the XAMPP Control Panel.
+2. Open [phpMyAdmin](http://localhost/phpmyadmin) and create a database named `easypos`.
+3. Update the database section of `.env`:
+
+```dotenv
+APP_NAME=EASYPOS
+APP_URL=http://localhost/EASYPOS/public
+
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=easypos
+DB_USERNAME=root
+DB_PASSWORD=
+```
+
+The default XAMPP MySQL `root` account has no password. If yours does, set `DB_PASSWORD` to that password instead.
+
+Run the database migrations and build frontend assets:
+
+```powershell
+php artisan migrate
+php artisan storage:link
+npm run build
+```
+
+Open the application at [http://localhost/EASYPOS/public](http://localhost/EASYPOS/public).
+
+### During frontend development
+
+Keep this command running in a separate terminal to rebuild CSS and JavaScript as files change:
+
+```powershell
+npm run dev
+```
+
+### Troubleshooting
+
+After changing `.env`, configuration, routes, or cached views, clear Laravel's cached files:
+
+```powershell
+php artisan optimize:clear
+```
