@@ -33,26 +33,22 @@
 │   │           ├── LowStockAlert.php
 │   │           ├── ProductForm.php
 │   │           └── StockTable.php
-│   ├── Livewire/                             # Shared UI components
-│   │   ├── Forms/                            # Reusable form fields
-│   │   │   ├── CurrencyInput.php
-│   │   │   ├── DatePicker.php
-│   │   │   └── ProductSelect.php
-│   │   ├── Layout/                           # Application shell and navigation
-│   │   │   ├── AppShell.php
-│   │   │   ├── Sidebar.php
-│   │   │   └── TopBar.php
-│   │   └── Ui/                               # Business-agnostic UI elements
-│   │       ├── Badge.php
-│   │       ├── Button.php
-│   │       ├── Dropdown.php
-│   │       ├── Input.php
-│   │       ├── Modal.php
-│   │       └── Table.php
-│   └── View/Components/Ui/                   # Anonymous Blade component templates
-│       ├── button.blade.php
-│       ├── input.blade.php
-│       └── modal.blade.php
+│   └── Livewire/                             # Shared UI components
+│       ├── Forms/                            # Reusable form fields
+│       │   ├── CurrencyInput.php
+│       │   ├── DatePicker.php
+│       │   └── ProductSelect.php
+│       ├── Layout/                           # Application shell and navigation
+│       │   ├── AppShell.php
+│       │   ├── Sidebar.php
+│       │   └── TopBar.php
+│       └── Ui/                               # Business-agnostic UI elements
+│           ├── Badge.php
+│           ├── Button.php
+│           ├── Dropdown.php
+│           ├── Input.php
+│           ├── Modal.php
+│           └── Table.php
 ├── resources/
 │   ├── css/
 │   │   └── app.css
