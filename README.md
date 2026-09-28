@@ -1,4 +1,4 @@
-# EASYPOS &mdash; Centralized Multi-Branch POS & Inventory System
+# EASYPOS &mdash; Centralized Multi-Branch POS System
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
 [![Livewire](https://img.shields.io/badge/Livewire-3.x-4E56A6?style=for-the-badge&logo=livewire&logoColor=white)](https://livewire.laravel.com)
