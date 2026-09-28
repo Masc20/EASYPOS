@@ -26,6 +26,9 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('inventory.product-form', \App\Domains\Inventory\Livewire\ProductForm::class);
         Livewire::component('inventory.low-stock-alert', \App\Domains\Inventory\Livewire\LowStockAlert::class);
 
+        // Domain: Identity
+        Livewire::component('identity.auth.login', \App\Domains\Identity\Livewire\Auth\Login::class);
+
         // Anonymous Blade components (just .blade.php files)
         Blade::anonymousComponentPath(app_path('View/Components/Ui'), 'ui');
     }

@@ -33,6 +33,23 @@
 │   │           ├── LowStockAlert.php
 │   │           ├── ProductForm.php
 │   │           └── StockTable.php
+│   │   └── Identity/                         # Auth & Access domain
+│   │       ├── Actions/
+│   │       │   └── CreateUser.php
+│   │       ├── Events/
+│   │       │   ├── UserLoggedIn.php
+│   │       │   └── UserLoggedOut.php
+│   │       ├── Models/
+│   │       │   └── User.php                  # HasRoles, FilamentUser
+│   │       └── Livewire/
+│   │           └── Auth/
+│   │               └── Login.php
+│   ├── Models/
+│   │   └── User.php                          # Framework compatibility proxy
+│   ├── Providers/
+│   │   ├── AppServiceProvider.php
+│   │   └── Filament/
+│   │       └── AdminPanelProvider.php        # Multi-domain discovery (/admin)
 │   └── Livewire/                             # Shared UI components
 │       ├── Forms/                            # Reusable form fields
 │       │   ├── CurrencyInput.php
@@ -49,6 +66,14 @@
 │           ├── Input.php
 │           ├── Modal.php
 │           └── Table.php
+├── config/
+│   ├── auth.php
+│   └── permission.php                        # Spatie permissions config
+├── database/
+│   ├── migrations/
+│   └── seeders/
+│       ├── DatabaseSeeder.php
+│       └── RolesAndPermissionsSeeder.php
 ├── resources/
 │   ├── css/
 │   │   └── app.css
@@ -66,6 +91,9 @@
 │       │   │   ├── currency-input.blade.php
 │       │   │   ├── date-picker.blade.php
 │       │   │   └── product-select.blade.php
+│       │   ├── identity/
+│       │   │   └── auth/
+│       │   │       └── login.blade.php
 │       │   ├── inventory/
 │       │   │   ├── low-stock-alert.blade.php
 │       │   │   ├── product-form.blade.php
@@ -88,13 +116,20 @@
 │       │       ├── modal.blade.php
 │       │       └── table.blade.php
 │       └── pages/                            # Thin route entry points
+│           ├── auth/
+│           │   └── login.blade.php
 │           ├── dashboard.blade.php
 │           ├── inventory.blade.php
 │           └── pos.blade.php
 ├── routes/
+│   ├── auth.php
 │   └── web.php
 ├── tests/
 │   ├── Feature/
+│   │   ├── AuthTest.php
+│   │   ├── AuthorizationTest.php
+│   │   ├── ExampleTest.php
+│   │   └── FilamentPanelTest.php
 │   └── Unit/
 └── composer.json
 ```
