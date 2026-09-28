@@ -240,7 +240,7 @@ The test suite validates authentication, role-based isolation, station routing, 
 php vendor/bin/phpunit
 ```
 
-### Test Coverage Highlights:
+### Test Coverage Highlights
 
 * `tests/Feature/AuthTest.php`: Floor staff terminal rendering, PIN authentication for Cashier, Cook, Chef, and Manager, auto-submit keypad logic, lockout rate-limiting, and theme cookie rendering.
 * `tests/Feature/AuthorizationTest.php`: Station access permissions, automatic redirection from `/` to assigned station, 403 denial on unauthorized routes, and floor staff navigation isolation.
