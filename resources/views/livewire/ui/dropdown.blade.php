@@ -1,1 +1,3 @@
-<select class="rounded border p-2"><option>Select an option</option></select>
+<select class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-2 text-sm text-brand-text focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:focus:ring-brand-secondary/20 transition shadow-2xs">
+    <option class="bg-brand-card text-brand-text">Select an option</option>
+</select>
