@@ -134,7 +134,7 @@ class AuthTest extends TestCase
         $response = $this->withCookie('theme', 'dark')->get('/login');
 
         $response->assertStatus(200);
-        $response->assertSee('<html lang="en" class="h-full dark">', false);
+        $response->assertSee('class="h-full dark"', false);
     }
 
     public function test_theme_cookie_renders_dark_mode_on_inventory_screen_for_chef(): void
@@ -146,7 +146,7 @@ class AuthTest extends TestCase
             ->get('/inventory');
 
         $response->assertStatus(200);
-        $response->assertSee('<html lang="en" class="dark">', false);
+        $response->assertSee('class="dark"', false);
         $response->assertSee('Inventory Stock Alerts');
         $response->assertSee('Stock Catalog');
     }

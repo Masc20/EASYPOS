@@ -1,6 +1,6 @@
 @props(['user' => auth()->user()])
 
-@if ($user && ! $user->isStrictFloorStaff())
+@if ($user && !$user->isStrictFloorStaff())
     <nav class="flex items-center gap-5 text-sm font-medium text-brand-text-muted">
         @if ($user->hasRole('owner') || $user->hasRole('super-admin') || $user->hasRole('branch-manager'))
             <a href="{{ url('/') }}"

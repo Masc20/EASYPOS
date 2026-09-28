@@ -2,7 +2,8 @@
     <div class="mb-6 flex items-center justify-between">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-brand-text">Inventory Management</h1>
-            <p class="text-sm text-brand-text-muted">Monitor stock levels, manage product records, and track stock alerts</p>
+            <p class="text-sm text-brand-text-muted">Monitor stock levels, manage product records, and track stock alerts
+            </p>
         </div>
     </div>
 

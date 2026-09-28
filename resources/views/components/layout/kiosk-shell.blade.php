@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full {{ request()->cookie('theme') === 'dark' ? 'dark' : '' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
+    class="h-full {{ request()->cookie('theme') === 'dark' ? 'dark' : '' }}">
 
 <head>
     <meta charset="utf-8">

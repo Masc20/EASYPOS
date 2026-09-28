@@ -99,6 +99,10 @@ EASYPOS/
 │       │       ├── button.blade.php
 │       │       ├── modal.blade.php
 │       │       └── theme-toggle.blade.php        # Sun / Moon toggle button
+│       ├── errors/                               # Branded HTTP exception templates (400, 401, 403, 404, 419, 429, 500, 503, 4xx, 5xx, 3xx)
+│       │   ├── layout.blade.php                  # Master terminal error shell with station routing
+│       │   ├── minimal.blade.php                 # Framework fallback bridge
+│       │   └── [400..503,4xx,5xx,3xx].blade.php  # Declarative status pages with diagnostics
 │       ├── livewire/                             # Livewire Blade component views
 │       └── pages/                                # Route destination views
 │           ├── auth/login.blade.php              # Kiosk floor login
@@ -113,6 +117,7 @@ EASYPOS/
     └── Feature/
         ├── AuthTest.php                          # PIN & EmpID authentication tests
         ├── AuthorizationTest.php                 # Station access, isolation, & RBAC tests
+        ├── ErrorPagesTest.php                    # HTTP error rendering, dark mode & station return tests
         └── FilamentPanelTest.php                 # Admin back-office security tests
 ```
 

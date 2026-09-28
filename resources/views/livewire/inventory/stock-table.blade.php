@@ -5,7 +5,8 @@
             <p class="text-xs text-brand-text-muted">Current product inventory counts, SKUs, and retail pricing.</p>
         </div>
         <div class="flex items-center gap-2">
-            <span class="rounded-md bg-brand-bg px-2.5 py-1 text-xs font-semibold text-brand-text-muted border border-brand-border">
+            <span
+                class="rounded-md bg-brand-bg px-2.5 py-1 text-xs font-semibold text-brand-text-muted border border-brand-border">
                 All Items
             </span>
         </div>

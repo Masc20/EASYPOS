@@ -4,7 +4,7 @@
   and preserves theme persistence across Livewire SPA navigations (wire:navigate).
 --}}
 <script>
-    (function () {
+    (function() {
         function applyTheme() {
             try {
                 let theme = localStorage.getItem('theme');
@@ -32,7 +32,7 @@
 
         // Global fallback toggle function available immediately before bundled JS finishes loading
         if (typeof window.toggleTheme !== 'function') {
-            window.toggleTheme = function () {
+            window.toggleTheme = function() {
                 try {
                     const isDark = document.documentElement.classList.contains('dark');
                     const next = isDark ? 'light' : 'dark';
@@ -43,7 +43,12 @@
                     }
                     localStorage.setItem('theme', next);
                     document.cookie = 'theme=' + next + ';path=/;max-age=31536000;SameSite=Lax';
-                    window.dispatchEvent(new CustomEvent('easypos:theme-changed', { detail: { theme: next, isDark: next === 'dark' } }));
+                    window.dispatchEvent(new CustomEvent('easypos:theme-changed', {
+                        detail: {
+                            theme: next,
+                            isDark: next === 'dark'
+                        }
+                    }));
                 } catch (e) {}
             };
         }

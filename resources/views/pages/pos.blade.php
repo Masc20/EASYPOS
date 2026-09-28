@@ -5,7 +5,8 @@
             <p class="text-sm text-brand-text-muted">Scan barcodes or search products to process sales transactions</p>
         </div>
         <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 rounded-full bg-brand-success/10 border border-brand-success/30 px-3 py-1 text-xs font-semibold text-brand-success">
+            <span
+                class="inline-flex items-center gap-1.5 rounded-full bg-brand-success/10 border border-brand-success/30 px-3 py-1 text-xs font-semibold text-brand-success">
                 <span class="h-2 w-2 rounded-full bg-brand-success animate-pulse"></span>
                 Terminal Active
             </span>
