@@ -1,12 +1,68 @@
 @import 'tailwindcss';
 
+@variant dark (&:where(.dark, .dark *));
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../../app/**/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
 
+:root {
+    --bg-main: #F8F3EA;
+    --bg-card: #FFFFFF;
+    --bg-muted: #F3ECE0;
+    --color-primary: #5A0708;
+    --color-primary-hover: #450506;
+    --color-secondary: #F28C18;
+    --color-secondary-hover: #D9770E;
+    --color-accent: #F6C744;
+    --color-text: #171313;
+    --color-text-muted: #72685E;
+    --color-border: #E8D8C5;
+    --color-success: #16833D;
+    --color-error: #C62828;
+}
+
+html.dark {
+    --bg-main: #111315;
+    --bg-card: #191C20;
+    --bg-muted: #22262B;
+    --color-primary: #7A0B0D;
+    --color-primary-hover: #960D10;
+    --color-secondary: #F28C18;
+    --color-secondary-hover: #D9770E;
+    --color-accent: #F6C744;
+    --color-text: #F8F3EA;
+    --color-text-muted: #9BA3AF;
+    --color-border: #34383D;
+    --color-success: #16833D;
+    --color-error: #C62828;
+}
+
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    /* Brand Tokens mapped to CSS variables */
+    --color-brand-bg: var(--bg-main);
+    --color-brand-card: var(--bg-card);
+    --color-brand-muted: var(--bg-muted);
+    --color-brand-primary: var(--color-primary);
+    --color-brand-primary-hover: var(--color-primary-hover);
+    --color-brand-secondary: var(--color-secondary);
+    --color-brand-secondary-hover: var(--color-secondary-hover);
+    --color-brand-accent: var(--color-accent);
+    --color-brand-text: var(--color-text);
+    --color-brand-text-muted: var(--color-text-muted);
+    --color-brand-border: var(--color-border);
+    --color-brand-success: var(--color-success);
+    --color-brand-error: var(--color-error);
+}
+
+/* Base resets adhering strictly to current theme variables */
+html, body {
+    background-color: var(--bg-main);
+    color: var(--color-text);
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
