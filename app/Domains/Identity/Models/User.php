@@ -122,7 +122,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($this->hasRole('chef')) {
-            return 'Kitchen & Inventory Station';
+            return 'Chef\'s Menu & Kitchen Station';
         }
 
         if ($this->hasRole('cook')) {
@@ -142,7 +142,7 @@ class User extends Authenticatable implements FilamentUser
         }
 
         if ($this->hasRole('chef')) {
-            return route('inventory');
+            return route('menu');
         }
 
         if ($this->hasRole('cook')) {

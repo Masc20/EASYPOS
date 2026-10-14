@@ -26,23 +26,22 @@
             </a>
         @endcan
 
-        <!-- Inventory Card -->
-        @can('inventory.view')
-            <a href="{{ route('inventory') }}"
+        <!-- Menu Catalog Card -->
+        @can('menu.view')
+            <a href="{{ route('menu') }}"
                 class="group relative rounded-md border border-brand-border bg-brand-card p-6 shadow-2xs transition hover:border-brand-success hover:shadow-md">
                 <div class="flex items-center justify-between">
                     <span class="rounded-md bg-brand-success/10 text-brand-success p-3">
                         <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                     </span>
                     <span
                         class="text-xs font-semibold text-brand-success group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
-                <h2 class="mt-4 text-base font-bold text-brand-text">Inventory</h2>
-                <p class="mt-1 text-sm text-brand-text-muted">Manage catalog products, check stock levels, and review
-                    alerts.</p>
+                <h2 class="mt-4 text-base font-bold text-brand-text">Menu & Specials</h2>
+                <p class="mt-1 text-sm text-brand-text-muted">Manage chef-prepared dishes, categories, pricing, and live 86'd availability.</p>
             </a>
         @endcan
 
@@ -97,7 +96,7 @@
                 <span class="text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Active Domain
                     Slices</span>
                 <p class="mt-1 text-lg font-black text-brand-text">3 Domains</p>
-                <p class="text-xs text-brand-text-muted mt-1">Identity, PointOfSale, Inventory</p>
+                <p class="text-xs text-brand-text-muted mt-1">Identity, PointOfSale, Menu</p>
             </div>
             <div class="rounded-md bg-brand-bg/70 p-4 border border-brand-border/70">
                 <span class="text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Current User

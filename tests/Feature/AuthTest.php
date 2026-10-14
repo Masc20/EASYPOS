@@ -48,7 +48,7 @@ class AuthTest extends TestCase
             ->set('pin', '2345')
             ->call('login')
             ->assertHasNoErrors()
-            ->assertRedirect(route('inventory'));
+            ->assertRedirect(route('menu'));
 
         $this->assertAuthenticated();
         $this->assertEquals('B01-CHF-001', auth()->user()->emp_id);
@@ -137,17 +137,17 @@ class AuthTest extends TestCase
         $response->assertSee('class="h-full dark"', false);
     }
 
-    public function test_theme_cookie_renders_dark_mode_on_inventory_screen_for_chef(): void
+    public function test_theme_cookie_renders_dark_mode_on_menu_screen_for_chef(): void
     {
         $chef = User::where('emp_id', 'B01-CHF-001')->first();
 
         $response = $this->actingAs($chef)
             ->withCookie('theme', 'dark')
-            ->get('/inventory');
+            ->get('/menu');
 
         $response->assertStatus(200);
         $response->assertSee('class="dark"', false);
-        $response->assertSee('Inventory Stock Alerts');
-        $response->assertSee('Stock Catalog');
+        $response->assertSee('Daily Specials & Kitchen Availability Board');
+        $response->assertSee('Meal Catalog');
     }
 }

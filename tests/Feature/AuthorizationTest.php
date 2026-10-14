@@ -24,9 +24,9 @@ class AuthorizationTest extends TestCase
         $response->assertRedirect('/login');
     }
 
-    public function test_guests_are_redirected_to_login_when_accessing_inventory(): void
+    public function test_guests_are_redirected_to_login_when_accessing_menu(): void
     {
-        $response = $this->get('/inventory');
+        $response = $this->get('/menu');
 
         $response->assertRedirect('/login');
     }
@@ -40,33 +40,33 @@ class AuthorizationTest extends TestCase
         $response->assertStatus(200);
     }
 
-    public function test_cashier_without_inventory_permission_is_forbidden_from_inventory(): void
+    public function test_cashier_without_menu_permission_is_forbidden_from_menu(): void
     {
         $cashier = User::where('emp_id', 'B01-CSH-001')->first();
 
-        $response = $this->actingAs($cashier)->get('/inventory');
+        $response = $this->actingAs($cashier)->get('/menu');
 
         $response->assertStatus(403);
     }
 
-    public function test_chef_can_access_inventory(): void
+    public function test_chef_can_access_menu(): void
     {
         $chef = User::where('emp_id', 'B01-CHF-001')->first();
 
-        $response = $this->actingAs($chef)->get('/inventory');
+        $response = $this->actingAs($chef)->get('/menu');
 
         $response->assertStatus(200);
     }
 
-    public function test_owner_can_access_both_pos_and_inventory(): void
+    public function test_owner_can_access_both_pos_and_menu(): void
     {
         $owner = User::where('email', 'owner@easypos.com')->first();
 
         $posResponse = $this->actingAs($owner)->get('/pos');
         $posResponse->assertStatus(200);
 
-        $inventoryResponse = $this->actingAs($owner)->get('/inventory');
-        $inventoryResponse->assertStatus(200);
+        $menuResponse = $this->actingAs($owner)->get('/menu');
+        $menuResponse->assertStatus(200);
     }
 
     public function test_cook_can_access_kitchen(): void
@@ -88,11 +88,11 @@ class AuthorizationTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_cook_without_inventory_permission_is_forbidden_from_inventory(): void
+    public function test_cook_without_menu_permission_is_forbidden_from_menu(): void
     {
         $cook = User::where('emp_id', 'B01-COK-001')->first();
 
-        $response = $this->actingAs($cook)->get('/inventory');
+        $response = $this->actingAs($cook)->get('/menu');
 
         $response->assertStatus(403);
     }
@@ -124,13 +124,13 @@ class AuthorizationTest extends TestCase
         $response->assertRedirect(route('pos'));
     }
 
-    public function test_chef_visiting_root_is_redirected_to_inventory(): void
+    public function test_chef_visiting_root_is_redirected_to_menu(): void
     {
         $chef = User::where('emp_id', 'B01-CHF-001')->first();
 
         $response = $this->actingAs($chef)->get('/');
 
-        $response->assertRedirect(route('inventory'));
+        $response->assertRedirect(route('menu'));
     }
 
     public function test_cook_visiting_root_is_redirected_to_kitchen(): void
@@ -150,7 +150,7 @@ class AuthorizationTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('POS Register Terminal');
-        $response->assertDontSee('href="' . route('inventory') . '"', false);
+        $response->assertDontSee('href="' . route('menu') . '"', false);
         $response->assertDontSee('href="' . route('kitchen') . '"', false);
         $response->assertDontSee('Admin Back-Office');
     }

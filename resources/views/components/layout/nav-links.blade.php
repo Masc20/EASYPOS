@@ -16,10 +16,10 @@
             </a>
         @endcan
 
-        @can('inventory.view')
-            <a href="{{ route('inventory') }}"
-                class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('inventory*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
-                Inventory
+        @can('menu.view')
+            <a href="{{ route('menu') }}"
+                class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('menu*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
+                Menu Catalog
             </a>
         @endcan
 

@@ -38,7 +38,7 @@ class ErrorPagesTest extends TestCase
     {
         $cashier = User::where('emp_id', 'B01-CSH-001')->first();
 
-        $response = $this->actingAs($cashier)->get('/inventory');
+        $response = $this->actingAs($cashier)->get('/menu');
 
         $response->assertStatus(403);
         $response->assertSee('HTTP 403');

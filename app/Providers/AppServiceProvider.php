@@ -21,10 +21,10 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('pos.checkout.receipt-preview', \App\Domains\PointOfSale\Livewire\Checkout\ReceiptPreview::class);
         Livewire::component('pos.product-search', \App\Domains\PointOfSale\Livewire\ProductSearch::class);
 
-        // Domain: Inventory
-        Livewire::component('inventory.stock-table', \App\Domains\Inventory\Livewire\StockTable::class);
-        Livewire::component('inventory.product-form', \App\Domains\Inventory\Livewire\ProductForm::class);
-        Livewire::component('inventory.low-stock-alert', \App\Domains\Inventory\Livewire\LowStockAlert::class);
+        // Domain: Menu
+        Livewire::component('menu.meal-catalog-table', \App\Domains\Menu\Livewire\MealCatalogTable::class);
+        Livewire::component('menu.meal-form', \App\Domains\Menu\Livewire\MealForm::class);
+        Livewire::component('menu.daily-specials-board', \App\Domains\Menu\Livewire\DailySpecialsBoard::class);
 
         // Domain: Identity
         Livewire::component('identity.auth.login', \App\Domains\Identity\Livewire\Auth\Login::class);

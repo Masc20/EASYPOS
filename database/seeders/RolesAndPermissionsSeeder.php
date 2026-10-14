@@ -28,8 +28,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'pos.refund',
             'kitchen.view',
             'kitchen.prepare',
-            'inventory.view',
-            'inventory.manage',
+            'menu.view',
+            'menu.manage',
             'branch.manage',
             'users.manage',
             'reports.view',
@@ -54,8 +54,8 @@ class RolesAndPermissionsSeeder extends Seeder
             'pos.checkout',
             'pos.refund',
             'kitchen.view',
-            'inventory.view',
-            'inventory.manage',
+            'menu.view',
+            'menu.manage',
             'branch.manage',
             'reports.view',
         ]);
@@ -75,8 +75,8 @@ class RolesAndPermissionsSeeder extends Seeder
         $chefRole = Role::firstOrCreate(['name' => 'chef', 'guard_name' => 'web']);
         $chefRole->syncPermissions([
             'kitchen.view',
-            'inventory.view',
-            'inventory.manage',
+            'menu.view',
+            'menu.manage',
         ]);
 
         // 3. Seed Branches
