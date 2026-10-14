@@ -1,30 +1,44 @@
 <x-layout.app-shell>
-    <div class="mb-6 flex items-center justify-between">
+    <div class="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-brand-text">Point of Sale Terminal</h1>
-            <p class="text-sm text-brand-text-muted">Scan barcodes or search products to process sales transactions</p>
+            <p class="text-xs text-brand-text-muted">
+                {{ auth()->user()->branch?->name ?? 'Downtown Flagship' }} • Register Station • Staff: <span
+                    class="font-semibold text-brand-text">{{ auth()->user()->name }}</span>
+            </p>
         </div>
         <div class="flex items-center gap-2">
             <span
-                class="inline-flex items-center gap-1.5 rounded-full bg-brand-success/10 border border-brand-success/30 px-3 py-1 text-xs font-semibold text-brand-success">
-                <span class="h-2 w-2 rounded-full bg-brand-success animate-pulse"></span>
+                class="inline-flex items-center gap-1.5 rounded-sm bg-brand-success/10 border border-brand-success/30 px-2.5 py-1 text-xs font-semibold text-brand-success">
+                <span class="h-2 w-2 rounded-xs bg-brand-success animate-pulse"></span>
                 Terminal Active
             </span>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="space-y-6 lg:col-span-2">
-            <div class="rounded-md border border-brand-border bg-brand-card p-5 shadow-2xs">
-                <livewire:pos.product-search />
+    <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <!-- Main: Fast Search & Menu Catalog (2 cols) -->
+        <div class="space-y-4 lg:col-span-2">
+            <!-- Fast Search & Barcode Scanner -->
+            <livewire:pos.product-search />
+
+            <!-- Dish / Menu Catalog Grid with Category Tabs -->
+            <div class="rounded-lg border border-brand-border bg-brand-card p-4 shadow-2xs">
+                <livewire:pos.meal-catalog />
             </div>
         </div>
 
-        <div class="space-y-6">
-            <div class="rounded-md border border-brand-border bg-brand-card p-5 shadow-2xs">
+        <!-- Sidebar: Active Order Cart & Modals (1 col) -->
+        <div class="space-y-5">
+            <div class="rounded-lg border border-brand-border bg-brand-card p-4 shadow-2xs">
                 <livewire:pos.checkout.checkout-cart />
             </div>
+
+            <!-- Checkout Payment Modal -->
             <livewire:pos.checkout.checkout-modal />
+
+            <!-- Official Sales Receipt Modal -->
+            <livewire:pos.checkout.receipt-preview />
         </div>
     </div>
 </x-layout.app-shell>

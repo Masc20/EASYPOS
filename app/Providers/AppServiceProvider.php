@@ -20,6 +20,7 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('pos.checkout.checkout-modal', \App\Domains\PointOfSale\Livewire\Checkout\CheckoutModal::class);
         Livewire::component('pos.checkout.receipt-preview', \App\Domains\PointOfSale\Livewire\Checkout\ReceiptPreview::class);
         Livewire::component('pos.product-search', \App\Domains\PointOfSale\Livewire\ProductSearch::class);
+        Livewire::component('pos.meal-catalog', \App\Domains\PointOfSale\Livewire\MealCatalog::class);
 
         // Domain: Menu
         Livewire::component('menu.meal-catalog-table', \App\Domains\Menu\Livewire\MealCatalogTable::class);
@@ -31,7 +32,9 @@ class AppServiceProvider extends ServiceProvider
         // Domain: Identity
         Livewire::component('identity.auth.login', \App\Domains\Identity\Livewire\Auth\Login::class);
 
-        // Anonymous Blade components (just .blade.php files)
-        Blade::anonymousComponentPath(app_path('View/Components/Ui'), 'ui');
+        // Shared Smart Form Widgets
+        Livewire::component('forms.product-select', \App\Livewire\Forms\ProductSelect::class);
+        Livewire::component('forms.date-picker', \App\Livewire\Forms\DatePicker::class);
+        Livewire::component('forms.currency-input', \App\Livewire\Forms\CurrencyInput::class);
     }
 }
