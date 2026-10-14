@@ -1,9 +1,10 @@
 @props(['user' => auth()->user()])
 
-@if ($user && !$user->isStrictFloorStaff())
+@if ($user)
     <nav class="flex items-center gap-5 text-sm font-medium text-brand-text-muted">
         @if ($user->hasRole('owner') || $user->hasRole('super-admin') || $user->hasRole('branch-manager'))
             <a href="{{ url('/') }}"
+                wire:navigate
                 class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('/') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                 Dashboard
             </a>
@@ -11,6 +12,7 @@
 
         @can('pos.access')
             <a href="{{ route('pos') }}"
+                wire:navigate
                 class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('pos*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                 Point of Sale
             </a>
@@ -18,6 +20,7 @@
 
         @can('menu.view')
             <a href="{{ route('menu') }}"
+                wire:navigate
                 class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('menu*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                 Menu Catalog
             </a>
@@ -25,6 +28,7 @@
 
         @can('kitchen.view')
             <a href="{{ route('kitchen') }}"
+                wire:navigate
                 class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('kitchen*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                 Kitchen Display
             </a>

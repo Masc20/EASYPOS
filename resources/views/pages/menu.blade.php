@@ -1,27 +1,36 @@
 <x-layout.app-shell>
-    <div class="mb-6 flex items-center justify-between">
-        <div>
-            <h1 class="text-2xl font-bold tracking-tight text-brand-text">Menu & Specials Management</h1>
-            <p class="text-sm text-brand-text-muted">Manage chef-prepared meals, daily specials, categories, and live station availability</p>
+    <!-- Top Header: Single Clean Title & Add Dish Button (Instant 0ms Open) -->
+    <div class="mb-5 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <h1 class="text-xl font-bold tracking-tight text-brand-text">Meal Catalog</h1>
+            <x-ui.badge variant="primary">
+                Chef Station
+            </x-ui.badge>
         </div>
+        <x-ui.button
+            x-data
+            x-on:click="$dispatch('open-modal', 'create-meal-modal')"
+            variant="primary">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+            </svg>
+            Add New Dish
+        </x-ui.button>
     </div>
 
-    <div class="mb-6">
+    <!-- Daily Specials Notice -->
+    <div class="mb-5">
         <livewire:menu.daily-specials-board />
     </div>
 
-    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div class="lg:col-span-2">
-            <div class="rounded-md border border-brand-border bg-brand-card p-5 shadow-2xs">
-                <livewire:menu.meal-catalog-table />
-            </div>
-        </div>
+    <!-- Main Full-Width Catalog in Centralized Card -->
+    <x-ui.card padding="p-5">
+        <livewire:menu.meal-catalog-table />
+    </x-ui.card>
 
-        <div>
-            <div class="rounded-md border border-brand-border bg-brand-card p-5 shadow-2xs">
-                <h2 class="mb-3 text-base font-bold text-brand-text">Add / Update Meal</h2>
-                <livewire:menu.meal-form />
-            </div>
-        </div>
-    </div>
+    <!-- Dedicated Create Meal Modal (Always Pristine & Blank, 0ms Open) -->
+    <livewire:menu.create-meal-modal />
+
+    <!-- Dedicated Edit Meal Modal (Hydrates Specific Meal on Demand) -->
+    <livewire:menu.edit-meal-modal />
 </x-layout.app-shell>

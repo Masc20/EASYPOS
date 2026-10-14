@@ -9,6 +9,7 @@
         <!-- Brand & Station / Navigation Section -->
         <div class="flex items-center gap-6">
             <a href="{{ $logoUrl }}"
+                wire:navigate
                 class="flex items-center gap-2.5 text-xl font-bold tracking-tight text-brand-primary dark:text-brand-secondary">
                 <span
                     class="flex h-8 w-8 items-center justify-center rounded-md bg-brand-primary text-white font-black text-sm shadow-sm shadow-brand-primary/30">

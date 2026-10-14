@@ -154,4 +154,29 @@ class AuthorizationTest extends TestCase
         $response->assertDontSee('href="' . route('kitchen') . '"', false);
         $response->assertDontSee('Admin Back-Office');
     }
+
+    public function test_chef_can_access_kitchen_and_prepare_orders(): void
+    {
+        $chef = User::where('emp_id', 'B01-CHF-001')->first();
+
+        $this->assertTrue($chef->can('kitchen.view'));
+        $this->assertTrue($chef->can('kitchen.prepare'));
+        $this->assertTrue($chef->can('menu.manage'));
+
+        $response = $this->actingAs($chef)->get('/kitchen');
+        $response->assertStatus(200);
+    }
+
+    public function test_chef_sees_both_menu_and_kitchen_nav_links(): void
+    {
+        $chef = User::where('emp_id', 'B01-CHF-001')->first();
+
+        $response = $this->actingAs($chef)->get('/menu');
+
+        $response->assertStatus(200);
+        $response->assertSee('Menu Catalog');
+        $response->assertSee('Kitchen Display');
+        $response->assertDontSee('Point of Sale');
+        $response->assertDontSee('Admin Back-Office');
+    }
 }

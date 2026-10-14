@@ -24,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
         // Domain: Menu
         Livewire::component('menu.meal-catalog-table', \App\Domains\Menu\Livewire\MealCatalogTable::class);
         Livewire::component('menu.meal-form', \App\Domains\Menu\Livewire\MealForm::class);
+        Livewire::component('menu.create-meal-modal', \App\Domains\Menu\Livewire\CreateMealModal::class);
+        Livewire::component('menu.edit-meal-modal', \App\Domains\Menu\Livewire\EditMealModal::class);
         Livewire::component('menu.daily-specials-board', \App\Domains\Menu\Livewire\DailySpecialsBoard::class);
 
         // Domain: Identity

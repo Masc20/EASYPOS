@@ -75,6 +75,7 @@ class RolesAndPermissionsSeeder extends Seeder
         $chefRole = Role::firstOrCreate(['name' => 'chef', 'guard_name' => 'web']);
         $chefRole->syncPermissions([
             'kitchen.view',
+            'kitchen.prepare',
             'menu.view',
             'menu.manage',
         ]);
