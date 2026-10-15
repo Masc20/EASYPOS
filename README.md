@@ -1,3 +1,5 @@
+<div align="center">
+
 # EASYPOS &mdash; Centralized Multi-Branch POS System
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=for-the-badge&logo=laravel&logoColor=white)](https://laravel.com)
@@ -7,22 +9,26 @@
 [![Spatie Permissions](https://img.shields.io/badge/Spatie-RBAC-blue?style=for-the-badge)](https://spatie.be/docs/laravel-permission)
 [![PHP](https://img.shields.io/badge/PHP-8.2+-777BB4?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
 
-**EASYPOS** is an enterprise-grade Point of Sale, Kitchen Display, and Inventory Management system built for multi-branch retail and food-service operations. It combines an autonomous **Floor Staff Touch Terminal** (powered by Employee IDs & 4-digit PIN authentication) with an executive **Filament Back-Office Portal** (powered by Email & Password credentials).
+</div>
+
+**EASYPOS** is an enterprise-grade Point of Sale, Kitchen Display, and Menu Management system created for multi-branch retail and restaurant operations. It features a **Modular Monolith** architecture with Domain-Driven Design (DDD), combining an autonomous **Floor Staff Touch Terminal** (Employee IDs + 4-digit PIN authentication) with an executive **Filament Back-Office Portal** (Email + Password authentication).
 
 ---
 
-## Directory Structure
+## Architecture & Directory Structure
+
+EASYPOS organizes business capabilities into isolated domains under `app/Domains/`, uses reusable smart form widgets under `app/Livewire/Forms/`, and keeps pure presentation primitives under `resources/views/components/ui/`.
 
 ```text
 EASYPOS/
 ├── app/
-│   ├── Domains/                                  # Isolated business domain modules
+│   ├── Domains/                                  # Isolated business domain modules (DDD)
 │   │   ├── Branches/                             # Multi-Branch management
 │   │   │   └── Models/
-│   │   │       └── Branch.php
+│   │   │       └── Branch.php                    # Branch entity & store metadata
 │   │   ├── Identity/                             # Authentication, RBAC, and staff profiles
 │   │   │   ├── Actions/
-│   │   │   │   └── CreateUser.php
+│   │   │   │   └── CreateUser.php                # Staff onboarding action
 │   │   │   ├── Events/
 │   │   │   │   ├── UserLoggedIn.php
 │   │   │   │   └── UserLoggedOut.php
@@ -31,46 +37,65 @@ EASYPOS/
 │   │   │   │       └── Login.php                 # PIN Pad Floor Terminal component
 │   │   │   └── Models/
 │   │   │       └── User.php                      # RBAC, PIN verification, station routing
-│   │   ├── Inventory/                            # Stock tracking, catalog & alerts
-│   │   │   ├── Actions/
-│   │   │   │   └── AdjustStock.php
-│   │   │   ├── Events/
-│   │   │   │   └── LowStockDetected.php
-│   │   │   ├── Livewire/
-│   │   │   │   ├── LowStockAlert.php
-│   │   │   │   ├── ProductForm.php
-│   │   │   │   └── StockTable.php
+│   │   ├── Kitchen/                              # Kitchen Display System (KDS) & cook queue
 │   │   │   └── Models/
-│   │   │       ├── Product.php
-│   │   │       └── Stock.php
-│   │   └── PointOfSale/                          # POS checkout & transaction processing
+│   │   │       ├── KitchenTicket.php             # Sequential cook ticket entity (K-001)
+│   │   │       └── KitchenTicketItem.php         # Dish line-item prep status & instructions
+│   │   ├── Menu/                                 # Dish catalog, pricing & availability
+│   │   │   ├── Actions/
+│   │   │   │   ├── CreateMealAction.php
+│   │   │   │   ├── DeleteMealAction.php
+│   │   │   │   ├── ToggleMealAvailabilityAction.php
+│   │   │   │   └── UpdateMealAction.php
+│   │   │   ├── Events/
+│   │   │   │   ├── MealAvailabilityToggled.php
+│   │   │   │   ├── MealCreated.php
+│   │   │   │   ├── MealDeleted.php
+│   │   │   │   └── MealUpdated.php
+│   │   │   ├── Livewire/
+│   │   │   │   ├── CreateMealModal.php
+│   │   │   │   ├── DailySpecialsBoard.php
+│   │   │   │   ├── EditMealModal.php
+│   │   │   │   ├── MealCatalogTable.php
+│   │   │   │   └── MealForm.php
+│   │   │   └── Models/
+│   │   │       ├── Meal.php                      # Dish model with portion costs & stock
+│   │   │       └── MealCategory.php              # Dish categories (Appetizers, Mains, etc.)
+│   │   └── PointOfSale/                          # POS checkout, cart & transaction processing
 │   │       ├── Actions/
-│   │       │   └── ProcessCheckout.php
+│   │       │   ├── CreateOrderAction.php         # Transactional order numbering & portion tracking
+│   │       │   └── ProcessPaymentAction.php      # Settlement & automatic kitchen ticket dispatch
 │   │       ├── Events/
-│   │       │   └── SaleCompleted.php
+│   │       │   ├── KitchenTicketDispatched.php
+│   │       │   ├── OrderCreated.php
+│   │       │   └── PaymentProcessed.php
 │   │       ├── Livewire/
 │   │       │   ├── Checkout/
-│   │       │   │   ├── CheckoutCart.php
-│   │       │   │   ├── CheckoutModal.php
-│   │       │   │   └── ReceiptPreview.php
-│   │       │   └── ProductSearch.php
+│   │       │   │   ├── CheckoutCart.php          # 0ms Alpine-driven live register cart
+│   │       │   │   ├── CheckoutModal.php         # Tender calculation & payment processing
+│   │       │   │   └── ReceiptPreview.php        # 80mm BIR-compliant thermal print view
+│   │       │   ├── MealCatalog.php               # Category tabs & responsive meal grid
+│   │       │   └── ProductSearch.php             # Real-time search & barcode scanner integration
 │   │       └── Models/
-│   │           ├── Cart.php
-│   │           ├── Receipt.php
-│   │           └── Sale.php
-│   ├── Livewire/                                 # Shared, domain-agnostic UI widgets
-│   │   ├── Forms/                                # Generic inputs (Currency, Date, Select)
-│   │   └── Ui/                                   # Base primitives (Badge, Button, Table, Modal)
+│   │           ├── Order.php                     # Orders with Philippine BIR tax accessors
+│   │           ├── OrderItem.php                 # Price snapshot, portions & special instructions
+│   │           └── Payment.php                   # Cash, card, and digital QR transaction audit
+│   ├── Livewire/                                 # Shared, cross-domain smart widgets
+│   │   └── Forms/
+│   │       ├── CurrencyInput.php                 # Smart currency input with quick increments
+│   │       ├── DatePicker.php                    # Smart date picker with quick presets
+│   │       └── ProductSelect.php                 # Live meal search & selection dropdown
 │   ├── Models/
 │   │   └── User.php                              # Framework compatibility proxy
 │   └── Providers/
-│       ├── AppServiceProvider.php
+│       ├── AppServiceProvider.php                # Component aliases & domain bindings
 │       └── Filament/
 │           └── AdminPanelProvider.php            # Multi-domain discovery for /admin
 ├── database/
 │   ├── migrations/                               # Versioned schema migrations
 │   └── seeders/
 │       ├── DatabaseSeeder.php
+│       ├── MenuSeeder.php                        # Pre-configured categories & dishes
 │       └── RolesAndPermissionsSeeder.php         # Multi-branch roles & default users
 ├── resources/
 │   ├── css/
@@ -88,27 +113,28 @@ EASYPOS/
 │   └── views/
 │       ├── components/
 │       │   ├── layout/                           # Modular document and navigation shells
-│       │   │   ├── app-shell.blade.php           # 26-line clean layout wrapper
+│       │   │   ├── app-shell.blade.php           # Master layout wrapper with theme engine
 │       │   │   ├── kiosk-shell.blade.php         # Minimalist terminal viewport shell
-│       │   │   ├── navbar.blade.php              # Flexbox header with station integration
-│       │   │   ├── station-badge.blade.php       # Live pulsing floor staff indicator
 │       │   │   ├── nav-links.blade.php           # Permission-gated management links
-│       │   │   ├── user-nav.blade.php            # User badge, Clock Out form, Theme toggle
-│       │   │   └── theme-script.blade.php        # Synchronous anti-flash <head> engine
-│       │   └── ui/
-│       │       ├── button.blade.php
-│       │       ├── modal.blade.php
-│       │       └── theme-toggle.blade.php        # Sun / Moon toggle button
-│       ├── errors/                               # Branded HTTP exception templates (400, 401, 403, 404, 419, 429, 500, 503, 4xx, 5xx, 3xx)
-│       │   ├── layout.blade.php                  # Master terminal error shell with station routing
-│       │   ├── minimal.blade.php                 # Framework fallback bridge
-│       │   └── [400..503,4xx,5xx,3xx].blade.php  # Declarative status pages with diagnostics
+│       │   │   ├── navbar.blade.php              # Flexbox header with station integration
+│       │   │   ├── station-badge.blade.php       # Live floor staff indicator
+│       │   │   ├── theme-script.blade.php        # Synchronous anti-flash <head> engine
+│       │   │   └── user-nav.blade.php            # User badge, Clock Out form, Theme toggle
+│       │   └── ui/                               # Pure Blade presentational primitives (<x-ui.*>)
+│       │       ├── badge.blade.php               # High-contrast status badges
+│       │       ├── button.blade.php              # Sharpened buttons with variants & sizes
+│       │       ├── card.blade.php                # High-density card container
+│       │       ├── confirm-modal.blade.php       # Reusable confirmation dialog
+│       │       ├── input.blade.php               # Form input with labels & error states
+│       │       ├── modal.blade.php               # 0ms Alpine modal with backdrop blur
+│       │       └── theme-toggle.blade.php        # Light / Dark mode toggle
+│       ├── errors/                               # Branded HTTP exception templates (400-503)
 │       ├── livewire/                             # Livewire Blade component views
 │       └── pages/                                # Route destination views
 │           ├── auth/login.blade.php              # Kiosk floor login
 │           ├── dashboard.blade.php               # Multi-domain management dashboard
-│           ├── inventory.blade.php               # Inventory station
 │           ├── kitchen.blade.php                 # Kitchen display system (KDS)
+│           ├── menu.blade.php                    # Chef's menu catalog & dish management
 │           └── pos.blade.php                     # POS terminal station
 ├── routes/
 │   ├── auth.php                                  # Floor staff auth routes
@@ -117,46 +143,83 @@ EASYPOS/
     └── Feature/
         ├── AuthTest.php                          # PIN & EmpID authentication tests
         ├── AuthorizationTest.php                 # Station access, isolation, & RBAC tests
-        ├── ErrorPagesTest.php                    # HTTP error rendering, dark mode & station return tests
-        └── FilamentPanelTest.php                 # Admin back-office security tests
+        ├── ErrorPagesTest.php                    # HTTP error rendering & dark mode tests
+        ├── FilamentPanelTest.php                 # Admin back-office security tests
+        ├── MenuDatabaseTest.php                  # Dish creation, toggling & category tests
+        └── PointOfSaleTest.php                   # End-to-end POS, cart, tax & payment tests
 ```
+
+---
+
+1. **Tier 1 &mdash; Pure UI Primitives (`resources/views/components/ui/`)**:
+   Zero-overhead native Blade components (`<x-ui.button>`, `<x-ui.modal>`, `<x-ui.input>`, `<x-ui.badge>`). Styled with sharpened `rounded-md` borders, semantic Tailwind color tokens, and 0ms local Alpine.js transitions. They never invoke server roundtrips for open/close actions or styling states.
+2. **Tier 2 &mdash; Reusable Smart Widgets (`app/Livewire/Forms/`)**:
+   Cross-domain Livewire widgets (`ProductSelect`, `DatePicker`, `CurrencyInput`) providing reusable stateful functionality across multiple stations.
+3. **Tier 3 &mdash; Domain Smart Components (`app/Domains/{Domain}/Livewire/`)**:
+   Full-featured domain components that directly query models, dispatch domain events, track portions, and execute transactional actions.
+
+---
+
+## Key Domain Capabilities
+
+### 1. Point of Sale (POS)
+
+* **0ms Client Responsiveness**: Adding meals to the cart, modifying quantities, switching between Dine-In and Takeout, applying discounts, and switching payment tabs occur instantly on the client via Alpine.js with zero server wait.
+* **Component Split**: Distinct separation between [`ProductSearch.php`](file:///C:/xampp/htdocs/EASYPOS/app/Domains/PointOfSale/Livewire/ProductSearch.php) (dedicated strictly to barcode/keyword queries) and [`MealCatalog.php`](file:///C:/xampp/htdocs/EASYPOS/app/Domains/PointOfSale/Livewire/MealCatalog.php) (category tabs and dish cards).
+* **Payment Settlement**: Cash, Credit/Debit Card, and Digital QR support with automated change computation and reference tracking.
+* **Philippine BIR Tax Compliance**: Built-in computed accessors on [`Order.php`](file:///C:/xampp/htdocs/EASYPOS/app/Domains/PointOfSale/Models/Order.php) for:
+  - **VATable Sales (12%)**: Sales amount net of 12% VAT.
+  - **12% VAT Amount**: Explicit tax line.
+  - **VAT-Exempt Sales**: Non-taxable transactions (Senior Citizen / PWD).
+  - **Zero-Rated Sales**: 0% rate sales.
+* **80mm Thermal Receipt Printing**: Clean `@media print` isolation in [`ReceiptPreview.blade.php`](file:///C:/xampp/htdocs/EASYPOS/resources/views/livewire/point-of-sale/checkout/receipt-preview.blade.php) that hides background navigation and headers, restricting physical printout strictly to the 80mm receipt roll. Includes Store TIN, MIN, Cashier ID, and Senior/PWD signature lines.
+* **Cook Station Integration**: Completing a sale automatically generates a sequential kitchen ticket (`K-001`, `K-002`) and kitchen ticket items.
+
+### 2. Menu & Dish Management
+
+* **Catalog Management**: Paginated dish table with category filtering, real-time search, selling prices, portion costs, and gross margin calculations.
+* **Availability Toggling**: Instant one-click toggling of dish availability (`is_available`), automatically hiding or disabling 86'd items on the POS floor in real time.
+* **Stock & Portion Tracking**: Tracks remaining portion countdowns and warns cashiers when dishes run low.
+
+### 3. Kitchen Display System (KDS)
+
+* **Sequential Cook Tickets**: Tracks tickets from `new` &rarr; `in_prep` &rarr; `ready` &rarr; `served`.
+* **Line-Item Instructions**: Captures chef notes and special instructions (e.g. `NO ONIONS`, `EXTRA SPICY`).
 
 ---
 
 ## Role-Based Access Control (RBAC) & Station Routing
 
-Every user is mapped to a strict permission set and assigned a dedicated station. Floor staff attempting to visit an unowned station will receive a `403 Forbidden` response and cannot see or click links redirecting outside their designated work area:
+Every floor user is assigned an Employee ID, a 4-digit PIN, and a dedicated operational station. Floor staff attempting to visit an unauthorized station receive a `403 Forbidden` response and are isolated to their work area:
 
 | Role | Auth Method | Assigned Station | Route | Key Permissions |
 | :--- | :--- | :--- | :--- | :--- |
 | **Cashier** | Emp ID + PIN | POS Register Terminal | `/pos` | `pos.access`, `pos.checkout` |
-| **Chef** | Emp ID + PIN | Kitchen & Inventory Station | `/inventory` | `inventory.view`, `inventory.manage`, `kitchen.view` |
+| **Chef** | Emp ID + PIN | Chef's Menu & Kitchen Station | `/menu` | `menu.view`, `menu.manage`, `kitchen.view` |
 | **Cook** | Emp ID + PIN | Kitchen Display System (KDS) | `/kitchen` | `kitchen.view`, `kitchen.prepare` |
-| **Branch Manager** | Email + Pass / PIN | Branch POS & Management | `/pos` & `/admin` | `admin.access`, `pos.access`, `inventory.view`, `branch.manage` |
+| **Branch Manager** | Email + Pass / PIN | Branch POS & Management | `/pos` & `/admin` | `admin.access`, `pos.access`, `menu.view`, `branch.manage` |
 | **System Owner** | Email + Password | Executive Back-Office | `/admin` | *All Permissions (Super Admin)* |
 
 ---
 
 ## Default Seeded Credentials
 
-Run `php artisan db:seed --class=RolesAndPermissionsSeeder` to populate test accounts:
+Run `php artisan db:seed` to populate test accounts:
 
 ### 1. Floor Staff Terminal
 
-> Sign in at `http://localhost:8000/login`
-
-Test Users:
+> Sign in at [http://localhost:8000/login](http://localhost:8000/login)
 
 * **Cashier**: Employee ID `B01-CSH-001` &bull; PIN `1234`
 * **Chef**: Employee ID `B01-CHF-001` &bull; PIN `2345`
 * **Cook**: Employee ID `B01-COK-001` &bull; PIN `3456`
 * **Manager**: Employee ID `B01-MGR-001` &bull; PIN `9999`
 
-*(One-click quick-fill buttons are provided on the login screen for rapid local testing).*
+*(Quick-fill buttons are provided on the login screen for rapid local testing).*
 
 ### 2. Back-Office Management Portal
 
-> Sign in at `http://localhost:8000/admin/login`
+> Sign in at [http://localhost:8000/admin/login](http://localhost:8000/admin/login)
 
 * **System Owner**: `owner@easypos.com` &bull; Password `password`
 * **Branch Manager**: `mgr-b01@easypos.com` &bull; Password `password`
@@ -176,27 +239,28 @@ Test Users:
 
 1. **Clone the repository**:
 
-   ```bash
+   ```powershell
+   cd C:\xampp\htdocs
    git clone <repository-url> EASYPOS
    cd EASYPOS
    ```
 
 2. **Install PHP and JavaScript dependencies**:
 
-   ```bash
+   ```powershell
    composer install
    npm install
    ```
 
 3. **Configure Environment**:
 
-   ```bash
-   cp .env.example .env
+   ```powershell
+   Copy-Item .env.example .env
    php artisan key:generate
    ```
 
 4. **Configure Database**:
-   Update `.env` with your database credentials:
+   Update `.env` with your database settings:
 
    ```dotenv
    DB_CONNECTION=mysql
@@ -209,53 +273,63 @@ Test Users:
 
 5. **Run Migrations & Seeders**:
 
-   ```bash
-   php artisan migrate --seed
+   ```powershell
+   php artisan migrate:fresh --seed
    ```
 
 6. **Build Frontend Assets**:
 
-   ```bash
+   ```powershell
    npm run build
    ```
 
-7. **Start Development Servers**:
-   In separate terminal tabs:
+7. **Start Development Server**:
 
-   ```bash
+   ```powershell
    php artisan serve
    ```
 
-   ```bash
+   In a separate terminal for active frontend hot-reloading:
+
+   ```powershell
    npm run dev
    ```
 
-Access the application:
-
 * **Floor Staff Terminal**: [http://localhost:8000/login](http://localhost:8000/login)
-* **Management Back-Office**: [http://localhost:8000/admin](http://localhost:8000/admin)
+* **Back-Office Admin**: [http://localhost:8000/admin](http://localhost:8000/admin)
 
 ---
 
 ## Testing & Quality Assurance
 
-The test suite validates authentication, role-based isolation, station routing, and theme persistence:
+The automated test suite covers floor authentication, station routing isolation, menu operations, and complete POS checkout workflows:
 
-```bash
+```powershell
 php vendor/bin/phpunit
 ```
 
-### Test Coverage Highlights
+### Test Suite Highlights
 
-* `tests/Feature/AuthTest.php`: Floor staff terminal rendering, PIN authentication for Cashier, Cook, Chef, and Manager, auto-submit keypad logic, lockout rate-limiting, and theme cookie rendering.
-* `tests/Feature/AuthorizationTest.php`: Station access permissions, automatic redirection from `/` to assigned station, 403 denial on unauthorized routes, and floor staff navigation isolation.
-* `tests/Feature/FilamentPanelTest.php`: Back-office authentication gates, ensuring PIN sessions cannot access administrative panels.
+* **`tests/Feature/PointOfSaleTest.php`** (10 tests, 30 assertions):
+  - POS terminal rendering and active status verification
+  - Meal catalog category filtering and dish cards
+  - Real-time catalog search event propagation
+  - Exact match barcode direct-add to cart
+  - Transactional order creation and portion decrementing
+  - Cash payment validation and change computation
+  - Digital / card reference requirement validation
+  - Sequential kitchen ticket (`K-001`) and item generation
+  - Philippine BIR tax breakdown accessors (`vatable_sales`, `vat_amount`, `vat_exempt_sales`)
+  - Order status transitions to `in_kitchen`
+* **`tests/Feature/AuthTest.php`**: Floor staff terminal rendering, PIN authentication for Cashier, Cook, Chef, and Manager, auto-submit keypad logic, lockout rate-limiting, and theme cookie persistence.
+* **`tests/Feature/AuthorizationTest.php`**: Station access permissions, automatic redirection from `/` to assigned station, 403 denial on unauthorized routes, and floor staff navigation isolation.
+* **`tests/Feature/MenuDatabaseTest.php`**: Meal CRUD actions, soft deletes, availability toggling, and category relations.
+* **`tests/Feature/FilamentPanelTest.php`**: Back-office authentication gates, ensuring PIN sessions cannot access administrative panels.
 
 ---
 
-## Development Conventions
+## UI Design Tokens & Styling Rules
 
-* **Domain Isolation**: When building new features, place models, actions, events, and business Livewire components inside `app/Domains/{DomainName}/`.
-* **Blade Component Composition**: Keep `app-shell.blade.php` thin; compose layout features from `<x-layout.navbar />`, `<x-layout.station-badge />`, and `<x-layout.user-nav />`.
-* **Zero Arbitrary Hexes**: Always use semantic design tokens (`bg-brand-card`, `text-brand-text`, `border-brand-border`) rather than hardcoded hex values.
-* **Standard Radii**: Adhere strictly to `rounded-md` across inputs, buttons, badges, and card panels.
+* **Design Primitive**: High-density POS styling with sharpened `rounded-md` borders across inputs, buttons, badges, and card panels. Strictly avoid bubbly `rounded-2xl` and `rounded-full` pills on primary actions.
+* **Semantic Tokens**: Use theme color variables (`bg-brand-card`, `text-brand-text`, `border-brand-border`, `bg-brand-primary`) rather than hardcoded hex codes to ensure complete light and dark mode compatibility.
+* **Instant Client Transitions**: Non-persistence UI actions (modals, category tabs, cart counters, tenders) must execute on the client in 0ms using Alpine.js.
