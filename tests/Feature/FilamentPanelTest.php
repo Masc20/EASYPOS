@@ -50,6 +50,15 @@ class FilamentPanelTest extends TestCase
         $response->assertStatus(200);
     }
 
+    public function test_admin_user_can_access_filament_admin_panel(): void
+    {
+        $admin = User::where('email', 'admin@easypos.com')->first();
+
+        $response = $this->actingAs($admin)->get('/admin');
+
+        $response->assertStatus(200);
+    }
+
     public function test_branch_manager_can_access_filament_admin_panel(): void
     {
         $manager = User::where('email', 'mgr-b01@easypos.com')->first();

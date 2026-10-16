@@ -34,7 +34,7 @@
             @csrf
             <button type="submit"
                 class="rounded-md border border-brand-border bg-brand-card px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-error hover:text-brand-error transition shadow-2xs cursor-pointer">
-                Clock Out
+                {{ $user->canAccessPanel(filament()->getPanel('admin')) && !$user->isStrictFloorStaff() ? 'Sign Out' : 'Clock Out' }}
             </button>
         </form>
     @else
@@ -46,7 +46,7 @@
         @endif
         <a href="{{ url('/admin/login') }}"
             class="rounded-md border border-brand-border bg-brand-card px-3.5 py-1.5 text-xs font-medium text-brand-text hover:border-brand-secondary hover:text-brand-primary dark:hover:text-brand-secondary transition shadow-2xs">
-            Owner Login
+            Admin Login
         </a>
     @endif
 </div>

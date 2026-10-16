@@ -101,7 +101,7 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
 
-        // 4. Seed Global Owner (Email + Password)
+        // 4. Seed Global Owner & Administrator (Email + Password)
         $owner = User::firstOrCreate(
             ['email' => 'owner@easypos.com'],
             [
@@ -111,6 +111,16 @@ class RolesAndPermissionsSeeder extends Seeder
             ]
         );
         $owner->syncRoles([$ownerRole]);
+
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@easypos.com'],
+            [
+                'name' => 'System Administrator',
+                'password' => Hash::make('password'),
+                'email_verified_at' => now(),
+            ]
+        );
+        $admin->syncRoles([$superAdminRole]);
 
         // 5. Seed Branch 1 Staff (EmpID + 4-digit PIN)
         $cashier1 = User::firstOrCreate(

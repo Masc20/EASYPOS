@@ -20,6 +20,11 @@ class User extends Authenticatable implements FilamentUser
     use Notifiable;
 
     /**
+     * The guard name for Spatie permissions.
+     */
+    protected string $guard_name = 'web';
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>

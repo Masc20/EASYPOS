@@ -68,11 +68,13 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
                 fn () => \Illuminate\Support\Facades\Blade::render('
-                    <div class="mt-4 pt-4 border-t border-[#E8D8C5] dark:border-[#34383D] text-center text-xs text-[#72685E] dark:text-[#9BA3AF]">
-                        <p>Floor Staff (Cashier, Cook, Chef)?</p>
-                        <a href="{{ route(\'login\') }}" class="font-semibold text-[#5A0708] dark:text-[#F28C18] hover:underline inline-flex items-center gap-1 mt-1 transition">
-                            &larr; Switch to Floor Staff Terminal (Emp ID + PIN)
-                        </a>
+                    <div class="mt-4 pt-4 border-t border-[#E8D8C5] dark:border-[#34383D] text-xs">
+                        <div class="mt-3 text-center text-[#72685E] dark:text-[#9BA3AF]">
+                            <p>Floor Staff (Cashier, Cook, Chef)?</p>
+                            <a href="{{ route(\'login\') }}" class="font-semibold text-[#5A0708] dark:text-[#F28C18] hover:underline inline-flex items-center gap-1 mt-1 transition">
+                                &larr; Switch to Floor Staff Terminal (Emp ID + PIN)
+                            </a>
+                        </div>
                     </div>
                 ')
             )

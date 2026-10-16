@@ -8,4 +8,12 @@
             {{ $user->stationTitle() }}
         </span>
     </div>
+@elseif ($user && $user->canAccessPanel(filament()->getPanel('admin')))
+    <div class="hidden sm:flex items-center border-l border-brand-border pl-4">
+        <span
+            class="inline-flex items-center gap-1.5 rounded-md bg-brand-secondary/15 text-brand-secondary border border-brand-border/70 px-2.5 py-1 text-xs font-bold tracking-wide">
+            <span class="h-2 w-2 rounded-full bg-brand-secondary animate-pulse"></span>
+            Admin Back-Office
+        </span>
+    </div>
 @endif
