@@ -34,7 +34,7 @@ class ProcessPaymentAction
         return DB::transaction(function () use ($order, $data) {
             $totalDue = (float) $order->total_amount;
             $paymentMethod = $data['payment_method'] ?? 'cash';
-            $cashierId = $data['cashier_id'];
+            $cashierId = $data['cashier_id'] ?? $order->cashier_id;
             $referenceNumber = $data['reference_number'] ?? null;
 
             $amountTendered = isset($data['amount_tendered']) ? (float) $data['amount_tendered'] : $totalDue;

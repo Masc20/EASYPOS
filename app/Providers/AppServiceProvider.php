@@ -32,6 +32,9 @@ class AppServiceProvider extends ServiceProvider
         // Domain: Identity
         Livewire::component('identity.auth.login', \App\Domains\Identity\Livewire\Auth\Login::class);
 
+        // Domain: Kitchen
+        Livewire::component('kitchen.kitchen-display', \App\Domains\Kitchen\Livewire\KitchenDisplay::class);
+
         // Shared Smart Form Widgets
         Livewire::component('forms.product-select', \App\Livewire\Forms\ProductSelect::class);
         Livewire::component('forms.date-picker', \App\Livewire\Forms\DatePicker::class);

@@ -61,4 +61,55 @@ class KitchenTicket extends Model
     {
         return $query->whereNull('served_at')->where('status', '!=', 'cancelled');
     }
+
+    /**
+     * Scope tickets for a specific branch.
+     */
+    public function scopeForBranch($query, int $branchId)
+    {
+        return $query->where('branch_id', $branchId);
+    }
+
+    /**
+     * Scope ordering by rush priority first, then FIFO by creation time.
+     */
+    public function scopeRushFirst($query)
+    {
+        return $query->orderByRaw("CASE WHEN priority = 'rush' THEN 0 ELSE 1 END")
+            ->orderBy('created_at', 'asc');
+    }
+
+    /**
+     * Elapsed minutes since ticket arrived from POS.
+     */
+    public function getElapsedMinutesAttribute(): int
+    {
+        return $this->created_at ? (int) $this->created_at->diffInMinutes(now()) : 0;
+    }
+
+    /**
+     * Urgency level: normal (<10m), warning (10-20m), urgent (>20m).
+     */
+    public function getUrgencyLevelAttribute(): string
+    {
+        $mins = $this->elapsed_minutes;
+
+        if ($mins >= 20 || $this->priority === 'rush') {
+            return 'urgent';
+        }
+
+        if ($mins >= 10) {
+            return 'warning';
+        }
+
+        return 'normal';
+    }
+
+    /**
+     * Check if all items in the ticket are completed.
+     */
+    public function areAllItemsDone(): bool
+    {
+        return $this->items->every(fn($item) => $item->status === 'done');
+    }
 }

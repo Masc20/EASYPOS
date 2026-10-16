@@ -36,8 +36,19 @@ EASYPOS/
 │   │   │   │   └── Auth/
 │   │   │   │       └── Login.php                 # PIN Pad Floor Terminal component
 │   │   │   └── Models/
-│   │   │       └── User.php                      # RBAC, PIN verification, station routing
 │   │   ├── Kitchen/                              # Kitchen Display System (KDS) & cook queue
+│   │   │   ├── Actions/
+│   │   │   │   ├── ClaimKitchenTicketAction.php  # Assign cook & transition to in_prep
+│   │   │   │   ├── RecallKitchenTicketAction.php # Undo bump and return to active queue
+│   │   │   │   ├── ToggleKitchenItemStatusAction.php # Dish checkbox (cooking <-> done)
+│   │   │   │   ├── ToggleKitchenTicketPriorityAction.php # Rush order priority toggle
+│   │   │   │   └── UpdateKitchenTicketStatusAction.php # Status lifecycle & order sync
+│   │   │   ├── Events/
+│   │   │   │   ├── KitchenTicketClaimed.php
+│   │   │   │   ├── KitchenTicketItemStatusUpdated.php
+│   │   │   │   └── KitchenTicketStatusUpdated.php
+│   │   │   ├── Livewire/
+│   │   │   │   └── KitchenDisplay.php            # 3-column live prep queue with audio chime
 │   │   │   └── Models/
 │   │   │       ├── KitchenTicket.php             # Sequential cook ticket entity (K-001)
 │   │   │       └── KitchenTicketItem.php         # Dish line-item prep status & instructions
@@ -145,6 +156,7 @@ EASYPOS/
         ├── AuthorizationTest.php                 # Station access, isolation, & RBAC tests
         ├── ErrorPagesTest.php                    # HTTP error rendering & dark mode tests
         ├── FilamentPanelTest.php                 # Admin back-office security tests
+        ├── KitchenTest.php                       # Kitchen Display, cook prep queue & bump tests
         ├── MenuDatabaseTest.php                  # Dish creation, toggling & category tests
         └── PointOfSaleTest.php                   # End-to-end POS, cart, tax & payment tests
 ```
@@ -320,7 +332,16 @@ php vendor/bin/phpunit
   - Digital / card reference requirement validation
   - Sequential kitchen ticket (`K-001`) and item generation
   - Philippine BIR tax breakdown accessors (`vatable_sales`, `vat_amount`, `vat_exempt_sales`)
-  - Order status transitions to `in_kitchen`
+* **`tests/Feature/KitchenTest.php`** (10 tests, 35 assertions):
+  - KDS board access authorization (Cook/Chef allowed, Cashier 403 denied)
+  - Incoming POS ticket rendering with table numbers and special instructions
+  - Cook ticket claiming and status transition to `in_prep`
+  - Individual item-level checkoffs (`pending` <-> `done`) with auto-advance to `ready`
+  - Marking tickets plated and ready with runner pickup notification
+  - Bumping served tickets and synchronizing linked order completion
+  - Recalling accidentally bumped tickets back to the active queue
+  - Rush priority toggle (`normal` <-> `rush`)
+  - Real-time dining type filtering (Dine In vs Takeout)
 * **`tests/Feature/AuthTest.php`**: Floor staff terminal rendering, PIN authentication for Cashier, Cook, Chef, and Manager, auto-submit keypad logic, lockout rate-limiting, and theme cookie persistence.
 * **`tests/Feature/AuthorizationTest.php`**: Station access permissions, automatic redirection from `/` to assigned station, 403 denial on unauthorized routes, and floor staff navigation isolation.
 * **`tests/Feature/MenuDatabaseTest.php`**: Meal CRUD actions, soft deletes, availability toggling, and category relations.

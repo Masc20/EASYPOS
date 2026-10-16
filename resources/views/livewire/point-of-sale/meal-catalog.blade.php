@@ -1,5 +1,5 @@
 <div x-data="{
-    activeCategory: @entangle('selectedCategoryId').live,
+    activeCategory: @entangle('selectedCategoryId'),
     searchQuery: '',
     matches(categoryId, text) {
         const matchesCat = this.activeCategory === null || this.activeCategory == categoryId;
