@@ -19,7 +19,7 @@
     <div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <!-- Main: Fast Search & Menu Catalog (2 cols) -->
         <div class="space-y-4 lg:col-span-2">
-            <!-- Fast Search & Barcode Scanner -->
+            <!-- Fast Search -->
             <livewire:pos.product-search />
 
             <!-- Dish / Menu Catalog Grid with Category Tabs -->

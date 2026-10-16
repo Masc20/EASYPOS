@@ -10,7 +10,6 @@ import {
 } from './modules/theme';
 
 import { pinPad } from './components/pin-pad';
-import { BarcodeScanner } from './modules/barcode-scanner';
 import { formatCurrency, formatQuantity, formatDate } from './utils/formatters';
 
 // Initialize background OS preference watcher
@@ -45,7 +44,6 @@ window.EASYPOS = {
         quantity: formatQuantity,
         date: formatDate,
     },
-    BarcodeScanner,
 };
 
 // Backward compatibility alias for existing inline listeners

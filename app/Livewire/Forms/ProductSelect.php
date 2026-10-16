@@ -10,14 +10,14 @@ class ProductSelect extends Component
     public ?int $selectedId = null;
     public ?Meal $selectedMeal = null;
     public string $search = '';
-    public string $placeholder = 'Search meal or barcode...';
+    public string $placeholder = 'Search meal...';
     public bool $disabled = false;
     public string $eventName = 'product-selected';
     public ?int $branchId = null;
 
     public function mount(
         ?int $selectedId = null,
-        string $placeholder = 'Search meal or barcode...',
+        string $placeholder = 'Search meal...',
         bool $disabled = false,
         string $eventName = 'product-selected',
         ?int $branchId = null

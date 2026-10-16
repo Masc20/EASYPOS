@@ -117,7 +117,6 @@ EASYPOS/
 │   │   ├── components/
 │   │   │   └── pin-pad.js                        # Zero-lag Alpine.js keypad controller
 │   │   ├── modules/
-│   │   │   ├── barcode-scanner.js                # Hardware & camera barcode listener
 │   │   │   └── theme.js                          # Theme engine, cookie sync & event dispatch
 │   │   └── utils/
 │   │       └── formatters.js                     # Currency, date, and quantity helpers
@@ -326,7 +325,6 @@ php vendor/bin/phpunit
   - POS terminal rendering and active status verification
   - Meal catalog category filtering and dish cards
   - Real-time catalog search event propagation
-  - Exact match barcode direct-add to cart
   - Transactional order creation and portion decrementing
   - Cash payment validation and change computation
   - Digital / card reference requirement validation
