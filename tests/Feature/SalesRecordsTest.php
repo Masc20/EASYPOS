@@ -6,6 +6,7 @@ use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\Payment;
 use App\Domains\PointOfSale\Services\SalesAggregationService;
+use App\Filament\Pages\Dashboard;
 use App\Filament\Pages\SalesRecords;
 use App\Filament\Widgets\DailySalesRevenueChart;
 use App\Filament\Widgets\PaymentMethodsDistributionChart;
@@ -183,14 +184,18 @@ class SalesRecordsTest extends TestCase
         Livewire::actingAs($this->owner)
             ->test(SalesRecords::class)
             ->assertSuccessful()
-            ->assertSee('Revenue Trend')
             ->assertSee('Payment Tender Distribution')
             ->assertSee('BIR Tax Compliance Breakdown')
             ->assertSee('Cash Register Reconciliation')
-            ->assertSee('Top 5 Best-Selling Menu Items')
             ->assertSee('Cashier and Staff Performance')
             ->assertSee('Start Date')
             ->assertSee('End Date');
+
+        Livewire::actingAs($this->owner)
+            ->test(Dashboard::class)
+            ->assertSuccessful()
+            ->assertSee('Revenue Trend')
+            ->assertSee('Top 5 Best-Selling Menu Items');
 
         Livewire::actingAs($this->owner)
             ->test(DailySalesRevenueChart::class)

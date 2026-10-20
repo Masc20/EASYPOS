@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
+use App\Domains\Menu\Models\MealCategory;
 use App\Domains\PointOfSale\Services\SalesAggregationService;
 use BackedEnum;
 use Carbon\Carbon;
@@ -31,6 +32,16 @@ class SalesRecords extends Page
     public string $selectedPreset = 'today';
     public ?int $branchId = null;
     public ?int $cashierId = null;
+
+    // Best-Sellers Leaderboard (SCRUM-167, 168, 169)
+    public string $bestSellerSortBy = 'quantity';
+    public ?int $bestSellerCategoryId = null;
+    public int $bestSellerLimit = 10;
+
+    // Periodic Sales Reports (SCRUM-171, 172, 173)
+    public string $periodicInterval = 'day';
+    public string $periodicSortColumn = 'period_key';
+    public string $periodicSortDirection = 'desc';
 
     public function mount(): void
     {
@@ -69,10 +80,53 @@ class SalesRecords extends Page
         }
     }
 
+    public function setBestSellerSort(string $sortBy): void
+    {
+        $this->bestSellerSortBy = in_array($sortBy, ['quantity', 'revenue']) ? $sortBy : 'quantity';
+    }
+
+    public function setBestSellerCategory(?int $categoryId): void
+    {
+        $this->bestSellerCategoryId = $categoryId ?: null;
+    }
+
+    public function setBestSellerLimit(int $limit): void
+    {
+        $this->bestSellerLimit = max(5, min(50, $limit));
+    }
+
+    public function setPeriodicInterval(string $interval): void
+    {
+        $normalized = match (strtolower(trim($interval))) {
+            'daily', 'day' => 'day',
+            'weekly', 'week' => 'week',
+            'monthly', 'month' => 'month',
+            'yearly', 'year' => 'year',
+            default => 'day',
+        };
+        $this->periodicInterval = $normalized;
+    }
+
+    public function sortPeriodic(string $column): void
+    {
+        if ($this->periodicSortColumn === $column) {
+            $this->periodicSortDirection = $this->periodicSortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            $this->periodicSortColumn = $column;
+            $this->periodicSortDirection = 'desc';
+        }
+    }
+
     public function resetFilters(): void
     {
         $this->branchId = null;
         $this->cashierId = null;
+        $this->bestSellerCategoryId = null;
+        $this->bestSellerSortBy = 'quantity';
+        $this->bestSellerLimit = 10;
+        $this->periodicInterval = 'day';
+        $this->periodicSortColumn = 'period_key';
+        $this->periodicSortDirection = 'desc';
         $this->setPreset('today');
     }
 
@@ -85,7 +139,26 @@ class SalesRecords extends Page
             $this->cashierId
         );
 
-        $filename = 'sales-records-' . $this->startDate . '-to-' . $this->endDate . '.csv';
+        $filename = 'sales-records-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
+
+        return response()->streamDownload(function () use ($csvData) {
+            echo $csvData;
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    public function exportPeriodicCsv(SalesAggregationService $service): StreamedResponse
+    {
+        $csvData = $service->exportPeriodicCsv(
+            $this->periodicInterval,
+            $this->startDate,
+            $this->endDate,
+            $this->branchId,
+            $this->cashierId
+        );
+
+        $filename = 'periodic-sales-' . $this->periodicInterval . '-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
 
         return response()->streamDownload(function () use ($csvData) {
             echo $csvData;
@@ -104,16 +177,71 @@ class SalesRecords extends Page
             $this->cashierId
         );
 
+        $bestSellingRankings = $service->getBestSellingRankings(
+            $this->startDate,
+            $this->endDate,
+            $this->branchId,
+            $this->cashierId,
+            $this->bestSellerCategoryId,
+            $this->bestSellerLimit,
+            $this->bestSellerSortBy,
+            false
+        );
+
+        $categoryRankings = $service->getCategoryRankings(
+            $this->startDate,
+            $this->endDate,
+            $this->branchId,
+            $this->cashierId
+        );
+
+        $periodicReport = $service->getPeriodicReport(
+            $this->periodicInterval,
+            $this->startDate,
+            $this->endDate,
+            $this->branchId,
+            $this->cashierId
+        );
+
+        if ($this->periodicSortColumn !== 'period_key' || $this->periodicSortDirection !== 'desc') {
+            $col = $this->periodicSortColumn;
+            $dir = $this->periodicSortDirection;
+            usort($periodicReport['items'], function ($a, $b) use ($col, $dir) {
+                $valA = $a[$col] ?? 0;
+                $valB = $b[$col] ?? 0;
+                if ($valA == $valB) {
+                    return 0;
+                }
+                if ($dir === 'asc') {
+                    return $valA < $valB ? -1 : 1;
+                }
+                return $valA > $valB ? -1 : 1;
+            });
+        }
+
+        $hourlyDistribution = $service->getHourlySalesDistribution(
+            $this->startDate,
+            $this->endDate,
+            $this->branchId,
+            $this->cashierId
+        );
+
         $branches = Branch::query()->orderBy('name')->get();
         $cashiers = User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['cashier', 'branch-manager', 'owner', 'super-admin']))
             ->orderBy('name')
             ->get();
+        $categories = MealCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return [
             'summary' => $summary,
+            'bestSellingRankings' => $bestSellingRankings,
+            'categoryRankings' => $categoryRankings,
+            'periodicReport' => $periodicReport,
+            'hourlyDistribution' => $hourlyDistribution,
             'branches' => $branches,
             'cashiers' => $cashiers,
+            'categories' => $categories,
         ];
     }
 }
