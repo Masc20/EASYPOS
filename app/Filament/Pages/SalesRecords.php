@@ -58,7 +58,22 @@ class SalesRecords extends Page
                 $this->startDate = Carbon::now()->startOfMonth()->toDateString();
                 $this->endDate = Carbon::now()->endOfMonth()->toDateString();
                 break;
+            case 'this_year':
+                $this->startDate = Carbon::now()->startOfYear()->toDateString();
+                $this->endDate = Carbon::now()->endOfYear()->toDateString();
+                break;
+            case 'all_time':
+                $this->startDate = '';
+                $this->endDate = '';
+                break;
         }
+    }
+
+    public function resetFilters(): void
+    {
+        $this->branchId = null;
+        $this->cashierId = null;
+        $this->setPreset('today');
     }
 
     public function exportCsv(SalesAggregationService $service): StreamedResponse

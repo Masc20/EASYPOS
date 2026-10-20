@@ -7,6 +7,8 @@ use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\Payment;
 use App\Domains\PointOfSale\Services\SalesAggregationService;
 use App\Filament\Pages\SalesRecords;
+use App\Filament\Widgets\DailySalesRevenueChart;
+use App\Filament\Widgets\PaymentMethodsDistributionChart;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
@@ -174,5 +176,28 @@ class SalesRecordsTest extends TestCase
             ->assertSee('Net Revenue')
             ->call('setPreset', 'yesterday')
             ->assertSet('selectedPreset', 'yesterday');
+    }
+
+    public function test_owner_can_render_sales_records_and_embedded_chart_widgets(): void
+    {
+        Livewire::actingAs($this->owner)
+            ->test(SalesRecords::class)
+            ->assertSuccessful()
+            ->assertSee('Revenue Trend')
+            ->assertSee('Payment Tender Distribution')
+            ->assertSee('BIR Tax Compliance Breakdown')
+            ->assertSee('Cash Register Reconciliation')
+            ->assertSee('Top 5 Best-Selling Menu Items')
+            ->assertSee('Cashier and Staff Performance')
+            ->assertSee('Start Date')
+            ->assertSee('End Date');
+
+        Livewire::actingAs($this->owner)
+            ->test(DailySalesRevenueChart::class)
+            ->assertSuccessful();
+
+        Livewire::actingAs($this->owner)
+            ->test(PaymentMethodsDistributionChart::class)
+            ->assertSuccessful();
     }
 }

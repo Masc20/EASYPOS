@@ -104,9 +104,10 @@ class OrdersTable
                     ->label('View Receipt')
                     ->icon(Heroicon::OutlinedReceiptPercent)
                     ->color('primary')
-                    ->modalHeading(fn (Order $record): string => "Receipt Breakdown: {$record->order_number}")
+                    ->modalHeading(fn (Order $record): string => "Official Receipt: {$record->order_number}")
+                    ->modalWidth('md')
                     ->modalContent(fn (Order $record) => view('filament.modals.order-receipt', [
-                        'order' => $record->loadMissing(['items.meal', 'payments', 'cashier', 'branch']),
+                        'order' => $record->loadMissing(['items.meal', 'payments', 'cashier', 'branch', 'kitchenTicket']),
                     ]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
