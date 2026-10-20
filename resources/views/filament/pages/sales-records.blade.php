@@ -1,94 +1,5 @@
 <x-filament-panels::page>
-    <!-- Scoped Styles to Guarantee Cockpit Grid Layout in Filament Admin -->
-    <style>
-        .sales-cockpit-grid {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 24px !important;
-            align-items: start !important;
-            width: 100% !important;
-        }
-        @media (min-width: 1024px) {
-            .sales-cockpit-grid {
-                grid-template-columns: 7fr 5fr !important;
-            }
-        }
-        .sales-kpi-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 14px !important;
-            width: 100% !important;
-        }
-        @media (min-width: 640px) {
-            .sales-kpi-grid {
-                grid-template-columns: repeat(3, 1fr) !important;
-            }
-        }
-        @media (min-width: 1280px) {
-            .sales-kpi-grid {
-                grid-template-columns: repeat(6, 1fr) !important;
-            }
-        }
-        .sales-filters-grid {
-            display: grid !important;
-            grid-template-columns: 1fr !important;
-            gap: 14px !important;
-            width: 100% !important;
-        }
-        @media (min-width: 640px) {
-            .sales-filters-grid {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
-        }
-        @media (min-width: 1024px) {
-            .sales-filters-grid {
-                grid-template-columns: repeat(4, 1fr) !important;
-            }
-        }
-        .sales-kpi-card {
-            display: flex !important;
-            flex-direction: column !important;
-            justify-content: space-between !important;
-            border-radius: 12px !important;
-            padding: 16px !important;
-            background-color: #ffffff !important;
-            border: 1px solid #e5e7eb !important;
-            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
-            position: relative !important;
-            overflow: hidden !important;
-            box-sizing: border-box !important;
-        }
-        .dark .sales-kpi-card {
-            background-color: #111827 !important;
-            border-color: rgba(255, 255, 255, 0.1) !important;
-        }
-        .kpi-accent-gross {
-            border-left: 4px solid #9ca3af !important;
-        }
-        .kpi-accent-net {
-            border-left: 4px solid #960D10 !important;
-            background-color: #fdf5f5 !important;
-            border-color: rgba(150, 13, 16, 0.25) !important;
-        }
-        .dark .kpi-accent-net {
-            background-color: rgba(150, 13, 16, 0.15) !important;
-            border-color: rgba(150, 13, 16, 0.35) !important;
-        }
-        .kpi-accent-discount {
-            border-left: 4px solid #f59e0b !important;
-        }
-        .kpi-accent-cash {
-            border-left: 4px solid #10b981 !important;
-        }
-        .kpi-accent-orders {
-            border-left: 4px solid #3b82f6 !important;
-        }
-        .kpi-accent-aov {
-            border-left: 4px solid #8b5cf6 !important;
-        }
-    </style>
-
-    <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+    <div class="flex flex-col gap-6 w-full">
 
         <!-- 1. Unified Filter & Controls Bar -->
         <x-filament::section icon="heroicon-m-funnel" compact>
@@ -121,7 +32,7 @@
                 </div>
             </x-slot>
 
-            <div style="display: flex; flex-direction: column; gap: 12px; padding-top: 4px;">
+            <div class="flex flex-col gap-3 pt-1">
                 <!-- Preset Buttons -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     <span class="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 mr-2">Period:</span>
@@ -164,7 +75,7 @@
                 </div>
 
                 <!-- Custom Pickers Grid -->
-                <div class="sales-filters-grid" style="padding-top: 10px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <div>
                         <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
                         <x-filament::input.wrapper prefixIcon="heroicon-m-calendar">
@@ -215,127 +126,127 @@
             $aovParts = explode('.', number_format($summary['average_order_value'], 2));
         @endphp
 
-        <div class="sales-kpi-grid">
+        <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3.5 w-full">
             <!-- 1. Gross Sales -->
-            <div class="sales-kpi-card kpi-accent-gross">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-gray-400 shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Gross Sales</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(156, 163, 175, 0.15); color: #6b7280;">
-                            <x-filament::icon icon="heroicon-m-calculator" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
+                            <x-filament::icon icon="heroicon-m-calculator" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #9ca3af; margin-right: 2px;">₱</span>
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white" style="line-height: 1.1;">{{ $grossParts[0] }}</span>
-                        <span style="font-size: 13px; font-weight: 600; color: #9ca3af;">.{{ $grossParts[1] }}</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
+                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $grossParts[0] }}</span>
+                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $grossParts[1] }}</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span class="text-[10px] text-gray-400">Menu Catalog Total</span>
                     <x-filament::badge color="gray" size="xs">Catalog</x-filament::badge>
                 </div>
             </div>
 
             <!-- 2. Net Revenue (Hero Metric) -->
-            <div class="sales-kpi-card kpi-accent-net">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-[#fdf5f5] dark:bg-[#960D10]/15 border border-[#960D10]/25 dark:border-[#960D10]/35 border-l-4 border-l-[#960D10] shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Net Revenue</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(150, 13, 16, 0.15); color: #960D10;">
-                            <x-filament::icon icon="heroicon-m-currency-dollar" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-[#960D10]/15 text-[#960D10] dark:text-[#DE9A9D]">
+                            <x-filament::icon icon="heroicon-m-currency-dollar" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #DE9A9D; margin-right: 2px;">₱</span>
-                        <span class="text-xl font-black tracking-tight text-primary-900 dark:text-primary-100" style="line-height: 1.1;">{{ $netParts[0] }}</span>
-                        <span style="font-size: 13px; font-weight: 600; color: #DE9A9D;">.{{ $netParts[1] }}</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xs font-bold text-[#DE9A9D] mr-0.5">₱</span>
+                        <span class="text-xl font-black tracking-tight text-primary-900 dark:text-primary-100 leading-tight">{{ $netParts[0] }}</span>
+                        <span class="text-xs font-semibold text-[#DE9A9D]">.{{ $netParts[1] }}</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(150, 13, 16, 0.15);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-[#960D10]/20 dark:border-[#960D10]/30">
                     <span class="text-[10px] text-primary-700/80 dark:text-primary-400/80">Realized Income</span>
                     <x-filament::badge color="primary" size="xs">Hero Metric</x-filament::badge>
                 </div>
             </div>
 
             <!-- 3. Discounts Granted -->
-            <div class="sales-kpi-card kpi-accent-discount">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-amber-500 shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Discounts</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(245, 158, 11, 0.15); color: #d97706;">
-                            <x-filament::icon icon="heroicon-m-tag" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                            <x-filament::icon icon="heroicon-m-tag" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #f59e0b; margin-right: 2px;">-₱</span>
-                        <span class="text-xl font-black tracking-tight text-amber-800 dark:text-amber-300" style="line-height: 1.1;">{{ $discParts[0] }}</span>
-                        <span style="font-size: 13px; font-weight: 600; color: #f59e0b;">.{{ $discParts[1] }}</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xs font-bold text-amber-500 mr-0.5">-₱</span>
+                        <span class="text-xl font-black tracking-tight text-amber-800 dark:text-amber-300 leading-tight">{{ $discParts[0] }}</span>
+                        <span class="text-xs font-semibold text-amber-500">.{{ $discParts[1] }}</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span class="text-[10px] text-amber-700/80 dark:text-amber-400/80">Senior / PWD / Promo</span>
                     <x-filament::badge color="warning" size="xs">Deductions</x-filament::badge>
                 </div>
             </div>
 
             <!-- 4. Cash in Drawer -->
-            <div class="sales-kpi-card kpi-accent-cash">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-emerald-500 shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Cash in Drawer</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(16, 185, 129, 0.15); color: #059669;">
-                            <x-filament::icon icon="heroicon-m-banknotes" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            <x-filament::icon icon="heroicon-m-banknotes" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #10b981; margin-right: 2px;">₱</span>
-                        <span class="text-xl font-black tracking-tight text-emerald-800 dark:text-emerald-300" style="line-height: 1.1;">{{ $cashParts[0] }}</span>
-                        <span style="font-size: 13px; font-weight: 600; color: #10b981;">.{{ $cashParts[1] }}</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xs font-bold text-emerald-500 mr-0.5">₱</span>
+                        <span class="text-xl font-black tracking-tight text-emerald-800 dark:text-emerald-300 leading-tight">{{ $cashParts[0] }}</span>
+                        <span class="text-xs font-semibold text-emerald-500">.{{ $cashParts[1] }}</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span class="text-[10px] text-emerald-700/80 dark:text-emerald-400/80">Physical Cash</span>
                     <x-filament::badge color="success" size="xs">In Register</x-filament::badge>
                 </div>
             </div>
 
             <!-- 5. Completed Orders -->
-            <div class="sales-kpi-card kpi-accent-orders">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-blue-500 shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Paid Orders</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(59, 130, 246, 0.15); color: #2563eb;">
-                            <x-filament::icon icon="heroicon-m-shopping-bag" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                            <x-filament::icon icon="heroicon-m-shopping-bag" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white" style="line-height: 1.1;">{{ number_format($summary['orders_count']) }}</span>
-                        <span style="font-size: 12px; font-weight: 600; color: #9ca3af; margin-left: 4px;">orders</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ number_format($summary['orders_count']) }}</span>
+                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 ml-1">orders</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span class="text-[10px] text-gray-400">Transactions Handled</span>
                     <x-filament::badge color="info" size="xs">Completed</x-filament::badge>
                 </div>
             </div>
 
             <!-- 6. Average Ticket (AOV) -->
-            <div class="sales-kpi-card kpi-accent-aov">
+            <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-purple-500 shadow-xs relative overflow-hidden box-border">
                 <div>
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 4px;">
+                    <div class="flex items-center justify-between gap-1">
                         <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Avg Ticket (AOV)</span>
-                        <span style="display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 6px; background-color: rgba(139, 92, 246, 0.15); color: #7c3aed;">
-                            <x-filament::icon icon="heroicon-m-arrow-trending-up" style="width: 14px; height: 14px;" />
+                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                            <x-filament::icon icon="heroicon-m-arrow-trending-up" class="w-3.5 h-3.5" />
                         </span>
                     </div>
-                    <div style="display: flex; align-items: baseline; margin-top: 8px;">
-                        <span style="font-size: 13px; font-weight: 700; color: #9ca3af; margin-right: 2px;">₱</span>
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white" style="line-height: 1.1;">{{ $aovParts[0] }}</span>
-                        <span style="font-size: 13px; font-weight: 600; color: #9ca3af;">.{{ $aovParts[1] }}</span>
+                    <div class="flex items-baseline mt-2">
+                        <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
+                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $aovParts[0] }}</span>
+                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $aovParts[1] }}</span>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,0.06);">
+                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
                     <span class="text-[10px] text-gray-400">Spend per Customer</span>
                     <x-filament::badge color="gray" size="xs">Basket Size</x-filament::badge>
                 </div>
@@ -343,13 +254,13 @@
         </div>
 
         <!-- 3. Responsive 2-Column Dashboard Workspace (Left: Operational Velocity, Right: Audit & Tax) -->
-        <div class="sales-cockpit-grid">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start w-full">
 
             <!-- LEFT COLUMN (~58% width): Revenue Trend, Top Products, Cashier Performance -->
-            <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+            <div class="flex flex-col gap-6 w-full lg:col-span-7">
 
                 <!-- Daily Net Revenue Trend Chart -->
-                <div style="width: 100%;">
+                <div class="w-full">
                     @livewire(\App\Filament\Widgets\DailySalesRevenueChart::class, [
                         'startDate' => $startDate,
                         'endDate' => $endDate,
@@ -372,35 +283,35 @@
                             No product item sales recorded for the selected filter period.
                         </div>
                     @else
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs">
+                        <div class="w-full overflow-x-auto pb-0.5">
+                            <table class="w-full border-separate border-spacing-0 text-left text-xs">
                                 <thead>
-                                    <tr class="border-b border-gray-100 text-gray-500 dark:border-white/10 dark:text-gray-400">
-                                        <th class="pb-2 font-semibold">Rank</th>
-                                        <th class="pb-2 font-semibold">Menu Item</th>
-                                        <th class="pb-2 text-center font-semibold">Qty Sold</th>
-                                        <th class="pb-2 text-right font-semibold">Gross Revenue</th>
-                                        <th class="pb-2 text-right font-semibold">Sales Share</th>
+                                    <tr class="border-b-2 border-gray-200 dark:border-white/10">
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-center w-14">Rank</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-left min-w-[150px]">Menu Item</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-center min-w-[90px]">Qty Sold</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[120px]">Gross Revenue</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[90px]">Sales Share</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-white/10">
+                                <tbody>
                                     @foreach ($summary['top_selling_items'] as $index => $item)
-                                        <tr>
-                                            <td class="py-2.5 font-semibold text-gray-500 dark:text-gray-400">
-                                                <span class="inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold {{ $index === 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300' }}">
+                                        <tr class="border-b border-gray-100 dark:border-white/5 last:border-b-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.03] transition-colors">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-center font-semibold text-gray-500 dark:text-gray-400">
+                                                <span class="inline-flex h-6 w-6 items-center justify-center rounded-full text-[10px] font-bold {{ $index === 0 ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300' : 'bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-gray-300' }}">
                                                     #{{ $index + 1 }}
                                                 </span>
                                             </td>
-                                            <td class="py-2.5 font-bold text-gray-900 dark:text-white">
+                                            <td class="px-3.5 py-3 align-middle first:pl-2 last:pr-2 text-left font-bold text-gray-900 dark:text-white whitespace-normal">
                                                 {{ $item['name'] }}
                                             </td>
-                                            <td class="py-2.5 text-center font-semibold text-gray-700 dark:text-gray-300">
-                                                {{ $item['quantity'] }}
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-center font-semibold text-gray-700 dark:text-gray-300 font-mono">
+                                                {{ number_format($item['quantity']) }}
                                             </td>
-                                            <td class="py-2.5 text-right font-bold text-gray-900 dark:text-white">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right font-bold text-gray-900 dark:text-white font-mono">
                                                 ₱{{ number_format($item['revenue'], 2) }}
                                             </td>
-                                            <td class="py-2.5 text-right">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right">
                                                 <x-filament::badge color="primary" size="xs">
                                                     {{ $item['percentage'] }}%
                                                 </x-filament::badge>
@@ -427,32 +338,32 @@
                             No payment transactions recorded for the selected filter period.
                         </div>
                     @else
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs">
+                        <div class="w-full overflow-x-auto pb-0.5">
+                            <table class="w-full border-separate border-spacing-0 text-left text-xs">
                                 <thead>
-                                    <tr class="border-b border-gray-100 text-gray-500 dark:border-white/10 dark:text-gray-400">
-                                        <th class="pb-2 font-semibold">Tender Method</th>
-                                        <th class="pb-2 text-center font-semibold">Transactions</th>
-                                        <th class="pb-2 text-right font-semibold">Total Collected</th>
-                                        <th class="pb-2 text-right font-semibold">Share (%)</th>
+                                    <tr class="border-b-2 border-gray-200 dark:border-white/10">
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-left min-w-[160px]">Tender Method</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-center min-w-[110px]">Transactions</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[130px]">Total Collected</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[90px]">Share (%)</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-white/10">
+                                <tbody>
                                     @foreach ($summary['payments_breakdown'] as $pay)
-                                        <tr>
-                                            <td class="py-2.5 font-medium text-gray-900 dark:text-white">
+                                        <tr class="border-b border-gray-100 dark:border-white/5 last:border-b-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.03] transition-colors">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-left font-medium text-gray-900 dark:text-white">
                                                 <div class="flex items-center gap-2">
-                                                    <span class="h-2 w-2 rounded-full {{ $pay['method'] === 'cash' ? 'bg-emerald-500' : 'bg-primary-500' }}"></span>
-                                                    {{ $pay['label'] }}
+                                                    <span class="inline-block w-2 h-2 rounded-full shrink-0" style="background-color: {{ $pay['method'] === 'cash' ? '#10b981' : '#8b5cf6' }};"></span>
+                                                    <span class="font-semibold">{{ $pay['label'] }}</span>
                                                 </div>
                                             </td>
-                                            <td class="py-2.5 text-center text-gray-600 dark:text-gray-400">
-                                                {{ $pay['count'] }}
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-center text-gray-600 dark:text-gray-400 font-medium font-mono">
+                                                {{ number_format($pay['count']) }}
                                             </td>
-                                            <td class="py-2.5 text-right font-bold text-gray-900 dark:text-white">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right font-bold text-gray-900 dark:text-white font-mono">
                                                 ₱{{ number_format($pay['total'], 2) }}
                                             </td>
-                                            <td class="py-2.5 text-right">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right">
                                                 <x-filament::badge color="gray" size="xs">
                                                     {{ $pay['percentage'] }}%
                                                 </x-filament::badge>
@@ -479,42 +390,42 @@
                             No cashier activity recorded for the selected filter period.
                         </div>
                     @else
-                        <div class="overflow-x-auto">
-                            <table class="w-full text-left text-xs">
+                        <div class="w-full overflow-x-auto pb-0.5">
+                            <table class="w-full border-separate border-spacing-0 text-left text-xs">
                                 <thead>
-                                    <tr class="border-b border-gray-100 text-gray-500 dark:border-white/10 dark:text-gray-400">
-                                        <th class="pb-2.5 font-semibold">Staff Member</th>
-                                        <th class="pb-2.5 font-semibold">Emp ID</th>
-                                        <th class="pb-2.5 text-center font-semibold">Txns</th>
-                                        <th class="pb-2.5 text-right font-semibold">Discounts</th>
-                                        <th class="pb-2.5 text-right font-semibold">Net Collected</th>
-                                        <th class="pb-2.5 text-right font-semibold">Avg Ticket</th>
+                                    <tr class="border-b-2 border-gray-200 dark:border-white/10">
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-left min-w-[160px]">Staff Member</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-center min-w-[100px]">Emp ID</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-center min-w-[80px]">Txns</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[110px]">Discounts</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[130px]">Net Collected</th>
+                                        <th class="px-3.5 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap first:pl-2 last:pr-2 text-right min-w-[110px]">Avg Ticket</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y divide-gray-100 dark:divide-white/10">
+                                <tbody>
                                     @foreach ($summary['cashier_performance'] as $staff)
-                                        <tr>
-                                            <td class="py-2.5 font-bold text-gray-900 dark:text-white">
+                                        <tr class="border-b border-gray-100 dark:border-white/5 last:border-b-0 hover:bg-gray-50/70 dark:hover:bg-white/[0.03] transition-colors">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-left font-bold text-gray-900 dark:text-white">
                                                 <div class="flex items-center gap-2">
-                                                    <div class="h-5 w-5 rounded-full bg-gray-100 flex items-center justify-center font-bold text-[9px] text-gray-600 dark:bg-white/10 dark:text-gray-300">
-                                                        {{ substr($staff['name'], 0, 1) }}
+                                                    <div class="w-5.5 h-5.5 rounded-full bg-gray-200 dark:bg-white/10 flex items-center justify-center font-bold text-[10px] text-gray-600 dark:text-gray-300 shrink-0">
+                                                        {{ strtoupper(substr($staff['name'], 0, 1)) }}
                                                     </div>
-                                                    {{ $staff['name'] }}
+                                                    <span class="font-bold">{{ $staff['name'] }}</span>
                                                 </div>
                                             </td>
-                                            <td class="py-2.5 text-gray-500 dark:text-gray-400">
-                                                <span class="font-mono text-[10px]">{{ $staff['emp_id'] }}</span>
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-center text-gray-500 dark:text-gray-400">
+                                                <span class="font-mono text-[10px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-white/10">{{ $staff['emp_id'] ?: 'Admin' }}</span>
                                             </td>
-                                            <td class="py-2.5 text-center font-semibold text-gray-900 dark:text-white">
-                                                {{ $staff['orders_count'] }}
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-center font-semibold text-gray-900 dark:text-white font-mono">
+                                                {{ number_format($staff['orders_count']) }}
                                             </td>
-                                            <td class="py-2.5 text-right text-amber-600 dark:text-amber-400 font-medium">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right text-amber-600 dark:text-amber-400 font-medium font-mono">
                                                 ₱{{ number_format($staff['discounts_given'], 2) }}
                                             </td>
-                                            <td class="py-2.5 text-right font-black text-gray-900 dark:text-white">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right font-black text-gray-900 dark:text-white font-mono">
                                                 ₱{{ number_format($staff['net_revenue'], 2) }}
                                             </td>
-                                            <td class="py-2.5 text-right text-gray-600 dark:text-gray-400">
+                                            <td class="px-3.5 py-3 align-middle whitespace-nowrap first:pl-2 last:pr-2 text-right text-gray-600 dark:text-gray-400 font-mono">
                                                 ₱{{ number_format($staff['avg_ticket'], 2) }}
                                             </td>
                                         </tr>
@@ -528,10 +439,10 @@
             </div>
 
             <!-- RIGHT COLUMN (~42% width): Tender Doughnut Chart, Drawer Balancing, Tax Compliance, Dining Modes -->
-            <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+            <div class="flex flex-col gap-6 w-full lg:col-span-5">
 
                 <!-- Doughnut Chart: Payment Tender Breakdown -->
-                <div style="width: 100%;">
+                <div class="w-full">
                     @livewire(\App\Filament\Widgets\PaymentMethodsDistributionChart::class, [
                         'startDate' => $startDate,
                         'endDate' => $endDate,
@@ -550,33 +461,33 @@
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">Total Cash Tendered (Handed):</span>
-                            <span class="font-medium text-gray-900 dark:text-white font-mono">
+                            <span class="font-medium text-gray-900 dark:text-white font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['cash_reconciliation']['total_cash_tendered'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">Total Change Given to Customers:</span>
-                            <span class="font-medium text-amber-600 dark:text-amber-400 font-mono">
+                            <span class="font-medium text-amber-600 dark:text-amber-400 font-mono whitespace-nowrap">
                                 - ₱{{ number_format($summary['cash_reconciliation']['total_change_given'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2.5 bg-emerald-50/50 -mx-3 px-3 rounded-md dark:bg-emerald-950/20">
+                        <div class="flex items-center justify-between py-2.5 bg-emerald-50/50 -mx-3 px-3 rounded-md dark:bg-emerald-950/20 gap-4">
                             <span class="font-bold text-emerald-800 dark:text-emerald-300">Net Physical Cash in Drawer:</span>
-                            <span class="font-black text-emerald-900 dark:text-emerald-200 font-mono text-sm">
+                            <span class="font-black text-emerald-900 dark:text-emerald-200 font-mono text-sm whitespace-nowrap">
                                 ₱{{ number_format($summary['cash_reconciliation']['net_cash_in_drawer'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">Total Digital & Card Payments:</span>
-                            <span class="font-bold text-blue-600 dark:text-blue-400 font-mono">
+                            <span class="font-bold text-blue-600 dark:text-blue-400 font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['cash_reconciliation']['total_digital'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">Refunds / Void Losses:</span>
-                            <span class="font-medium font-mono {{ ($summary['refunds_summary']['refunded_amount'] ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500' }}">
+                            <span class="font-medium font-mono whitespace-nowrap {{ ($summary['refunds_summary']['refunded_amount'] ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-500' }}">
                                 ₱{{ number_format($summary['refunds_summary']['refunded_amount'] ?? 0, 2) }}
                                 ({{ $summary['refunds_summary']['refunded_count'] ?? 0 }} orders)
                             </span>
@@ -594,33 +505,33 @@
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">VATable Sales (12% Base):</span>
-                            <span class="font-bold text-gray-900 dark:text-white font-mono">
+                            <span class="font-bold text-gray-900 dark:text-white font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['vatable_sales'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">VAT Output Amount (12%):</span>
-                            <span class="font-bold text-primary-600 dark:text-primary-400 font-mono">
+                            <span class="font-bold text-primary-600 dark:text-primary-400 font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['vat_amount'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">VAT-Exempt Sales (Senior/PWD):</span>
-                            <span class="font-bold text-gray-900 dark:text-white font-mono">
+                            <span class="font-bold text-gray-900 dark:text-white font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['vat_exempt_sales'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2">
+                        <div class="flex items-center justify-between py-2.5 gap-4">
                             <span class="text-gray-600 dark:text-gray-400">Zero-Rated Sales:</span>
-                            <span class="font-bold text-gray-900 dark:text-white font-mono">
+                            <span class="font-bold text-gray-900 dark:text-white font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['zero_rated_sales'] ?? 0, 2) }}
                             </span>
                         </div>
-                        <div class="flex justify-between py-2.5 bg-gray-50/50 -mx-3 px-3 rounded-b-lg dark:bg-white/5">
+                        <div class="flex items-center justify-between py-2.5 bg-gray-50/50 -mx-3 px-3 rounded-b-lg dark:bg-white/5 gap-4">
                             <span class="font-bold text-gray-700 dark:text-gray-300">Total Taxable Sales Base:</span>
-                            <span class="font-black text-gray-900 dark:text-white font-mono text-sm">
+                            <span class="font-black text-gray-900 dark:text-white font-mono text-sm whitespace-nowrap">
                                 ₱{{ number_format(($summary['tax_summary']['vatable_sales'] ?? 0) + ($summary['tax_summary']['vat_exempt_sales'] ?? 0), 2) }}
                             </span>
                         </div>
@@ -643,12 +554,12 @@
                         $deliveryCount = $summary['order_types_breakdown']['delivery'] ?? 0;
                     @endphp
 
-                    <div style="display: flex; flex-direction: column; gap: 14px; padding-top: 4px;">
+                    <div class="flex flex-col gap-3.5 pt-1">
                         <!-- Dine In -->
                         <div>
                             <div class="flex justify-between text-xs mb-1">
                                 <span class="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-primary-600"></span> Dine-In
+                                    <span class="h-2 w-2 rounded-full bg-[#960D10]"></span> Dine-In
                                 </span>
                                 <span class="font-bold text-gray-900 dark:text-white">
                                     {{ $dineInCount }} orders
@@ -656,7 +567,7 @@
                                 </span>
                             </div>
                             <div class="h-2 w-full rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
-                                <div class="h-full bg-primary-600 rounded-full" style="width: {{ $totalTypesCount > 0 ? ($dineInCount / $totalTypesCount) * 100 : 0 }}%"></div>
+                                <div class="h-full bg-[#960D10] rounded-full" style="width: {{ $totalTypesCount > 0 ? ($dineInCount / $totalTypesCount) * 100 : 0 }}%"></div>
                             </div>
                         </div>
 

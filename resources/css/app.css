@@ -58,6 +58,19 @@ html.dark {
     --color-brand-border: var(--color-border);
     --color-brand-success: var(--color-success);
     --color-brand-error: var(--color-error);
+
+    /* Filament & Tailwind Unified Primary Palette */
+    --color-primary-50: #FBF3F3;
+    --color-primary-100: #F6E4E5;
+    --color-primary-200: #EDC4C6;
+    --color-primary-300: #DE9A9D;
+    --color-primary-400: #960D10;
+    --color-primary-500: #7A0B0D;
+    --color-primary-600: #5A0708;
+    --color-primary-700: #450506;
+    --color-primary-800: #320404;
+    --color-primary-900: #210203;
+    --color-primary-950: #140102;
 }
 
 /* Base resets adhering strictly to current theme variables */

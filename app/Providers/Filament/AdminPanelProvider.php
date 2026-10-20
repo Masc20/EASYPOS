@@ -66,6 +66,10 @@ class AdminPanelProvider extends PanelProvider
                 provider: \Filament\FontProviders\LocalFontProvider::class,
             )
             ->renderHook(
+                \Filament\View\PanelsRenderHook::HEAD_END,
+                fn () => \Illuminate\Support\Facades\Blade::render("@vite(['resources/css/app.css', 'resources/js/app.js'])")
+            )
+            ->renderHook(
                 \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
                 fn () => \Illuminate\Support\Facades\Blade::render('
                     <div class="mt-4 pt-4 border-t border-[#E8D8C5] dark:border-[#34383D] text-xs">
