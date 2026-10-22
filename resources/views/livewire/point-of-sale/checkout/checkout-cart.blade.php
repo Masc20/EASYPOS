@@ -17,6 +17,10 @@
     },
 
     addMeal(meal) {
+        if (meal.maxQty !== null && meal.maxQty <= 0) {
+            window.dispatchEvent(new CustomEvent('pos-alert', { detail: { type: 'warning', message: 'Item \'' + meal.name + '\' is 86\'d (Sold Out) and cannot be added.' } }));
+            return;
+        }
         const existing = this.items.find(i => i.meal_id === meal.id);
         if (existing) {
             if (meal.maxQty !== null && existing.quantity >= meal.maxQty) {

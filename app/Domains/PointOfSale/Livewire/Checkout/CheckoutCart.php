@@ -33,7 +33,11 @@ class CheckoutCart extends Component
     {
         $meal = Meal::select(['id', 'name', 'menu_code', 'price', 'is_available', 'track_stock', 'stock_quantity'])
             ->find($mealId);
-        if (!$meal || !$meal->is_available) {
+        if (! $meal || $meal->isSoldOut()) {
+            $this->dispatch('pos-alert', [
+                'type' => 'warning',
+                'message' => "Item '{$meal?->name}' is 86'd (Sold Out) and cannot be added to order.",
+            ]);
             return;
         }
 

@@ -9,6 +9,10 @@ class ToggleMealAvailabilityAction
 {
     public function handle(Meal|int $meal): Meal
     {
+        if (auth()->check() && ! auth()->user()->can('menu.manage')) {
+            abort(403, 'Unauthorized. Only Kitchen and Managers can toggle dish availability.');
+        }
+
         $instance = $meal instanceof Meal ? $meal : Meal::findOrFail($meal);
         $instance->is_available = ! $instance->is_available;
         $instance->save();

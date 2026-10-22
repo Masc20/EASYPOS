@@ -71,7 +71,7 @@ class CreateOrderAction
                     throw new InvalidArgumentException("Meal ID {$mealId} not found.");
                 }
 
-                if (! $meal->is_available) {
+                if ($meal->isSoldOut()) {
                     throw new InvalidArgumentException("Meal '{$meal->name}' is marked as 86'd / Sold Out.");
                 }
 

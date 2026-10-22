@@ -58,9 +58,12 @@ class MealCatalog extends Component
             ->orderBy('name')
             ->get();
 
+        $soldOutCount = $meals->filter(fn (Meal $m) => $m->isSoldOut())->count();
+
         return view('livewire.point-of-sale.meal-catalog', [
             'categories' => $categories,
             'meals' => $meals,
+            'soldOutCount' => $soldOutCount,
         ]);
     }
 }
