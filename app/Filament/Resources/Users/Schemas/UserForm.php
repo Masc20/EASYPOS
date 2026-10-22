@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class UserForm
@@ -65,6 +66,12 @@ class UserForm
                     ->placeholder('Leave blank to keep existing password')
                     ->helperText('Used for backoffice /admin login.')
                     ->dehydrated(fn ($state) => filled($state)),
+
+                Toggle::make('is_active')
+                    ->label('Account Active Status')
+                    ->default(true)
+                    ->helperText('Deactivated accounts are blocked from accessing POS floor terminals and administrative portals.')
+                    ->disabled(fn ($record) => $record && $record->id === auth()->id()),
             ]);
     }
 }

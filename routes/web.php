@@ -3,8 +3,18 @@
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    if (auth()->check() && auth()->user()->isStrictFloorStaff()) {
-        return redirect()->to(auth()->user()->stationRoute());
+    if (auth()->check()) {
+        if (! auth()->user()->is_active) {
+            auth()->logout();
+            session()->invalidate();
+            session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors(['emp_id' => 'Your account has been deactivated. Please contact your manager or system administrator.']);
+        }
+
+        if (auth()->user()->isStrictFloorStaff()) {
+            return redirect()->to(auth()->user()->stationRoute());
+        }
     }
 
     return view('pages.dashboard');

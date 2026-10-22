@@ -70,6 +70,14 @@ class Login extends Component
             ]);
         }
 
+        // Check if user account is deactivated
+        if (! $user->is_active) {
+            $this->pin = '';
+            throw ValidationException::withMessages([
+                'emp_id' => 'Your account has been deactivated. Please contact your manager or system administrator.',
+            ]);
+        }
+
         // Check branch status if assigned
         if ($user->branch && ! $user->branch->is_active) {
             $this->pin = '';

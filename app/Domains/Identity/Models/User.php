@@ -36,6 +36,7 @@ class User extends Authenticatable implements FilamentUser
         'emp_id',
         'branch_id',
         'pin_code',
+        'is_active',
     ];
 
     /**
@@ -60,6 +61,7 @@ class User extends Authenticatable implements FilamentUser
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'pin_code' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
@@ -76,6 +78,10 @@ class User extends Authenticatable implements FilamentUser
      */
     public function canAccessPanel(Panel $panel): bool
     {
+        if (! $this->is_active) {
+            return false;
+        }
+
         if ($panel->getId() === 'admin') {
             // Security gate: A 4-digit PIN terminal session can NEVER access the admin panel.
             // Full email + password authentication is strictly required for back-office administration.
@@ -87,6 +93,22 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return true;
+    }
+
+    /**
+     * Check if user account is active.
+     */
+    public function isActive(): bool
+    {
+        return (bool) $this->is_active;
+    }
+
+    /**
+     * Check if user account is deactivated.
+     */
+    public function isDeactivated(): bool
+    {
+        return ! $this->isActive();
     }
 
     /**
@@ -142,6 +164,10 @@ class User extends Authenticatable implements FilamentUser
      */
     public function stationRoute(): string
     {
+        if (! $this->is_active) {
+            return route('login');
+        }
+
         if ($this->hasRole('cashier')) {
             return route('pos');
         }
