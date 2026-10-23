@@ -15,6 +15,10 @@ class ClaimKitchenTicketAction
      */
     public function execute(KitchenTicket $ticket, User $cook): KitchenTicket
     {
+        if (auth()->check() && ! auth()->user()->can('kitchen.prepare')) {
+            abort(403, 'Unauthorized. Only kitchen staff can claim kitchen tickets.');
+        }
+
         return DB::transaction(function () use ($ticket, $cook) {
             $previousStatus = $ticket->status;
 

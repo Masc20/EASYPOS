@@ -8,6 +8,19 @@
             </p>
         </div>
         <div class="flex items-center gap-2">
+            <!-- Order Progress Slide-Over Trigger Button -->
+            <button type="button" 
+                x-data 
+                x-on:click="$dispatch('open-order-progress'); if (window.Livewire) { Livewire.dispatch('open-order-progress'); }"
+                onclick="window.dispatchEvent(new CustomEvent('open-order-progress')); if (window.Livewire) { Livewire.dispatch('open-order-progress'); }"
+                class="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-card hover:bg-brand-muted px-3 py-1.5 text-xs font-semibold text-brand-text transition shadow-2xs cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary active:scale-95 select-none">
+                <svg class="h-4 w-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                <span>Order Progress</span>
+            </button>
+
             <span
                 class="inline-flex items-center gap-1.5 rounded-sm bg-brand-success/10 border border-brand-success/30 px-2.5 py-1 text-xs font-semibold text-brand-success">
                 <span class="h-2 w-2 rounded-xs bg-brand-success animate-pulse"></span>
@@ -39,6 +52,9 @@
 
             <!-- Official Sales Receipt Modal -->
             <livewire:pos.checkout.receipt-preview />
+
+            <!-- Cashier Read-Only Kitchen Order Progress Slide-Over -->
+            <livewire:pos.order-progress />
         </div>
     </div>
 

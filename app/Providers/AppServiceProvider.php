@@ -21,6 +21,7 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('pos.checkout.receipt-preview', \App\Domains\PointOfSale\Livewire\Checkout\ReceiptPreview::class);
         Livewire::component('pos.product-search', \App\Domains\PointOfSale\Livewire\ProductSearch::class);
         Livewire::component('pos.meal-catalog', \App\Domains\PointOfSale\Livewire\MealCatalog::class);
+        Livewire::component('pos.order-progress', \App\Domains\PointOfSale\Livewire\OrderProgress::class);
 
         // Domain: Menu
         Livewire::component('menu.meal-catalog-table', \App\Domains\Menu\Livewire\MealCatalogTable::class);

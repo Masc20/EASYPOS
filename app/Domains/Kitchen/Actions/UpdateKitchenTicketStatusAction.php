@@ -14,6 +14,10 @@ class UpdateKitchenTicketStatusAction
      */
     public function execute(KitchenTicket $ticket, string $newStatus): KitchenTicket
     {
+        if (auth()->check() && ! auth()->user()->can('kitchen.prepare')) {
+            abort(403, 'Unauthorized. Only kitchen staff can update kitchen ticket status.');
+        }
+
         $allowed = ['new', 'in_prep', 'ready', 'served', 'cancelled'];
         if (!in_array($newStatus, $allowed, true)) {
             throw new InvalidArgumentException("Invalid kitchen ticket status: {$newStatus}");

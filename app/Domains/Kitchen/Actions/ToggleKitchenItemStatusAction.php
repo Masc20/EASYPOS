@@ -13,6 +13,10 @@ class ToggleKitchenItemStatusAction
      */
     public function execute(KitchenTicketItem $item, ?string $forceStatus = null): KitchenTicketItem
     {
+        if (auth()->check() && ! auth()->user()->can('kitchen.prepare')) {
+            abort(403, 'Unauthorized. Only kitchen staff can modify kitchen ticket items.');
+        }
+
         return DB::transaction(function () use ($item, $forceStatus) {
             if ($forceStatus) {
                 $newStatus = $forceStatus;

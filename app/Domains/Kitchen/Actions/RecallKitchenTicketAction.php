@@ -13,6 +13,10 @@ class RecallKitchenTicketAction
      */
     public function execute(KitchenTicket $ticket): KitchenTicket
     {
+        if (auth()->check() && ! auth()->user()->can('kitchen.prepare')) {
+            abort(403, 'Unauthorized. Only kitchen staff can recall kitchen tickets.');
+        }
+
         return DB::transaction(function () use ($ticket) {
             $previousStatus = $ticket->status;
 
