@@ -293,7 +293,7 @@
             <x-slot name="heading">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
                     <div>
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">Top 5 Best-Selling Menu Items & Leaderboard</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Top Best-Selling Menu Items & Leaderboard</span>
                         <p class="text-xs text-gray-400">Ranked by volume and sales performance across catalog categories</p>
                     </div>
 
