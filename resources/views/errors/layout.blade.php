@@ -20,8 +20,8 @@
         <div class="flex items-center gap-3">
             <a href="{{ url('/') }}" class="flex items-center gap-2.5 group">
                 <span
-                    class="flex h-9 w-9 items-center justify-center rounded-md bg-brand-primary text-white font-black text-sm shadow-sm shadow-brand-primary/30 group-hover:scale-105 transition-transform">
-                    EP
+                    class="flex h-9 w-9 items-center justify-center rounded-md bg-brand text-white font-black text-sm shadow-sm shadow-brand-primary/30">
+                    <img src="{{ asset('image/PSB.svg') }}" alt="EP" class="w-5 h-5 object-contain">
                 </span>
                 <div>
                     <span class="font-bold tracking-tight text-brand-text text-base leading-none block">
