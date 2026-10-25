@@ -1,7 +1,7 @@
 <x-layout.app-shell>
     <div class="mb-8">
         <h1 class="text-2xl font-bold tracking-tight text-brand-text">EASYPOS Dashboard</h1>
-        <p class="mt-1 text-sm text-brand-text-muted">Welcome to your modular Point of Sale and Inventory system</p>
+        <p class="mt-1 text-sm text-brand-text-muted">Welcome to your modular Point of Sale system</p>
     </div>
 
     <!-- Quick Navigation Cards -->
@@ -41,7 +41,8 @@
                         class="text-xs font-semibold text-brand-success group-hover:translate-x-1 transition-transform">&rarr;</span>
                 </div>
                 <h2 class="mt-4 text-base font-bold text-brand-text">Menu & Specials</h2>
-                <p class="mt-1 text-sm text-brand-text-muted">Manage chef-prepared dishes, categories, pricing, and live 86'd availability.</p>
+                <p class="mt-1 text-sm text-brand-text-muted">Manage chef-prepared dishes, categories, pricing, and live
+                    86'd availability.</p>
             </a>
         @endcan
 

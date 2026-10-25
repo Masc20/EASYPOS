@@ -157,7 +157,7 @@ Located at `/admin/sales-records` via [`App\Filament\Pages\SalesRecords`](file:/
 
 ### 6. Multi-Branch Operations & Staff Governance
 
-- **Multi-Branch Data Scoping**: Segment menus, inventory, cashiers, and sales ledgers across independent physical store branches.
+- **Multi-Branch Data Scoping**: Segment menus, cashiers, and sales ledgers across independent physical store branches.
 - **Centralized Transaction Audit**: Accessible via [`OrderResource`](file:///C:/xampp/htdocs/EASYPOS/app/Filament/Resources/Orders/OrderResource.php) allowing back-office supervisors to inspect historical orders, review payment methods, and reprint thermal receipts.
 - **Staff Onboarding & Security**: Accessible via [`UserResource`](file:///C:/xampp/htdocs/EASYPOS/app/Filament/Resources/Users/UserResource.php) featuring automated Employee ID generation, 4-digit PIN setup, branch assignment, and role configuration.
 
