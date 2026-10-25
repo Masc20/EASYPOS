@@ -54,6 +54,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'pos.checkout',
             'pos.refund',
             'kitchen.view',
+            'kitchen.prepare',
             'menu.view',
             'menu.manage',
             'branch.manage',
