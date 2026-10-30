@@ -1,14 +1,10 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    class="h-full {{ request()->cookie('theme') === 'dark' ? 'dark' : '' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="h-full">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'EASYPOS') }} - Floor Staff Terminal</title>
-
-    <!-- Instant Anti-Flash Theme Engine -->
-    <x-layout.theme-script />
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -35,8 +31,6 @@
         </div>
 
         <div class="flex items-center gap-3">
-            <!-- Theme Toggle Button (Light / Dark) -->
-            <x-ui.theme-toggle />
 
             <span
                 class="inline-flex items-center gap-1.5 rounded-full bg-brand-success/10 border border-brand-success/30 px-3 py-1 text-xs font-semibold text-brand-success">

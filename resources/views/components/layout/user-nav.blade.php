@@ -1,17 +1,15 @@
 @props(['user' => auth()->user()])
 
 <div class="flex items-center gap-3 text-sm">
-    <!-- Theme Toggle Button (Light / Dark) -->
-    <x-ui.theme-toggle class="mr-1" />
 
     @if ($user)
         <div class="flex items-center gap-2">
-            @if ($user->branch)
+            {{-- @if ($user->branch)
                 <span
                     class="rounded-md bg-brand-bg border border-brand-border px-2 py-0.5 text-xs font-semibold text-brand-text font-mono">
                     {{ $user->branch->code }}
                 </span>
-            @endif
+            @endif --}}
 
             <span class="font-medium text-brand-text">{{ $user->name }}</span>
 
@@ -22,12 +20,12 @@
                 </span>
             @endif
 
-            @foreach ($user->roles as $role)
+            {{-- @foreach ($user->roles as $role)
                 <span
                     class="rounded-md bg-brand-secondary/15 border border-brand-border px-2 py-0.5 text-xs font-semibold text-brand-primary dark:text-brand-secondary capitalize">
                     {{ str_replace('-', ' ', $role->name) }}
                 </span>
-            @endforeach
+            @endforeach --}}
         </div>
 
         <form method="POST" action="{{ route('logout') }}" class="inline">

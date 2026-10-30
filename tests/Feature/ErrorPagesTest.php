@@ -119,11 +119,4 @@ class ErrorPagesTest extends TestCase
         $response->assertSee('Server Infrastructure Fault');
     }
 
-    public function test_error_page_respects_dark_mode_cookie(): void
-    {
-        $response = $this->withUnencryptedCookie('theme', 'dark')->get('/non-existent-route-dark-test');
-
-        $response->assertStatus(404);
-        $response->assertSee('class="dark"', false);
-    }
 }

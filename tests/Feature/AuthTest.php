@@ -129,25 +129,4 @@ class AuthTest extends TestCase
         $response->assertRedirect('/');
     }
 
-    public function test_theme_cookie_renders_dark_mode_on_login_screen(): void
-    {
-        $response = $this->withCookie('theme', 'dark')->get('/login');
-
-        $response->assertStatus(200);
-        $response->assertSee('class="h-full dark"', false);
-    }
-
-    public function test_theme_cookie_renders_dark_mode_on_menu_screen_for_chef(): void
-    {
-        $chef = User::where('emp_id', 'B01-CHF-001')->first();
-
-        $response = $this->actingAs($chef)
-            ->withCookie('theme', 'dark')
-            ->get('/menu');
-
-        $response->assertStatus(200);
-        $response->assertSee('class="dark"', false);
-        $response->assertSee('Daily Specials & Kitchen Availability Board');
-        $response->assertSee('Meal Catalog');
-    }
 }

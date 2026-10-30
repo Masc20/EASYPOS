@@ -1,14 +1,10 @@
 <!doctype html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}"
-    class="{{ request()->cookie('theme') === 'dark' ? 'dark' : '' }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('code', 'Error') - @yield('title', 'EASYPOS')</title>
-
-    <x-layout.theme-script />
-
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 
@@ -45,8 +41,6 @@
                 </div>
             @endauth
 
-            <!-- Theme Toggle -->
-            <x-ui.theme-toggle />
         </div>
     </header>
 
