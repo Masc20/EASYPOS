@@ -119,14 +119,24 @@ class AuthTest extends TestCase
         $this->assertGuest();
     }
 
-    public function test_users_can_logout(): void
+    public function test_floor_staff_logout_redirects_to_floor_login(): void
     {
         $user = User::where('emp_id', 'B01-CSH-001')->first();
 
         $response = $this->actingAs($user)->post('/logout');
 
         $this->assertGuest();
-        $response->assertRedirect('/');
+        $response->assertRedirect(route('login'));
+    }
+
+    public function test_admin_logout_redirects_to_admin_login(): void
+    {
+        $admin = User::where('emp_id', 'B01-MGR-001')->first();
+
+        $response = $this->actingAs($admin)->post('/logout');
+
+        $this->assertGuest();
+        $response->assertRedirect('/admin/login');
     }
 
 }

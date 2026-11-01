@@ -28,11 +28,11 @@
     "
     x-on:keydown.escape.window="show = false"
     x-cloak
-    class="relative z-50"
+    class="relative z-100"
     role="dialog"
     aria-modal="true">
 
-    <!-- Backdrop with fast 150ms client transition (zero server lag) -->
+    <!-- Backdrop with fast 150ms client transition, modal powered above all overlays -->
     <div x-show="show"
         x-transition:enter="ease-out duration-150"
         x-transition:enter-start="opacity-0"

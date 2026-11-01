@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Domains\PointOfSale\Actions\VoidOrderAction;
 use App\Domains\PointOfSale\Models\Order;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -32,12 +35,14 @@ class OrdersTable
                     ->label('Cashier')
                     ->searchable()
                     ->sortable()
-                    ->default('Floor Staff'),
+                    ->default('Floor Staff')
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('branch.name')
                     ->label('Branch')
                     ->default('Global')
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('order_type')
                     ->label('Mode')
@@ -111,6 +116,44 @@ class OrdersTable
                     ]))
                     ->modalSubmitAction(false)
                     ->modalCancelActionLabel('Close'),
+
+                Action::make('void_order')
+                    ->label('Void / Cancel Order')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->visible(fn (Order $record): bool => $record->status !== 'cancelled' && (auth()->user()->isOwner() || auth()->user()->can('pos.refund')))
+                    ->requiresConfirmation()
+                    ->modalHeading(fn (Order $record): string => "Void Order #{$record->order_number}")
+                    ->modalDescription('Voiding this order will mark payments as refunded and evict any linked ticket from the kitchen queue. This action cannot be undone.')
+                    ->schema([
+                        Textarea::make('reason')
+                            ->label('Cancellation Reason')
+                            ->required()
+                            ->placeholder('e.g., Customer changed mind, wrong items entered')
+                            ->rows(3),
+                    ])
+                    ->action(function (Order $record, array $data, VoidOrderAction $action) {
+                        try {
+                            $action->execute([
+                                'order_id' => $record->id,
+                                'manager_id' => auth()->id(),
+                                'reason' => $data['reason'],
+                                'skip_pin_check' => true,
+                            ]);
+
+                            Notification::make()
+                                ->title('Order Voided')
+                                ->body("Order #{$record->order_number} has been cancelled and refunded.")
+                                ->success()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            Notification::make()
+                                ->title('Void Failed')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
             ]);
     }
 }

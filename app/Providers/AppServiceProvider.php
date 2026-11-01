@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
         Livewire::component('pos.checkout.checkout-cart', \App\Domains\PointOfSale\Livewire\Checkout\CheckoutCart::class);
         Livewire::component('pos.checkout.checkout-modal', \App\Domains\PointOfSale\Livewire\Checkout\CheckoutModal::class);
         Livewire::component('pos.checkout.receipt-preview', \App\Domains\PointOfSale\Livewire\Checkout\ReceiptPreview::class);
+        Livewire::component('pos.checkout.manager-pin-modal', \App\Domains\PointOfSale\Livewire\Checkout\ManagerPinModal::class);
         Livewire::component('pos.product-search', \App\Domains\PointOfSale\Livewire\ProductSearch::class);
         Livewire::component('pos.meal-catalog', \App\Domains\PointOfSale\Livewire\MealCatalog::class);
         Livewire::component('pos.order-progress', \App\Domains\PointOfSale\Livewire\OrderProgress::class);

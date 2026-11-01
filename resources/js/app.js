@@ -1,19 +1,9 @@
 import './bootstrap';
 
-import {
-    getSavedTheme,
-    getActiveTheme,
-    setTheme,
-    toggleTheme,
-    initThemeWatcher,
-    THEMES,
-} from './modules/theme';
 
 import { pinPad } from './components/pin-pad';
 import { formatCurrency, formatQuantity, formatDate } from './utils/formatters';
 
-// Initialize background OS preference watcher
-initThemeWatcher();
 
 // Register Alpine.js components
 const registerAlpineComponents = () => {
@@ -29,13 +19,6 @@ if (window.Alpine) {
 
 // Global EASYPOS application namespace
 window.EASYPOS = {
-    theme: {
-        get: getSavedTheme,
-        active: getActiveTheme,
-        set: setTheme,
-        toggle: toggleTheme,
-        THEMES,
-    },
     components: {
         pinPad,
     },
@@ -45,6 +28,3 @@ window.EASYPOS = {
         date: formatDate,
     },
 };
-
-// Backward compatibility alias for existing inline listeners
-window.toggleTheme = toggleTheme;

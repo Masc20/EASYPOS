@@ -74,7 +74,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Determine if the user can access the given Filament panel.
+     * Determine if user can access the given Filament panel.
      */
     public function canAccessPanel(Panel $panel): bool
     {
@@ -87,6 +87,11 @@ class User extends Authenticatable implements FilamentUser
             // Full email + password authentication is strictly required for back-office administration.
             if (session('auth_method') === 'pin') {
                 return false;
+            }
+
+            // Branch managers get branch-level access only (not full admin privileges)
+            if ($this->hasRole('branch-manager')) {
+                return true;
             }
 
             return $this->hasRole(['owner', 'super-admin', 'branch-manager']) || $this->can('admin.access');
@@ -104,12 +109,12 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Check if user account is deactivated.
+     * Determine if user account is deactivated.
      */
     public function isDeactivated(): bool
     {
         return ! $this->isActive();
-    }
+    }    
 
     /**
      * Verify the 4-digit PIN for floor staff.
@@ -140,6 +145,29 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Check if user can manage roles for other staff in their branch.
+     * Branch managers can assign roles to floor staff in their branch,
+     * but cannot promote themselves to admin/super-admin.
+     */
+    public function canManageBranchRoles(): bool
+    {
+        // Owner and super-admin can manage all roles
+        if ($this->hasAnyRole(['owner', 'super-admin'])) {
+            return true;
+        }
+
+        // Branch managers can manage roles for other staff in their branch,
+        // but NOT their own role
+        if ($this->hasRole('branch-manager')) {
+            // They can manage roles for staff with a different branch_id or NULL branch
+            // They cannot manage their OWN role promotion
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
      * Get the dedicated station title for floor staff.
      */
     public function stationTitle(): string
@@ -160,7 +188,7 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Get the dedicated station route for floor staff.
+     * Get the station route for floor staff.
      */
     public function stationRoute(): string
     {

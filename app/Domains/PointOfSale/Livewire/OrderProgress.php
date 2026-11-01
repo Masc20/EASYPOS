@@ -35,6 +35,7 @@ class OrderProgress extends Component
     #[On('kitchen-ticket-item-status-updated')]
     #[On('payment-processed')]
     #[On('order-created')]
+    #[On('order-voided')]
     public function refreshTickets(): void
     {
         // Re-render component on real-time kitchen lifecycle events

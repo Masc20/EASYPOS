@@ -20,6 +20,17 @@
     </main>
 
     @livewireScripts
+    @if(auth()->check() && auth()->user()->isStrictFloorStaff())
+        <script>
+            // Terminal Page Lock: Trap browser back navigation on active terminal
+            (function() {
+                history.pushState(null, document.title, location.href);
+                window.addEventListener('popstate', function () {
+                    history.pushState(null, document.title, location.href);
+                });
+            })();
+        </script>
+    @endif
 </body>
 
 </html>

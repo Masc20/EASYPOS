@@ -99,7 +99,9 @@ class Login extends Component
 
         event(new UserLoggedIn($user));
 
-        $this->redirectIntended(default: $user->stationRoute());
+        session()->forget('url.intended');
+
+        $this->redirect($user->stationRoute(), navigate: true);
     }
 
     /**

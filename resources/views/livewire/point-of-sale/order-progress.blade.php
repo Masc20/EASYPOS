@@ -33,7 +33,7 @@ class="relative z-50">
          class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"></div>
 
     <!-- Slide-over Drawer Panel -->
-    <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+    <div id="order-progress-drawer" class="fixed inset-y-0 right-0 max-w-full flex pl-10">
         <div x-show="open"
              x-transition:enter="transform transition ease-in-out duration-200"
              x-transition:enter-start="translate-x-full"
@@ -264,7 +264,20 @@ class="relative z-50">
                             </div>
                         </div>
 
-                        <!-- Ticket Items Breakdown -->
+                        {{-- Void Order Button --}}
+                            <button
+                                type="button"
+                                class="text-[10px] font-semibold text-brand-text-muted hover:text-brand-primary transition cursor-pointer"
+                                x-on:click="window.dispatchEvent(new CustomEvent('open-manager-pin', { detail: { orderId: {{ $ticket->order?->id ?? 0 }} }}))"
+                                title="Void Order">
+                                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.985-1.858L5 7m5 4v6m4-4v6m-4-4h8m-4-8v6m-4-8h8" />
+                                </svg>
+                                Void
+                            </button>
+
+                        <!-- Ticket Items Breakwidth -->
                         <div class="pt-2.5 space-y-1.5">
                             @foreach ($ticket->items as $item)
                                 @php
