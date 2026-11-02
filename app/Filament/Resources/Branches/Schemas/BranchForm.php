@@ -17,37 +17,19 @@ class BranchForm
                     ->label('Branch Name')
                     ->required()
                     ->maxLength(255)
-                    ->extraInputAttributes(fn ($record) => $record ? [] : [
-                        'x-on:input' => '
-                            const val = ($el.value || "").trim();
-                            if (!val) return;
-                            const words = val.split(/\s+/);
-                            let code = "";
-                            if (words.length >= 2) {
-                                code = (words[0].substring(0, 2) + words[1].substring(0, 2)).toUpperCase();
-                            } else {
-                                code = val.replace(/[^a-zA-Z0-9]/g, "").substring(0, 4).toUpperCase();
-                            }
-                            if (code.length >= 2) {
-                                const codeInput = $el.closest("form")?.querySelector("[data-branch-code-input]");
-                                if (codeInput) {
-                                    codeInput.value = code;
-                                    codeInput.dispatchEvent(new Event("input", { bubbles: true }));
-                                }
-                            }
-                        ',
-                    ]),
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (?string $state, callable $set, $record) {
+                        if (! $record && filled($state)) {
+                            $set('code', CodeGeneratorService::generateBranchCode($state));
+                        }
+                    }),
 
                 TextInput::make('code')
                     ->label('Branch Code (Auto-Generated)')
                     ->required()
                     ->maxLength(10)
                     ->default(fn ($record) => $record ? null : CodeGeneratorService::generateBranchCode())
-                    ->unique(ignoreRecord: true)
-                    ->extraInputAttributes([
-                        'data-branch-code-input' => 'true',
-                        'x-on:input' => '$el.value = $el.value.toUpperCase()',
-                    ]),
+                    ->unique(ignoreRecord: true),
 
                 TextInput::make('address')
                     ->label('Store Address')

@@ -4,6 +4,7 @@ namespace App\Domains\Menu\Livewire;
 
 use App\Domains\Menu\Actions\CreateMealAction;
 use App\Domains\Menu\Models\MealCategory;
+use App\Support\Services\CodeGeneratorService;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -11,6 +12,7 @@ class CreateMealModal extends Component
 {
     public string $name = '';
     public ?string $menu_code = null;
+    public ?string $lastAutoCode = null;
     public ?int $category_id = null;
     public ?string $price = '';
     public ?string $description = null;
@@ -52,10 +54,36 @@ class CreateMealModal extends Component
         $this->category_id = $firstCategory?->id;
     }
 
+    public function generateCode(): void
+    {
+        if ($this->category_id && (blank($this->menu_code) || $this->menu_code === $this->lastAutoCode)) {
+            $code = CodeGeneratorService::generateMenuCode((int) $this->category_id);
+            $this->menu_code = $code;
+            $this->lastAutoCode = $code;
+        }
+    }
+
+    public function updatedCategoryId($value): void
+    {
+        if (! $value) {
+            if ($this->menu_code === $this->lastAutoCode) {
+                $this->menu_code = null;
+            }
+            return;
+        }
+
+        if (blank($this->menu_code) || $this->menu_code === $this->lastAutoCode) {
+            $code = CodeGeneratorService::generateMenuCode((int) $value);
+            $this->menu_code = $code;
+            $this->lastAutoCode = $code;
+        }
+    }
+
     #[On('open-create-meal-modal')]
     public function openModal(): void
     {
         $this->resetForm();
+        $this->generateCode();
         $this->dispatch('open-modal', 'create-meal-modal');
     }
 
@@ -84,6 +112,7 @@ class CreateMealModal extends Component
     {
         $this->name = '';
         $this->menu_code = null;
+        $this->lastAutoCode = null;
         $this->setDefaultCategory();
         $this->price = '';
         $this->description = null;

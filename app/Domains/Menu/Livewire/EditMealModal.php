@@ -62,6 +62,13 @@ class EditMealModal extends Component
         $this->dispatch('open-modal', 'edit-meal-modal');
     }
 
+    public function updatedCategoryId($value): void
+    {
+        if ($value) {
+            $this->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $value);
+        }
+    }
+
     public function save(UpdateMealAction $action): void
     {
         $this->validate();

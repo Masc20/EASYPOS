@@ -14,6 +14,7 @@ class MealForm extends Component
     public ?int $mealId = null;
     public string $name = '';
     public ?string $menu_code = null;
+    public ?string $lastAutoCode = null;
     public ?int $category_id = null;
     public ?string $price = '';
     public ?string $cost_price = '';
@@ -55,8 +56,10 @@ class MealForm extends Component
 
     public function updatedCategoryId($value): void
     {
-        if (! $this->mealId && filled($value)) {
-            $this->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $value);
+        if (! $this->mealId && filled($value) && (blank($this->menu_code) || $this->menu_code === $this->lastAutoCode)) {
+            $code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $value);
+            $this->menu_code = $code;
+            $this->lastAutoCode = $code;
         }
     }
 

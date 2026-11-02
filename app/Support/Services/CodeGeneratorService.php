@@ -67,13 +67,23 @@ class CodeGeneratorService
             }
         }
 
+        $rolesById = \Spatie\Permission\Models\Role::pluck('name', 'id')->toArray();
+
         $map = [];
         foreach ($branches as $bId => $bCode) {
             $branchCode = Str::upper($bCode ?: 'HQ');
             foreach (StaffRole::cases() as $role) {
                 $prefix = "{$branchCode}-{$role->codePrefix()}-";
                 $next = ($maxByPrefix[$prefix] ?? 0) + 1;
-                $map["{$bId}:{$role->value}"] = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+                $generated = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+                $map["{$bId}:{$role->value}"] = $generated;
+            }
+            foreach ($rolesById as $roleId => $roleName) {
+                $roleEnum = StaffRole::tryFrom($roleName);
+                $rolePrefix = $roleEnum ? $roleEnum->codePrefix() : Str::upper(substr(preg_replace('/[^a-zA-Z]/', '', (string) $roleName), 0, 3) ?: 'STF');
+                $prefix = "{$branchCode}-{$rolePrefix}-";
+                $next = ($maxByPrefix[$prefix] ?? 0) + 1;
+                $map["{$bId}:{$roleId}"] = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
             }
         }
 
@@ -92,7 +102,7 @@ class CodeGeneratorService
             $categoryName = MealCategory::whereKey($categoryId)->value('name');
             if (filled($categoryName)) {
                 $clean = Str::upper(preg_replace('/[^a-zA-Z]/', '', $categoryName));
-                $prefix = strlen($clean) >= 3 ? substr($clean, 0, 3) : str_pad($clean, 3, 'X');
+                $prefix = strlen($clean) >= 1 ? substr($clean, 0, 1) : str_pad($clean, 1, 'X');
             }
         }
 
@@ -125,7 +135,7 @@ class CodeGeneratorService
 
         $maxByPrefix = [];
         foreach ($existingCodes as $code) {
-            if (preg_match('/^([A-Z]{3}-)(0*[0-9]+)$/', (string) $code, $m)) {
+            if (preg_match('/^([A-Z]{1,3}-)(0*[0-9]+)$/', (string) $code, $m)) {
                 $p = $m[1];
                 $num = (int) $m[2];
                 if (! isset($maxByPrefix[$p]) || $num > $maxByPrefix[$p]) {
@@ -137,7 +147,7 @@ class CodeGeneratorService
         $map = [];
         foreach ($categories as $catId => $catName) {
             $clean = Str::upper(preg_replace('/[^a-zA-Z]/', '', (string) $catName));
-            $prefix = (strlen($clean) >= 3 ? substr($clean, 0, 3) : str_pad($clean, 3, 'X')) . '-';
+            $prefix = (strlen($clean) >= 1 ? substr($clean, 0, 1) : str_pad($clean, 1, 'X')) . '-';
             $next = ($maxByPrefix[$prefix] ?? 0) + 1;
             $map[(int) $catId] = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
         }

@@ -22,26 +22,16 @@ class MealCategoryForm
                 TextInput::make('name')
                     ->required()
                     ->maxLength(100)
-                    ->extraInputAttributes(fn ($record) => $record ? [] : [
-                        'x-on:input' => '
-                            const slug = ($el.value || "")
-                                .toLowerCase()
-                                .trim()
-                                .replace(/[^a-z0-9\s-]/g, "")
-                                .replace(/[\s_-]+/g, "-")
-                                .replace(/^-+|-+$/g, "");
-                            const slugInput = $el.closest("form")?.querySelector("[data-category-slug-input]");
-                            if (slugInput) {
-                                slugInput.value = slug;
-                                slugInput.dispatchEvent(new Event("input", { bubbles: true }));
-                            }
-                        ',
-                    ]),
+                    ->live(onBlur: true)
+                    ->afterStateUpdated(function (?string $state, callable $set, $record) {
+                        if (! $record && filled($state)) {
+                            $set('slug', \Illuminate\Support\Str::slug($state));
+                        }
+                    }),
 
                 TextInput::make('slug')
                     ->required()
-                    ->maxLength(100)
-                    ->extraInputAttributes(['data-category-slug-input' => 'true']),
+                    ->maxLength(100),
 
                 TextInput::make('display_order')
                     ->required()

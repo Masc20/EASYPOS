@@ -78,11 +78,11 @@ class CodeGeneratorAndEnumsTest extends TestCase
             'price' => 250.00,
         ]);
 
-        $this->assertEquals('BUR-001', $meal1->menu_code);
-        $this->assertEquals('BUR-002', $meal2->menu_code);
+        $this->assertEquals('B-001', $meal1->menu_code);
+        $this->assertEquals('B-002', $meal2->menu_code);
 
         $map = CodeGeneratorService::getCategoryMenuCodeMap();
-        $this->assertEquals('BUR-003', $map[$category->id]);
+        $this->assertEquals('B-003', $map[$category->id]);
     }
 
     public function test_auto_generates_emp_id_based_on_branch_position_and_sequence(): void
@@ -114,5 +114,70 @@ class CodeGeneratorAndEnumsTest extends TestCase
 
         $adminId = CodeGeneratorService::generateEmpId(null, StaffRole::OWNER->value);
         $this->assertEquals('HQ-ADM-001', $adminId);
+    }
+
+    public function test_filament_modals_render_clean_html_and_reactively_update_codes(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+
+        $branch1 = Branch::firstOrCreate(['code' => 'B01'], ['name' => 'Branch One', 'is_active' => true]);
+        $branch2 = Branch::firstOrCreate(['code' => 'B02'], ['name' => 'Branch Two', 'is_active' => true]);
+
+        $cat1 = MealCategory::firstOrCreate(['slug' => 'burgers'], ['name' => 'Burgers', 'is_active' => true]);
+        $cat2 = MealCategory::firstOrCreate(['slug' => 'drinks'], ['name' => 'Drinks', 'is_active' => true]);
+
+        $owner = User::where('email', 'owner@easypos.local')->first() ?? User::create([
+            'name' => 'System Owner',
+            'email' => 'owner@easypos.local',
+            'password' => Hash::make('password'),
+            'emp_id' => 'HQ-ADM-001',
+            'is_active' => true,
+        ]);
+        if (! $owner->hasRole(StaffRole::OWNER->value)) {
+            $owner->assignRole(StaffRole::OWNER->value);
+        }
+        $this->actingAs($owner);
+
+        // 1. New Branch modal: ensure no leaked JS attributes and live name->code works
+        \Livewire\Livewire::test(\App\Filament\Resources\Branches\Pages\ListBranches::class)
+            ->mountAction('create')
+            ->assertDontSee('= 2) { code =')
+            ->setActionData(['name' => 'Makati Central'])
+            ->assertActionDataSet(['code' => 'MACE']);
+
+        // 2. Meal modal: changing category_id updates menu_code
+        \Livewire\Livewire::test(\App\Filament\Resources\Meals\Pages\ListMeals::class)
+            ->mountAction('create')
+            ->setActionData(['category_id' => $cat1->id])
+            ->assertActionDataSet(['menu_code' => CodeGeneratorService::generateMenuCode($cat1->id)])
+            ->setActionData(['category_id' => $cat2->id])
+            ->assertActionDataSet(['menu_code' => CodeGeneratorService::generateMenuCode($cat2->id)]);
+
+        // 3. Staff & Users modal: changing branch_id on Add Floor Staff updates emp_id
+        $expectedB1 = CodeGeneratorService::generateEmpId($branch1->id, StaffRole::CASHIER->value);
+        $expectedB2 = CodeGeneratorService::generateEmpId($branch2->id, StaffRole::CASHIER->value);
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Users\Pages\ListUsers::class)
+            ->mountAction('create_floor_staff')
+            ->assertActionDataSet(['emp_id' => $expectedB1])
+            ->setActionData(['branch_id' => $branch2->id])
+            ->assertActionDataSet(['emp_id' => $expectedB2]);
+
+        // 4. Edit Staff User modal: changing branch_id on an existing employee updates emp_id
+        $cashier = User::where('emp_id', 'B01-CSH-001')->first() ?? User::create([
+            'name' => 'Jane Cashier',
+            'emp_id' => 'B01-CSH-001',
+            'branch_id' => $branch1->id,
+            'pin_code' => '1234',
+            'is_active' => true,
+        ]);
+        if (! $cashier->hasRole(StaffRole::CASHIER->value)) {
+            $cashier->assignRole(StaffRole::CASHIER->value);
+        }
+
+        \Livewire\Livewire::test(\App\Filament\Resources\Users\Pages\ListUsers::class)
+            ->mountTableAction('edit', $cashier)
+            ->setTableActionData(['branch_id' => $branch2->id])
+            ->assertTableActionDataSet(['emp_id' => CodeGeneratorService::generateEmpId($branch2->id, StaffRole::CASHIER->value)]);
     }
 }

@@ -20,25 +20,6 @@ class ListUsers extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        $updateEmpIdJs = '
-            const form = $el.closest("form");
-            if (!form) return;
-            const mapEl = form.querySelector("[data-emp-map]");
-            const branchEl = form.querySelector("[data-branch-select]");
-            const roleEl = form.querySelector("[data-role-select]");
-            const empInput = form.querySelector("[data-emp-id-input]");
-            if (mapEl && empInput) {
-                const map = JSON.parse(mapEl.dataset.empMap || "{}");
-                const bId = branchEl && branchEl.value ? branchEl.value : "0";
-                const role = roleEl && roleEl.value ? roleEl.value : "cashier";
-                const code = map[bId + ":" + role];
-                if (code) {
-                    empInput.value = code;
-                    empInput.dispatchEvent(new Event("input", { bubbles: true }));
-                }
-            }
-        ';
-
         return [
             // 1. Dedicated Modal for Floor Staff (PIN-Based Terminal Access)
             Action::make('create_floor_staff')
@@ -46,12 +27,10 @@ class ListUsers extends ListRecords
                 ->color('primary')
                 ->modalHeading('Add Floor Staff (Terminal PIN)')
                 ->modalWidth('lg')
-                ->schema(function () use ($updateEmpIdJs) {
-                    $empMap = CodeGeneratorService::getEmpIdPreviewMap();
+                ->schema(function () {
                     $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
                     $firstBranchId = array_key_first($branches) ?? 1;
-                    $defaultCode = $empMap["{$firstBranchId}:" . StaffRole::CASHIER->value]
-                        ?? CodeGeneratorService::generateEmpId((int) $firstBranchId, StaffRole::CASHIER->value);
+                    $defaultCode = CodeGeneratorService::generateEmpId((int) $firstBranchId, StaffRole::CASHIER->value);
 
                     return [
                         TextInput::make('name')
@@ -64,31 +43,30 @@ class ListUsers extends ListRecords
                             ->options($branches)
                             ->default($firstBranchId)
                             ->required()
-                            ->extraInputAttributes([
-                                'data-branch-select' => 'true',
-                                'x-on:change' => $updateEmpIdJs,
-                            ]),
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $role = $get('role') ?: StaffRole::CASHIER->value;
+                                $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
+                            }),
 
                         Select::make('role')
                             ->label('Station Position')
                             ->options(StaffRole::floorOptions())
                             ->default(StaffRole::CASHIER->value)
                             ->required()
-                            ->extraInputAttributes([
-                                'data-role-select' => 'true',
-                                'x-on:change' => $updateEmpIdJs,
-                            ]),
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $branchId = $get('branch_id');
+                                $role = $state ?: StaffRole::CASHIER->value;
+                                $set('emp_id', CodeGeneratorService::generateEmpId($branchId ? (int) $branchId : null, $role));
+                            }),
 
                         TextInput::make('emp_id')
                             ->label('Employee ID (Auto-Generated)')
                             ->default($defaultCode)
                             ->required()
                             ->maxLength(50)
-                            ->unique('users', 'emp_id')
-                            ->extraInputAttributes([
-                                'data-emp-id-input' => 'true',
-                                'data-emp-map' => json_encode($empMap),
-                            ]),
+                            ->unique('users', 'emp_id'),
 
                         TextInput::make('pin_code')
                             ->label('4-Digit Terminal PIN')
@@ -133,11 +111,9 @@ class ListUsers extends ListRecords
                 ->color('gray')
                 ->modalHeading('Add Back-Office Admin / Manager')
                 ->modalWidth('lg')
-                ->schema(function () use ($updateEmpIdJs) {
-                    $empMap = CodeGeneratorService::getEmpIdPreviewMap();
+                ->schema(function () {
                     $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
-                    $defaultCode = $empMap['0:' . StaffRole::BRANCH_MANAGER->value]
-                        ?? CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value);
+                    $defaultCode = CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value);
 
                     return [
                         TextInput::make('name')
@@ -163,31 +139,30 @@ class ListUsers extends ListRecords
                             ->label('Assigned Branch')
                             ->options($branches)
                             ->placeholder('Global / HQ (All Branches)')
-                            ->extraInputAttributes([
-                                'data-branch-select' => 'true',
-                                'x-on:change' => $updateEmpIdJs,
-                            ]),
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $role = $get('role') ?: StaffRole::BRANCH_MANAGER->value;
+                                $set('emp_id', CodeGeneratorService::generateEmpId(filled($state) ? (int) $state : null, $role));
+                            }),
 
                         Select::make('role')
                             ->label('Administrative Role')
                             ->options(StaffRole::managementOptions())
                             ->default(StaffRole::BRANCH_MANAGER->value)
                             ->required()
-                            ->extraInputAttributes([
-                                'data-role-select' => 'true',
-                                'x-on:change' => $updateEmpIdJs,
-                            ]),
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $branchId = $get('branch_id');
+                                $role = $state ?: StaffRole::BRANCH_MANAGER->value;
+                                $set('emp_id', CodeGeneratorService::generateEmpId(filled($branchId) ? (int) $branchId : null, $role));
+                            }),
 
                         TextInput::make('emp_id')
                             ->label('Employee ID (Auto-Generated)')
                             ->default($defaultCode)
                             ->required()
                             ->maxLength(50)
-                            ->unique('users', 'emp_id')
-                            ->extraInputAttributes([
-                                'data-emp-id-input' => 'true',
-                                'data-emp-map' => json_encode($empMap),
-                            ]),
+                            ->unique('users', 'emp_id'),
 
                         TextInput::make('pin_code')
                             ->label('Manager 4-Digit Approval PIN')

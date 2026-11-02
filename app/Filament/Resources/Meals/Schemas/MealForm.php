@@ -23,20 +23,17 @@ class MealForm
                     ->relationship('category', 'name')
                     ->required()
                     ->preload()
-                    ->extraInputAttributes(fn ($record) => $record ? [] : [
-                        'data-code-map' => json_encode(CodeGeneratorService::getCategoryMenuCodeMap()),
-                        'x-on:change' => '
-                            const map = JSON.parse($el.dataset.codeMap || "{}");
-                            const code = map[$el.value];
-                            if (code) {
-                                const codeInput = $el.closest("form")?.querySelector("[data-menu-code-input]");
-                                if (codeInput) {
-                                    codeInput.value = code;
-                                    codeInput.dispatchEvent(new Event("input", { bubbles: true }));
-                                }
-                            }
-                        ',
-                    ]),
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, $record) {
+                        if (! $state) {
+                            return;
+                        }
+                        if ($record && (int) $record->category_id === (int) $state && filled($record->menu_code)) {
+                            $set('menu_code', $record->menu_code);
+                            return;
+                        }
+                        $set('menu_code', CodeGeneratorService::generateMenuCode((int) $state));
+                    }),
 
                 Select::make('branch_id')
                     ->label('Assigned Branch')
@@ -53,8 +50,7 @@ class MealForm
                 TextInput::make('menu_code')
                     ->label('Menu Code (Auto-Generated)')
                     ->placeholder('Auto-generated from category')
-                    ->maxLength(50)
-                    ->extraInputAttributes(['data-menu-code-input' => 'true']),
+                    ->maxLength(50),
 
                 TextInput::make('price')
                     ->label('Selling Price')

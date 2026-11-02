@@ -17,7 +17,34 @@
         @enderror
     </div>
 
-    <x-ui.input label="Menu Code (optional)" name="menu_code" wire:model="menu_code" placeholder="e.g. M-01" class="uppercase font-mono" :error="$errors->first('menu_code')" />
+    <div>
+        <label class="block text-xs font-semibold uppercase tracking-wider text-brand-text mb-1.5">
+            Menu Code
+        </label>
+        <div class="relative">
+            <input
+                type="text"
+                name="menu_code"
+                wire:model="menu_code"
+                placeholder="Auto-generated"
+                wire:loading.attr="readonly"
+                wire:target="category_id, generateCode"
+                class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-2 text-sm text-brand-text uppercase font-mono placeholder:text-brand-text-muted/60 focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:focus:ring-brand-secondary/20 transition shadow-2xs {{ $errors->has('menu_code') ? 'border-brand-error ring-1 ring-brand-error/30' : '' }}"
+            />
+
+            <div wire:loading.flex wire:target="category_id, generateCode"
+                class="absolute inset-0 rounded-md border border-brand-border bg-brand-bg px-3.5 items-center gap-2 text-xs font-medium text-brand-text-muted pointer-events-none">
+                <svg class="h-3.5 w-3.5 animate-spin text-brand-primary dark:text-brand-secondary shrink-0" viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
+                </svg>
+                <span>Generating code...</span>
+            </div>
+        </div>
+        @error('menu_code')
+            <span class="mt-1 block text-xs font-medium text-brand-error">{{ $message }}</span>
+        @enderror
+    </div>
 </div>
 
 <x-ui.input label="Selling Price ({{ $currencySymbol }})" name="price" type="number" step="0.01" min="0" wire:model="price" placeholder="0.00" :prefix="$currencySymbol" :required="true" class="font-mono font-semibold" :error="$errors->first('price')" />

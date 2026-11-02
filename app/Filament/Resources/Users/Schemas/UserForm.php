@@ -25,14 +25,45 @@ class UserForm
                     ->relationship('branch', 'name')
                     ->placeholder('Global / HQ (All Branches)')
                     ->preload()
-                    ->default(null),
+                    ->default(null)
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
+                        $branchId = filled($state) ? (int) $state : null;
+                        $roleIds = (array) ($get('roles') ?? []);
+                        $roleName = ! empty($roleIds)
+                            ? (\Spatie\Permission\Models\Role::whereIn('id', $roleIds)->value('name') ?? StaffRole::CASHIER->value)
+                            : ($record?->roles?->first()?->name ?? StaffRole::CASHIER->value);
+
+                        if ($record && $record->branch_id === $branchId && $record->hasRole($roleName) && filled($record->emp_id)) {
+                            $set('emp_id', $record->emp_id);
+                            return;
+                        }
+
+                        $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $roleName));
+                    }),
 
                 Select::make('roles')
                     ->label('Position / Role')
                     ->relationship('roles', 'name')
                     ->multiple()
                     ->preload()
-                    ->required(),
+                    ->required()
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
+                        $branchValue = $get('branch_id');
+                        $branchId = filled($branchValue) ? (int) $branchValue : null;
+                        $roleIds = (array) ($state ?? []);
+                        $roleName = ! empty($roleIds)
+                            ? (\Spatie\Permission\Models\Role::whereIn('id', $roleIds)->value('name') ?? StaffRole::CASHIER->value)
+                            : ($record?->roles?->first()?->name ?? StaffRole::CASHIER->value);
+
+                        if ($record && $record->branch_id === $branchId && $record->hasRole($roleName) && filled($record->emp_id)) {
+                            $set('emp_id', $record->emp_id);
+                            return;
+                        }
+
+                        $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $roleName));
+                    }),
 
                 TextInput::make('emp_id')
                     ->label('Employee ID')
