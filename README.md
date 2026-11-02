@@ -1,7 +1,8 @@
 <div align="center">
 
 # EASYPOS
-### Enterprise Multi-Branch Point of Sale, Kitchen Display & Business Intelligence
+
+## Enterprise Multi-Branch Point of Sale, Kitchen Display & Business Intelligence
 
 [![Laravel](https://img.shields.io/badge/Laravel-12.x-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
 [![Livewire](https://img.shields.io/badge/Livewire-3.x-4E56A6?style=flat-square&logo=livewire&logoColor=white)](https://livewire.laravel.com)
@@ -14,19 +15,15 @@
 
 <br/>
 
-<p align="center">
-  A domain-driven point-of-sale and kitchen ecosystem engineered for multi-unit food and retail chains.<br/>
-  Combines a zero-latency touch terminal with an executive back-office command center.
-</p>
+ A domain-driven point-of-sale and kitchen ecosystem engineered for multi-unit food and retail chains.<br/>
+ Combines a zero-latency touch terminal with an executive back-office command center.
 
-<p align="center">
-  <a href="#quick-start"><b>Quick Start</b></a> -
-  <a href="#system-capabilities"><b>System Capabilities</b></a> -
-  <a href="#architecture--data-flow"><b>Architecture</b></a> -
-  <a href="#station-routing--rbac"><b>Station Routing</b></a> -
-  <a href="#seeded-credentials"><b>Credentials</b></a> -
-  <a href="#automated-testing"><b>Automated Testing</b></a>
-</p>
+[**Quick Start**](#quick-start) -
+[**System Capabilities**](#system-capabilities) -
+[**Architecture**](#architecture--data-flow) -
+[**Station Routing**](#station-routing--rbac) -
+[**Credentials**](#seeded-credentials) -
+[**Automated Testing**](#automated-testing)
 
 </div>
 
@@ -37,40 +34,26 @@
 
 <br/>
 
-<table width="100%">
-  <tbody>
-    <tr>
-      <td width="50%" valign="top">
-        <b>Core Architecture & Getting Started</b>
-        <ul>
-          <li><a href="#system-capabilities">System Capabilities</a>
-            <ul>
-              <li>Point of Sale (POS) & Void Engine</li>
-              <li>Kitchen Display System (KDS)</li>
-              <li>Sales Intelligence & BIR RR 16-2005</li>
-              <li>Catalog & Portion Management</li>
-              <li>Multi-Branch Governance</li>
-              <li>Security & Performance</li>
-            </ul>
-          </li>
-          <li><a href="#quick-start">Quick Start & Local Setup</a></li>
-          <li><a href="#seeded-credentials">Seeded Credentials & Test Accounts</a></li>
-        </ul>
-      </td>
-      <td width="50%" valign="top">
-        <b>Engineering & Specifications</b>
-        <ul>
-          <li><a href="#architecture--data-flow">Architecture & Data Flow Diagram</a></li>
-          <li><a href="#station-routing--rbac">Station Routing & Role-Based Access Control</a></li>
-          <li><a href="#automated-testing">Automated Testing & 16-Suite Coverage Matrix</a></li>
-          <li><a href="#repository-structure">Repository Structure (Modular Monolith)</a></li>
-          <li><a href="#thermal--print-specifications">Thermal & Print Specifications (80mm & A4)</a></li>
-          <li><a href="#license">License</a></li>
-        </ul>
-      </td>
-    </tr>
-  </tbody>
-</table>
+**Core Architecture & Getting Started**
+
+- [System Capabilities](#system-capabilities)
+  - Point of Sale (POS) & Void Engine
+  - Kitchen Display System (KDS)
+  - Sales Intelligence & BIR RR 16-2005
+  - Catalog & Portion Management
+  - Multi-Branch Governance
+  - Security & Performance
+- [Quick Start & Local Setup](#quick-start)
+- [Seeded Credentials & Test Accounts](#seeded-credentials)
+
+**Engineering & Specifications**
+
+- [Architecture & Data Flow Diagram](#architecture--data-flow)
+- [Station Routing & Role-Based Access Control](#station-routing--rbac)
+- [Automated Testing & 16-Suite Coverage Matrix](#automated-testing)
+- [Repository Structure (Modular Monolith)](#repository-structure)
+- [Thermal & Print Specifications (80mm & A4)](#thermal--print-specifications)
+- [License](#license)
 
 </details>
 
@@ -259,6 +242,10 @@ Staff sign in using **Email + Password**:
 
 ## Architecture & Data Flow
 
+<details>
+
+<summary>Open...</summary>
+
 ```mermaid
 flowchart LR
     subgraph Terminals["Floor Touch Terminals"]
@@ -285,6 +272,8 @@ flowchart LR
     Operations <--> DB[("Relational Storage")]
     BackOffice <--> DB
 ```
+
+</details>
 
 ---
 
