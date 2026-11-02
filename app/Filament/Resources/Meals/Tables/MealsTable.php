@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Meals\Tables;
 
+use App\Support\Constants\SystemConstants;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -42,7 +43,7 @@ class MealsTable
                     ->sortable(),
                 TextColumn::make('price')
                     ->label('Price')
-                    ->money('PHP')
+                    ->money(SystemConstants::CURRENCY_CODE)
                     ->sortable()
                     ->alignment('right'),
                 TextColumn::make('stock_quantity')

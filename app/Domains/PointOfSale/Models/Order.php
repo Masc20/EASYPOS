@@ -5,6 +5,7 @@ namespace App\Domains\PointOfSale\Models;
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Support\Constants\SystemConstants;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -102,7 +103,7 @@ class Order extends Model
             return 0.00;
         }
 
-        return round((float) $this->total_amount / 1.12, 2);
+        return round((float) $this->total_amount / SystemConstants::VAT_DIVISOR, 2);
     }
 
     /**
@@ -114,7 +115,7 @@ class Order extends Model
             return 0.00;
         }
 
-        return round($this->vatable_sales * 0.12, 2);
+        return round($this->vatable_sales * SystemConstants::VAT_RATE, 2);
     }
 
     /**

@@ -177,14 +177,14 @@
             <!-- Tax Breakdown (Official BIR Compliance) -->
             <div class="text-[10px] text-zinc-600 py-0.5">
                 <div class="font-bold uppercase tracking-wider text-zinc-700 mb-1">
-                    Tax Breakdown (12% VAT):
+                    Tax Breakdown ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}% VAT):
                 </div>
                 <div class="flex justify-between items-start mb-0.5">
-                    <span>VATable Sales (12%):</span>
+                    <span>VATable Sales ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}%):</span>
                     <span class="text-zinc-900">₱{{ number_format((float) $order->vatable_sales, 2) }}</span>
                 </div>
                 <div class="flex justify-between items-start mb-0.5">
-                    <span>VAT Amount (12%):</span>
+                    <span>VAT Amount ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}%):</span>
                     <span class="text-zinc-900">₱{{ number_format((float) $order->vat_amount, 2) }}</span>
                 </div>
                 <div class="flex justify-between items-start mb-0.5">

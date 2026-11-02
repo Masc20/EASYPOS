@@ -450,13 +450,13 @@
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
                         <div class="flex items-center justify-between py-2.5 gap-4">
-                            <span class="text-gray-600 dark:text-gray-400">VATable Sales (12% Base):</span>
+                            <span class="text-gray-600 dark:text-gray-400">VATable Sales ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}% Base):</span>
                             <span class="font-bold text-gray-900 dark:text-white font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['vatable_sales'] ?? 0, 2) }}
                             </span>
                         </div>
                         <div class="flex items-center justify-between py-2.5 gap-4">
-                            <span class="text-gray-600 dark:text-gray-400">VAT Output Amount (12%):</span>
+                            <span class="text-gray-600 dark:text-gray-400">VAT Output Amount ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}%):</span>
                             <span class="font-bold text-primary-600 dark:text-primary-400 font-mono whitespace-nowrap">
                                 ₱{{ number_format($summary['tax_summary']['vat_amount'] ?? 0, 2) }}
                             </span>
@@ -634,7 +634,7 @@
                                     VATable Sales
                                 </th>
                                 <th class="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap text-right">
-                                    12% VAT
+                                    {{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}% VAT
                                 </th>
                                 <th class="px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 whitespace-nowrap text-right">
                                     VAT-Exempt

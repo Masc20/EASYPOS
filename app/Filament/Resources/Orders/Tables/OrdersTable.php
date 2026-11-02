@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Orders\Tables;
 
 use App\Domains\PointOfSale\Actions\VoidOrderAction;
 use App\Domains\PointOfSale\Models\Order;
+use App\Support\Constants\SystemConstants;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -60,7 +61,7 @@ class OrdersTable
 
                 TextColumn::make('total_amount')
                     ->label('Net Total')
-                    ->money('PHP')
+                    ->money(SystemConstants::CURRENCY_CODE)
                     ->sortable()
                     ->alignment('right')
                     ->weight('bold'),

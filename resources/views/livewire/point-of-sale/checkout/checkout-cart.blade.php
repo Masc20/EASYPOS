@@ -84,7 +84,7 @@
 
     get discountAmount() {
         if (this.discountType === 'senior_pwd') {
-            return Math.round(this.subtotal * 0.20 * 100) / 100;
+            return Math.round(this.subtotal * {{ \App\Support\Constants\SystemConstants::SENIOR_PWD_DISCOUNT_RATE }} * 100) / 100;
         }
         if (this.discountType === 'custom') {
             return Math.min(this.subtotal, Math.max(0, parseFloat(this.customDiscount) || 0));
@@ -97,7 +97,7 @@
     },
 
     formatCurrency(num) {
-        return '₱' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return '{{ \App\Support\Constants\SystemConstants::CURRENCY_SYMBOL }}' + Number(num || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
 
     proceed() {
@@ -263,8 +263,8 @@
                 <select x-model="discountType"
                     class="rounded-md border border-brand-border bg-brand-bg px-2 py-1 text-xs text-brand-text focus:border-brand-primary focus:outline-none cursor-pointer">
                     <option value="none">No Discount</option>
-                    <option value="senior_pwd">Senior / PWD (20%)</option>
-                    <option value="custom">Custom (₱)</option>
+                    <option value="senior_pwd">Senior / PWD ({{ \App\Support\Constants\SystemConstants::SENIOR_PWD_DISCOUNT_PERCENTAGE }}%)</option>
+                    <option value="custom">Custom ({{ \App\Support\Constants\SystemConstants::CURRENCY_SYMBOL }})</option>
                 </select>
                 <template x-if="discountType === 'custom'">
                     <input type="number" step="0.01" min="0" x-model.number="customDiscount"

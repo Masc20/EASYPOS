@@ -5,6 +5,7 @@ namespace App\Domains\PointOfSale\Services;
 use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\OrderItem;
 use App\Domains\PointOfSale\Models\Payment;
+use App\Support\Constants\SystemConstants;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -79,12 +80,14 @@ class SalesAggregationService
             ->toArray();
 
         // BIR & Philippine Tax Summary
+        $vatDivisor = SystemConstants::VAT_DIVISOR;
+        $vatRate = SystemConstants::VAT_RATE;
         $taxStats = (clone $ordersQuery)
-            ->selectRaw('
+            ->selectRaw("
                 COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) > 0 THEN orders.total_amount ELSE 0 END), 0) as aggregated_vat_exempt_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / 1.12) ELSE 0 END), 0) as aggregated_vatable_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / 1.12) * 0.12 ELSE 0 END), 0) as aggregated_vat_amount
-            ')
+                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) ELSE 0 END), 0) as aggregated_vatable_sales,
+                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) * {$vatRate} ELSE 0 END), 0) as aggregated_vat_amount
+            ")
             ->first();
 
         $taxSummary = [
@@ -584,6 +587,9 @@ class SalesAggregationService
 
         $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
 
+        $vatDivisor = SystemConstants::VAT_DIVISOR;
+        $vatRate = SystemConstants::VAT_RATE;
+
         $results = (clone $query)
             ->selectRaw("
                 {$periodSql} as period_key,
@@ -591,8 +597,8 @@ class SalesAggregationService
                 COALESCE(SUM(orders.subtotal), 0) as gross_sales,
                 COALESCE(SUM(orders.discount_amount), 0) as total_discounts,
                 COALESCE(SUM(orders.total_amount), 0) as net_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / 1.12) ELSE 0 END), 0) as aggregated_vatable_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / 1.12) * 0.12 ELSE 0 END), 0) as aggregated_vat_amount,
+                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) ELSE 0 END), 0) as aggregated_vatable_sales,
+                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) * {$vatRate} ELSE 0 END), 0) as aggregated_vat_amount,
                 COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) > 0 THEN orders.total_amount ELSE 0 END), 0) as aggregated_vat_exempt_sales
             ")
             ->groupBy('period_key')
@@ -684,16 +690,19 @@ class SalesAggregationService
 
         $handle = fopen('php://temp', 'r+');
 
+        $currency = SystemConstants::CURRENCY_CODE;
+        $vatPct = SystemConstants::VAT_PERCENTAGE;
+
         fputcsv($handle, [
             'Period (' . ucfirst($interval) . ')',
             'Orders Count',
-            'Gross Sales (PHP)',
-            'Discounts Granted (PHP)',
-            'Net Sales (PHP)',
-            'VATable Sales (PHP)',
-            'VAT Amount 12% (PHP)',
-            'VAT-Exempt Sales (PHP)',
-            'Average Ticket (PHP)',
+            "Gross Sales ({$currency})",
+            "Discounts Granted ({$currency})",
+            "Net Sales ({$currency})",
+            "VATable Sales ({$currency})",
+            "VAT Amount {$vatPct}% ({$currency})",
+            "VAT-Exempt Sales ({$currency})",
+            "Average Ticket ({$currency})",
         ]);
 
         foreach ($report['items'] as $row) {

@@ -3,6 +3,7 @@
 namespace App\Domains\PointOfSale\Livewire\Checkout;
 
 use App\Domains\Menu\Models\Meal;
+use App\Support\Constants\SystemConstants;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -138,7 +139,7 @@ class CheckoutCart extends Component
     public function getDiscountAmountProperty(): float
     {
         if ($this->discountType === 'senior_pwd') {
-            return round($this->subtotal * 0.20, 2); // 20% RA 9994 / RA 10754 Senior & PWD Discount
+            return round($this->subtotal * SystemConstants::SENIOR_PWD_DISCOUNT_RATE, 2); // 20% RA 9994 / RA 10754 Senior & PWD Discount
         }
 
         if ($this->discountType === 'custom') {

@@ -8,11 +8,14 @@ class SystemConstants
      * Value Added Tax (VAT) rate in the Philippines (12%).
      */
     public const VAT_RATE = 0.12;
+    public const VAT_DIVISOR = 1.12;
+    public const VAT_PERCENTAGE = 12;
 
     /**
      * Senior Citizen and Person with Disability (PWD) statutory discount rate (20%).
      */
     public const SENIOR_PWD_DISCOUNT_RATE = 0.20;
+    public const SENIOR_PWD_DISCOUNT_PERCENTAGE = 20;
 
     /**
      * Default currency code and symbol.

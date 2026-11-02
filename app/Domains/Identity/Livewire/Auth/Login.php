@@ -4,6 +4,7 @@ namespace App\Domains\Identity\Livewire\Auth;
 
 use App\Domains\Identity\Events\UserLoggedIn;
 use App\Domains\Identity\Models\User;
+use App\Support\Constants\SystemConstants;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\RateLimiter;
@@ -91,10 +92,10 @@ class Login extends Component
         Auth::login($user);
         session()->regenerate();
 
-        session(['auth_method' => 'pin']);
+        session([SystemConstants::SESSION_AUTH_METHOD => 'pin']);
 
         if ($user->branch_id) {
-            session(['current_branch_id' => $user->branch_id]);
+            session([SystemConstants::SESSION_CURRENT_BRANCH => $user->branch_id]);
         }
 
         event(new UserLoggedIn($user));

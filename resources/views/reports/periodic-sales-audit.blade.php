@@ -108,11 +108,11 @@
                 <span class="text-base font-black text-gray-900 font-mono">{{ number_format($totals['orders_count']) }}</span>
             </div>
             <div class="p-3 bg-white rounded-lg border border-gray-200">
-                <span class="text-[10px] font-bold uppercase text-gray-500 block">VATable Sales (12%)</span>
+                <span class="text-[10px] font-bold uppercase text-gray-500 block">VATable Sales ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}%)</span>
                 <span class="text-base font-bold text-gray-800 font-mono">₱{{ number_format($totals['vatable_sales'], 2) }}</span>
             </div>
             <div class="p-3 bg-white rounded-lg border border-gray-200">
-                <span class="text-[10px] font-bold uppercase text-[#960D10] block">VAT Output (12%)</span>
+                <span class="text-[10px] font-bold uppercase text-[#960D10] block">VAT Output ({{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}%)</span>
                 <span class="text-base font-bold text-[#960D10] font-mono">₱{{ number_format($totals['vat_amount'], 2) }}</span>
             </div>
             <div class="p-3 bg-white rounded-lg border border-gray-200">
@@ -136,7 +136,7 @@
                         <th class="py-2.5 px-3 border-r border-gray-200 text-right">Discounts</th>
                         <th class="py-2.5 px-3 border-r border-gray-200 text-right">Net Sales</th>
                         <th class="py-2.5 px-3 border-r border-gray-200 text-right">VATable</th>
-                        <th class="py-2.5 px-3 border-r border-gray-200 text-right">12% VAT</th>
+                        <th class="py-2.5 px-3 border-r border-gray-200 text-right">{{ \App\Support\Constants\SystemConstants::VAT_PERCENTAGE }}% VAT</th>
                         <th class="py-2.5 px-3 border-r border-gray-200 text-right">VAT-Exempt</th>
                         <th class="py-2.5 px-3 text-right">Avg Ticket</th>
                     </tr>

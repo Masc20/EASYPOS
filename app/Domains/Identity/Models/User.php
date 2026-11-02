@@ -3,6 +3,7 @@
 namespace App\Domains\Identity\Models;
 
 use App\Domains\Branches\Models\Branch;
+use App\Support\Constants\SystemConstants;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -98,7 +99,7 @@ class User extends Authenticatable implements FilamentUser
         if ($panel->getId() === 'admin') {
             // Security gate: A 4-digit PIN terminal session can NEVER access the admin panel.
             // Full email + password authentication is strictly required for back-office administration.
-            if (session('auth_method') === 'pin') {
+            if (session(SystemConstants::SESSION_AUTH_METHOD) === 'pin') {
                 return false;
             }
 
