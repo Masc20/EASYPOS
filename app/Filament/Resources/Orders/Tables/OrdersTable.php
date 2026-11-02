@@ -50,7 +50,6 @@ class OrdersTable
                     ->color(fn (string $state): string => match ($state) {
                         'dine_in' => 'primary',
                         'takeout' => 'warning',
-                        'delivery' => 'success',
                         default => 'gray',
                     })
                     ->formatStateUsing(fn (string $state): string => strtoupper(str_replace('_', ' ', $state))),
@@ -93,7 +92,6 @@ class OrdersTable
                     ->options([
                         'dine_in' => 'Dine-In',
                         'takeout' => 'Takeout',
-                        'delivery' => 'Delivery',
                     ]),
 
                 SelectFilter::make('status')

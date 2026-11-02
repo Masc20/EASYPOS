@@ -65,6 +65,19 @@ class User extends Authenticatable implements FilamentUser
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (User $user) {
+            if (blank($user->emp_id)) {
+                $role = filled($user->email) ? 'branch-manager' : 'cashier';
+                $user->emp_id = \App\Support\Services\CodeGeneratorService::generateEmpId(
+                    $user->branch_id ? (int) $user->branch_id : null,
+                    $role
+                );
+            }
+        });
+    }
+
     /**
      * The branch this employee belongs to (null for global Owner).
      */

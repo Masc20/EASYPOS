@@ -40,27 +40,21 @@
             </div>
         </div>
 
-        <!-- Sidebar: Active Order Cart & Modals (1 col) -->
+        <!-- Sidebar: Active Order Cart (1 col) -->
         <div class="space-y-5">
             <div class="rounded-lg border border-brand-border bg-brand-card p-4 shadow-2xs">
                 <livewire:pos.checkout.checkout-cart />
             </div>
-
-            <!-- Checkout Payment Modal -->
-
-            <!-- Manager PIN Authorization Modal (Order Void / Cancellation) -->
-            <livewire:pos.checkout.manager-pin-modal />
-            <livewire:pos.checkout.checkout-modal />
-
-            <!-- Official Sales Receipt Modal -->
-            <livewire:pos.checkout.receipt-preview />
-
-            <!-- Cashier Read-Only Kitchen Order Progress Slide-Over -->
-            <livewire:pos.order-progress />
         </div>
     </div>
 
-    <!-- Toast Alert Notification Container for POS Warnings & 86'd alerts -->
+    <!-- Modals & Slide-Overs at Root Level (Isolated Stacking Context) -->
+    <livewire:pos.order-progress />
+    <livewire:pos.checkout.checkout-modal />
+    <livewire:pos.checkout.receipt-preview />
+    <livewire:pos.checkout.manager-pin-modal />
+
+    <!-- Toast Alert Notification Container for POS Warnings & 86'd alerts (Highest Z-Index) -->
     <div x-data="{
         toasts: [],
         add(detail) {
@@ -68,24 +62,37 @@
             const toast = typeof data === 'object' && data !== null ? data : { message: String(data), type: 'warning' };
             const id = Date.now() + Math.random();
             this.toasts.push({ id, message: toast.message || 'Notification', type: toast.type || 'warning' });
-            setTimeout(() => this.remove(id), 3500);
+            setTimeout(() => this.remove(id), 4000);
         },
         remove(id) {
             this.toasts = this.toasts.filter(t => t.id !== id);
         }
     }" x-on:pos-alert.window="add($event.detail)"
-        class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm pointer-events-none">
+        class="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm pointer-events-none">
         <template x-for="t in toasts" :key="t.id">
-            <div class="pointer-events-auto flex items-center gap-2.5 px-4 py-2.5 rounded-lg border shadow-lg text-xs font-medium transition-all"
-                :class="t.type === 'error' ? 'bg-brand-error text-white border-brand-error' :
-                    (t.type === 'warning' ? 'bg-amber-600 text-white border-amber-700' :
-                        'bg-brand-card text-brand-text border-brand-border')">
-                <svg class="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd"
-                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                        clip-rule="evenodd" />
-                </svg>
-                <span x-text="t.message"></span>
+            <div class="pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-lg border shadow-xl text-xs font-semibold transition-all transform ease-out duration-200"
+                :class="t.type === 'error' ? 'bg-brand-error text-white border-brand-error shadow-brand-error/20' :
+                    (t.type === 'success' ? 'bg-emerald-600 text-white border-emerald-700 shadow-emerald-600/20' :
+                        (t.type === 'warning' ? 'bg-amber-600 text-white border-amber-700 shadow-amber-600/20' :
+                            'bg-brand-card text-brand-text border-brand-border shadow-lg'))">
+                <template x-if="t.type === 'success'">
+                    <svg class="h-4 w-4 shrink-0 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+                    </svg>
+                </template>
+                <template x-if="t.type === 'error'">
+                    <svg class="h-4 w-4 shrink-0 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </template>
+                <template x-if="t.type !== 'success' && t.type !== 'error'">
+                    <svg class="h-4 w-4 shrink-0 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </template>
+                <span x-text="t.message" class="leading-tight"></span>
             </div>
         </template>
     </div>

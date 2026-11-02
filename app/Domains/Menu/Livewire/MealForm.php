@@ -53,6 +53,13 @@ class MealForm extends Component
         }
     }
 
+    public function updatedCategoryId($value): void
+    {
+        if (! $this->mealId && filled($value)) {
+            $this->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $value);
+        }
+    }
+
     #[On('open-meal-modal')]
     public function openNewMealModal(): void
     {

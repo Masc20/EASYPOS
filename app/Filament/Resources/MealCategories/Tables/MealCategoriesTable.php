@@ -58,7 +58,9 @@ class MealCategoriesTable
                     ->label('Active'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modal()
+                    ->modalWidth('md'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

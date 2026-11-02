@@ -120,7 +120,9 @@ class UsersTable
                             ->send();
                     }),
 
-                EditAction::make(),
+                EditAction::make()
+                    ->modal()
+                    ->modalWidth('lg'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

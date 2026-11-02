@@ -2,19 +2,14 @@
 
 namespace App\Filament\Resources\Roles;
 
-use App\Domains\Identity\Models\User;
-use App\Filament\Resources\Roles\Pages\CreateRole as CreateRolePage;
-use App\Filament\Resources\Roles\Pages\EditRole as EditRolePage;
 use App\Filament\Resources\Roles\Pages\ListRoles as ListRolesPage;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Filament\Resources\Roles\Tables\RolesTable;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
+use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use BackedEnum;
 use UnitEnum;
 
 class RoleResource extends Resource
@@ -49,8 +44,6 @@ class RoleResource extends Resource
     {
         return [
             'index' => ListRolesPage::route('/'),
-            'create' => CreateRolePage::route('/create'),
-            'edit' => EditRolePage::route('/{record}/edit'),
         ];
     }
 }

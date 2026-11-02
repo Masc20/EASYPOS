@@ -54,8 +54,6 @@ class MealCategoryResource extends Resource
     {
         return [
             'index' => ListMealCategories::route('/'),
-            'create' => CreateMealCategory::route('/create'),
-            'edit' => EditMealCategory::route('/{record}/edit'),
         ];
     }
 }

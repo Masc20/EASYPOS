@@ -26,6 +26,15 @@ class Branch extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Branch $branch) {
+            if (blank($branch->code)) {
+                $branch->code = \App\Support\Services\CodeGeneratorService::generateBranchCode($branch->name);
+            }
+        });
+    }
+
     public function staff(): HasMany
     {
         return $this->hasMany(User::class);

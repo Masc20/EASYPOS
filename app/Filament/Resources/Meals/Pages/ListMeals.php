@@ -13,7 +13,10 @@ class ListMeals extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
-            CreateAction::make(),
+            CreateAction::make()
+                ->label('New Dish / Meal')
+                ->modal()
+                ->modalWidth('2xl'),
         ];
     }
 }

@@ -2,7 +2,8 @@
 
 namespace App\Filament\Resources\Roles\Schemas;
 
-use Filament\Forms\Components\Select;
+use App\Support\Enums\PermissionEnum;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Schema;
 
@@ -16,15 +17,16 @@ class RoleForm
                     ->label('Role Name')
                     ->required()
                     ->maxLength(255)
-                    ->unique('roles', 'name', ignoreRecord: true),
+                    ->unique('roles', 'name', ignoreRecord: true)
+                    ->placeholder('e.g. shift-supervisor'),
 
-                Select::make('permissions')
-                    ->label('Permissions')
-                    ->multiple()
-                    ->options(\Spatie\Permission\Models\Permission::pluck('name', 'name')
-                        ->toArray())
+                CheckboxList::make('permissions')
+                    ->label('Assigned System Permissions')
+                    ->relationship('permissions', 'name')
+                    ->getOptionLabelFromRecordUsing(fn ($record) => PermissionEnum::label($record->name))
+                    ->columns(2)
                     ->searchable()
-                    ->helperText('Select the permissions this role should have.'),
+                    ->helperText('Select the capabilities granted to staff assigned this role.'),
             ]);
     }
 }

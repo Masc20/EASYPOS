@@ -1,5 +1,14 @@
 <x-filament-panels::page>
-    <div class="flex flex-col gap-6 w-full">
+    <div class="flex flex-col gap-6 w-full relative">
+
+        <!-- Instant Skeleton / Loading Indicator for Filter Transitions -->
+        <div wire:loading.delay class="w-full rounded-lg bg-[#960D10]/10 border border-[#960D10]/20 px-4 py-2 text-xs font-semibold text-[#960D10] dark:text-[#F28C18] flex items-center gap-2 animate-pulse">
+            <svg class="h-4 w-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>Refreshing financial ledger & sales records...</span>
+        </div>
 
         <!-- 1. Unified Filter & Controls Bar -->
         <x-filament::section icon="heroicon-m-funnel" compact>
@@ -483,10 +492,9 @@
                     </x-slot>
 
                     @php
-                        $totalTypesCount = array_sum($summary['order_types_breakdown']);
                         $dineInCount = $summary['order_types_breakdown']['dine_in'] ?? 0;
                         $takeoutCount = $summary['order_types_breakdown']['takeout'] ?? 0;
-                        $deliveryCount = $summary['order_types_breakdown']['delivery'] ?? 0;
+                        $totalTypesCount = $dineInCount + $takeoutCount;
                     @endphp
 
                     <div class="flex flex-col gap-3.5 pt-1">
@@ -519,22 +527,6 @@
                             </div>
                             <div class="h-2 w-full rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
                                 <div class="h-full bg-amber-500 rounded-full" style="width: {{ $totalTypesCount > 0 ? ($takeoutCount / $totalTypesCount) * 100 : 0 }}%"></div>
-                            </div>
-                        </div>
-
-                        <!-- Delivery -->
-                        <div>
-                            <div class="flex justify-between text-xs mb-1">
-                                <span class="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-1.5">
-                                    <span class="h-2 w-2 rounded-full bg-emerald-500"></span> Delivery
-                                </span>
-                                <span class="font-bold text-gray-900 dark:text-white">
-                                    {{ $deliveryCount }} orders
-                                    <span class="text-gray-400 font-normal">({{ $totalTypesCount > 0 ? round(($deliveryCount / $totalTypesCount) * 100, 1) : 0 }}%)</span>
-                                </span>
-                            </div>
-                            <div class="h-2 w-full rounded-full bg-gray-100 dark:bg-white/10 overflow-hidden">
-                                <div class="h-full bg-emerald-500 rounded-full" style="width: {{ $totalTypesCount > 0 ? ($deliveryCount / $totalTypesCount) * 100 : 0 }}%"></div>
                             </div>
                         </div>
                     </div>

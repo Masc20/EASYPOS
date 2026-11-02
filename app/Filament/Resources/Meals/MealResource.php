@@ -56,8 +56,6 @@ class MealResource extends Resource
     {
         return [
             'index' => ListMeals::route('/'),
-            'create' => CreateMeal::route('/create'),
-            'edit' => EditMeal::route('/{record}/edit'),
         ];
     }
 

@@ -26,6 +26,15 @@ class Meal extends Model
         'kitchen_tags' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::creating(function (Meal $meal) {
+            if (blank($meal->menu_code) && $meal->category_id) {
+                $meal->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $meal->category_id);
+            }
+        });
+    }
+
     /**
      * Determine if the meal is sold-out (86'd).
      */

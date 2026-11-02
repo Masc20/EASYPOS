@@ -28,7 +28,7 @@
     "
     x-on:keydown.escape.window="show = false"
     x-cloak
-    class="relative z-100"
+    class="relative z-[100]"
     role="dialog"
     aria-modal="true">
 
@@ -41,10 +41,10 @@
         x-transition:leave-start="opacity-100"
         x-transition:leave-end="opacity-0"
         x-on:click="show = false"
-        class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity"></div>
+        class="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity z-[90]"></div>
 
     <!-- Centered dialog container -->
-    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+    <div class="fixed inset-0 z-[100] w-screen overflow-y-auto">
         <div class="flex min-h-full items-center justify-center p-3 sm:p-4 text-center">
             <div x-show="show"
                 x-transition:enter="ease-out duration-150"

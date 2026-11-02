@@ -1,5 +1,14 @@
 <x-filament-panels::page>
-    <div class="flex flex-col gap-6 w-full">
+    <div class="flex flex-col gap-6 w-full relative">
+
+        <!-- Instant Skeleton / Loading Indicator for Filter Transitions -->
+        <div wire:loading.delay class="w-full rounded-lg bg-[#960D10]/10 border border-[#960D10]/20 px-4 py-2 text-xs font-semibold text-[#960D10] dark:text-[#F28C18] flex items-center gap-2 animate-pulse">
+            <svg class="h-4 w-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+            </svg>
+            <span>Updating real-time dashboard metrics...</span>
+        </div>
 
         <!-- 1. Executive Timeframe & Branch Filter Bar -->
         <x-filament::section icon="heroicon-m-funnel" compact>

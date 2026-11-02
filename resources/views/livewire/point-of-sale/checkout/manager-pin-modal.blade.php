@@ -31,17 +31,15 @@
                     manager_pin: this.pin,
                     reason: this.reason
                 }).then((success) => {
-                    // success = true means the void executed without exception
                     if (success) {
                         $dispatch('close-modal', 'manager-pin-modal');
+                    } else {
+                        this.error = $wire.errorMessage || 'Authorization failed. Please check manager credentials.';
                     }
-                    // Always reset processing state so the button becomes clickable again
                     this.isProcessing = false;
                 })
-                .catch(() => {
-                    // Server threw an exception (wrong PIN, invalid manager ID, branch mismatch, etc.)
-                    // Livewire includes the exception message; bind it to the error variable
-                    // so the red error box below appears.
+                .catch((err) => {
+                    this.error = err?.message || 'Server error occurred during void request.';
                     this.isProcessing = false;
                 });
         }

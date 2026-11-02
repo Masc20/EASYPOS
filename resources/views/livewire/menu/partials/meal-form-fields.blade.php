@@ -5,7 +5,7 @@
         <label class="block text-xs font-semibold uppercase tracking-wider text-brand-text mb-1.5">
             Category <span class="text-brand-error">*</span>
         </label>
-        <select wire:model="category_id"
+        <select wire:model.live="category_id"
             class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-2 text-sm text-brand-text focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition shadow-2xs">
             <option value="">Select Category</option>
             @foreach ($categories as $category)

@@ -74,7 +74,9 @@ class MealsTable
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modal()
+                    ->modalWidth('2xl'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

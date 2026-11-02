@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Roles\Tables;
 
+use App\Support\Enums\PermissionEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -17,14 +18,19 @@ class RolesTable
             ->columns([
                 TextColumn::make('name')
                     ->label('Role Name')
+                    ->formatStateUsing(fn (string $state) => str_replace(['-', '_'], ' ', ucwords($state, '-_')))
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->weight('bold'),
 
                 TextColumn::make('permissions.name')
-                    ->label('Permissions')
+                    ->label('Assigned Capabilities')
                     ->badge()
+                    ->formatStateUsing(fn (string $state) => PermissionEnum::label($state))
                     ->searchable()
-                    ->toggleable(),
+                    ->toggleable()
+                    ->width('80%')
+                    ->wrap(),
 
                 TextColumn::make('created_at')
                     ->dateTime()
@@ -34,12 +40,13 @@ class RolesTable
             ->filters([
                 SelectFilter::make('name')
                     ->label('Role Name')
-                    ->options(\Spatie\Permission\Models\Role::pluck('name', 'name')
-                        ->toArray())
+                    ->options(\Spatie\Permission\Models\Role::pluck('name', 'name')->toArray())
                     ->searchable(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modal()
+                    ->modalWidth('lg'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

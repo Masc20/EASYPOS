@@ -27,6 +27,8 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->brandName('EASYPOS Admin')
             ->login()
+            ->darkMode(true)
+            ->spa()
             ->colors([
                 'primary' => [
                     50 => '#FBF3F3',

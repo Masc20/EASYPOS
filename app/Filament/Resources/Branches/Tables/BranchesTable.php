@@ -50,7 +50,9 @@ class BranchesTable
                     ->falseLabel('Inactive Branches Only'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->modal()
+                    ->modalWidth('lg'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

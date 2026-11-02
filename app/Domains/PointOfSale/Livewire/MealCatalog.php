@@ -12,15 +12,10 @@ class MealCatalog extends Component
     public ?int $selectedCategoryId = null;
     public string $search = '';
 
-    #[On('catalog-search')]
-    public function handleSearch(string $query): void
-    {
-        $this->search = trim($query);
-    }
-
     #[On('meal-updated')]
     #[On('meal-availability-toggled')]
     #[On('order-created')]
+    #[On('order-voided')]
     public function refreshCatalog(): void
     {
         // Re-render when menu items or stock levels change
