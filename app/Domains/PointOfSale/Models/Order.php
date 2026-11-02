@@ -6,6 +6,7 @@ use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Kitchen\Models\KitchenTicket;
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\OrderType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -87,11 +88,7 @@ class Order extends Model
      */
     public function getOrderTypeLabelAttribute(): string
     {
-        return match ($this->order_type) {
-            'dine_in' => 'Dine In',
-            'takeout' => 'Takeout',
-            default => ucfirst($this->order_type),
-        };
+        return OrderType::labelFor((string) $this->order_type);
     }
 
     /**

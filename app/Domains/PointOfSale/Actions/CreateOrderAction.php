@@ -7,6 +7,9 @@ use App\Domains\Menu\Models\Meal;
 use App\Domains\PointOfSale\Events\OrderCreated;
 use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\OrderItem;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\OrderType;
+use App\Support\Enums\PaymentStatus;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -50,8 +53,8 @@ class CreateOrderAction
             $sequence = str_pad((string) ($todayCount + 1), 4, '0', STR_PAD_LEFT);
             $orderNumber = "{$branchCode}-{$dateStr}-{$sequence}";
 
-            $orderType = $data['order_type'] ?? 'dine_in';
-            $tableNumber = ($orderType === 'dine_in') ? ($data['table_number'] ?? null) : null;
+            $orderType = $data['order_type'] ?? OrderType::DINE_IN->value;
+            $tableNumber = ($orderType === OrderType::DINE_IN->value) ? ($data['table_number'] ?? null) : null;
             $customerName = $data['customer_name'] ?? null;
             $discountAmount = (float) ($data['discount_amount'] ?? 0);
             $notes = $data['notes'] ?? null;
@@ -121,8 +124,8 @@ class CreateOrderAction
                 'discount_amount' => $discountAmount,
                 'tax_amount' => $taxAmount,
                 'total_amount' => $totalAmount,
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
+                'status' => OrderStatus::PENDING->value,
+                'payment_status' => PaymentStatus::UNPAID->value,
                 'notes' => $notes,
             ]);
 

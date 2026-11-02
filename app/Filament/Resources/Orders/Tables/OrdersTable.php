@@ -5,6 +5,8 @@ namespace App\Filament\Resources\Orders\Tables;
 use App\Domains\PointOfSale\Actions\VoidOrderAction;
 use App\Domains\PointOfSale\Models\Order;
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\OrderType;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -48,12 +50,8 @@ class OrdersTable
                 TextColumn::make('order_type')
                     ->label('Mode')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'dine_in' => 'primary',
-                        'takeout' => 'warning',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state): string => strtoupper(str_replace('_', ' ', $state))),
+                    ->color(fn (string $state): string => OrderType::colorFor($state))
+                    ->formatStateUsing(fn (string $state): string => strtoupper(OrderType::labelFor($state))),
 
                 TextColumn::make('table_number')
                     ->label('Table')
@@ -75,12 +73,7 @@ class OrdersTable
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'completed' => 'success',
-                        'pending', 'in_kitchen' => 'warning',
-                        'cancelled' => 'danger',
-                        default => 'gray',
-                    }),
+                    ->color(fn (string $state): string => OrderStatus::colorFor($state)),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
@@ -90,18 +83,11 @@ class OrdersTable
 
                 SelectFilter::make('order_type')
                     ->label('Dining Mode')
-                    ->options([
-                        'dine_in' => 'Dine-In',
-                        'takeout' => 'Takeout',
-                    ]),
+                    ->options(OrderType::options()),
 
                 SelectFilter::make('status')
                     ->label('Status')
-                    ->options([
-                        'completed' => 'Completed',
-                        'pending' => 'Pending',
-                        'cancelled' => 'Cancelled',
-                    ]),
+                    ->options(OrderStatus::options()),
             ])
             ->recordActions([
                 Action::make('view_receipt')
@@ -120,7 +106,7 @@ class OrdersTable
                     ->label('Void / Cancel Order')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Order $record): bool => $record->status !== 'cancelled' && (auth()->user()->isOwner() || auth()->user()->can('pos.refund')))
+                    ->visible(fn (Order $record): bool => $record->status !== OrderStatus::CANCELLED->value && (auth()->user()->isOwner() || auth()->user()->can('pos.refund')))
                     ->requiresConfirmation()
                     ->modalHeading(fn (Order $record): string => "Void Order #{$record->order_number}")
                     ->modalDescription('Voiding this order will mark payments as refunded and evict any linked ticket from the kitchen queue. This action cannot be undone.')

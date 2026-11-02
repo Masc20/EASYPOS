@@ -8,6 +8,10 @@ use App\Domains\PointOfSale\Events\KitchenTicketDispatched;
 use App\Domains\PointOfSale\Events\PaymentProcessed;
 use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\Payment;
+use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\PaymentMethod;
+use App\Support\Enums\PaymentStatus;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -27,20 +31,20 @@ class ProcessPaymentAction
      */
     public function execute(Order $order, array $data): array
     {
-        if ($order->payment_status === 'paid') {
+        if ($order->payment_status === PaymentStatus::PAID->value) {
             throw new InvalidArgumentException("Order #{$order->order_number} has already been paid.");
         }
 
         return DB::transaction(function () use ($order, $data) {
             $totalDue = (float) $order->total_amount;
-            $paymentMethod = $data['payment_method'] ?? 'cash';
+            $paymentMethod = $data['payment_method'] ?? PaymentMethod::CASH->value;
             $cashierId = $data['cashier_id'] ?? $order->cashier_id;
             $referenceNumber = $data['reference_number'] ?? null;
 
             $amountTendered = isset($data['amount_tendered']) ? (float) $data['amount_tendered'] : $totalDue;
             $changeGiven = 0.00;
 
-            if ($paymentMethod === 'cash') {
+            if ($paymentMethod === PaymentMethod::CASH->value) {
                 if ($amountTendered < $totalDue) {
                     throw new InvalidArgumentException(
                         sprintf("Amount tendered (₱%.2f) is less than the total due (₱%.2f).", $amountTendered, $totalDue)
@@ -67,8 +71,8 @@ class ProcessPaymentAction
 
             // 2. Mark Order as Paid and in Kitchen
             $order->update([
-                'payment_status' => 'paid',
-                'status' => 'in_kitchen',
+                'payment_status' => PaymentStatus::PAID->value,
+                'status' => OrderStatus::IN_KITCHEN->value,
             ]);
 
             // 3. Generate Sequential Kitchen Ticket
@@ -84,7 +88,7 @@ class ProcessPaymentAction
                 'ticket_number' => $ticketNumber,
                 'order_id' => $order->id,
                 'branch_id' => $order->branch_id,
-                'status' => 'new',
+                'status' => KitchenTicketStatus::NEW->value,
                 'priority' => 'normal',
             ]);
 

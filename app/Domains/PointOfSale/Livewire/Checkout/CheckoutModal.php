@@ -4,6 +4,8 @@ namespace App\Domains\PointOfSale\Livewire\Checkout;
 
 use App\Domains\PointOfSale\Actions\CreateOrderAction;
 use App\Domains\PointOfSale\Actions\ProcessPaymentAction;
+use App\Support\Enums\OrderType;
+use App\Support\Enums\PaymentMethod;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -13,7 +15,7 @@ class CheckoutModal extends Component
     public bool $isOpen = false;
 
     public array $items = [];
-    public string $orderType = 'dine_in';
+    public string $orderType = OrderType::DINE_IN->value;
     public string $tableNumber = '';
     public string $customerName = '';
     public float $subtotal = 0.00;
@@ -21,7 +23,7 @@ class CheckoutModal extends Component
     public float $totalAmount = 0.00;
     public string $notes = '';
 
-    public string $paymentMethod = 'cash'; // cash, credit_card, qr_transfer
+    public string $paymentMethod = PaymentMethod::CASH->value;
     public string $amountTendered = '';
     public string $referenceNumber = '';
 
@@ -30,7 +32,7 @@ class CheckoutModal extends Component
     #[On('open-checkout')]
     public function openWithData(
         mixed $items = [],
-        string $order_type = 'dine_in',
+        string $order_type = OrderType::DINE_IN->value,
         string $table_number = '',
         string $customer_name = '',
         float|int $subtotal = 0,
@@ -68,7 +70,7 @@ class CheckoutModal extends Component
         $this->totalAmount = (float) $total_amount;
         $this->notes = $notes;
 
-        $this->paymentMethod = 'cash';
+        $this->paymentMethod = PaymentMethod::CASH->value;
         $this->amountTendered = number_format($this->totalAmount, 2, '.', '');
         $this->referenceNumber = '';
 
@@ -114,12 +116,12 @@ class CheckoutModal extends Component
         ProcessPaymentAction $processPaymentAction
     ): ?string {
         $this->items = $data['items'] ?? [];
-        $this->orderType = $data['order_type'] ?? 'dine_in';
+        $this->orderType = $data['order_type'] ?? OrderType::DINE_IN->value;
         $this->tableNumber = $data['table_number'] ?? '';
         $this->customerName = $data['customer_name'] ?? '';
         $this->discountAmount = (float) ($data['discount_amount'] ?? 0);
         $this->notes = $data['notes'] ?? '';
-        $this->paymentMethod = $data['payment_method'] ?? 'cash';
+        $this->paymentMethod = $data['payment_method'] ?? PaymentMethod::CASH->value;
         $this->amountTendered = (string) ($data['amount_tendered'] ?? '');
         $this->referenceNumber = $data['reference_number'] ?? '';
 
@@ -149,7 +151,7 @@ class CheckoutModal extends Component
         }
 
         $tenderedFloat = (float) $this->amountTendered;
-        if ($this->paymentMethod === 'cash') {
+        if ($this->paymentMethod === PaymentMethod::CASH->value) {
             if ($tenderedFloat < $this->totalAmount) {
                 $this->errorMessage = sprintf(
                     'Amount tendered (₱%.2f) is less than the total due (₱%.2f).',
@@ -158,7 +160,7 @@ class CheckoutModal extends Component
                 );
                 return;
             }
-        } elseif (in_array($this->paymentMethod, ['credit_card', 'qr_transfer'])) {
+        } elseif (in_array($this->paymentMethod, PaymentMethod::referenceRequiredValues())) {
             if (empty(trim($this->referenceNumber))) {
                 $this->errorMessage = 'Reference / Approval Code is required for card and digital payments.';
                 return;

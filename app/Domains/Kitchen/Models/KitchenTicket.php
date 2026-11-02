@@ -5,6 +5,7 @@ namespace App\Domains\Kitchen\Models;
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Models\Order;
+use App\Support\Enums\KitchenTicketStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -59,7 +60,7 @@ class KitchenTicket extends Model
      */
     public function scopeActive($query)
     {
-        return $query->whereNull('served_at')->where('status', '!=', 'cancelled');
+        return $query->whereNull('served_at')->where('status', '!=', KitchenTicketStatus::CANCELLED->value);
     }
 
     /**

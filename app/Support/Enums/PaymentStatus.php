@@ -28,4 +28,14 @@ enum PaymentStatus: string
             self::REFUNDED => 'gray',
         };
     }
+
+    public static function labelFor(string $value): string
+    {
+        return self::tryFrom($value)?->label() ?? ucfirst(str_replace('_', ' ', $value));
+    }
+
+    public static function colorFor(string $value): string
+    {
+        return self::tryFrom($value)?->color() ?? 'gray';
+    }
 }

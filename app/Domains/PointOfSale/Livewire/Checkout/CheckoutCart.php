@@ -4,6 +4,7 @@ namespace App\Domains\PointOfSale\Livewire\Checkout;
 
 use App\Domains\Menu\Models\Meal;
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\OrderType;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -22,7 +23,7 @@ class CheckoutCart extends Component
      */
     public array $items = [];
 
-    public string $orderType = 'dine_in'; // dine_in, takeout, delivery
+    public string $orderType = OrderType::DINE_IN->value;
     public string $tableNumber = '';
     public string $customerName = '';
     public string $discountType = 'none'; // none, senior_pwd, custom

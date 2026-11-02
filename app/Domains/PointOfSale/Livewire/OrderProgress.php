@@ -3,6 +3,7 @@
 namespace App\Domains\PointOfSale\Livewire;
 
 use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Support\Enums\KitchenTicketStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\On;
@@ -51,7 +52,7 @@ class OrderProgress extends Component
             ->where(function (Builder $q) {
                 // Active tickets or tickets from today
                 $q->whereNull('served_at')
-                  ->where('status', '!=', 'cancelled')
+                  ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
                   ->orWhereDate('created_at', today());
             });
 
@@ -60,11 +61,11 @@ class OrderProgress extends Component
         $allTicketsForCounts = $countsQuery->select(['id', 'status', 'created_at'])->get();
 
         $counts = [
-            'all' => $allTicketsForCounts->whereIn('status', ['new', 'in_prep', 'ready'])->count(),
-            'new' => $allTicketsForCounts->where('status', 'new')->count(),
-            'in_prep' => $allTicketsForCounts->where('status', 'in_prep')->count(),
-            'ready' => $allTicketsForCounts->where('status', 'ready')->count(),
-            'served' => $allTicketsForCounts->where('status', 'served')->count(),
+            'all' => $allTicketsForCounts->whereIn('status', KitchenTicketStatus::activeValues())->count(),
+            'new' => $allTicketsForCounts->where('status', KitchenTicketStatus::NEW->value)->count(),
+            'in_prep' => $allTicketsForCounts->where('status', KitchenTicketStatus::IN_PREP->value)->count(),
+            'ready' => $allTicketsForCounts->where('status', KitchenTicketStatus::READY->value)->count(),
+            'served' => $allTicketsForCounts->where('status', KitchenTicketStatus::SERVED->value)->count(),
         ];
 
         // Filter by selected tab

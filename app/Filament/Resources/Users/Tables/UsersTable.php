@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Domains\Identity\Actions\ToggleUserActiveStatusAction;
 use App\Domains\Identity\Models\User;
+use App\Support\Enums\StaffRole;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -50,13 +51,7 @@ class UsersTable
                 TextColumn::make('roles.name')
                     ->label('Role(s)')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'owner', 'super-admin' => 'danger',
-                        'branch-manager' => 'warning',
-                        'cashier' => 'primary',
-                        'chef', 'cook' => 'success',
-                        default => 'gray',
-                    }),
+                    ->color(fn (string $state): string => StaffRole::colorFor($state)),
 
                 TextColumn::make('branch.name')
                     ->label('Branch')

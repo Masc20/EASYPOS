@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Users\Schemas;
 
+use App\Support\Enums\StaffRole;
 use App\Support\Services\CodeGeneratorService;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -55,7 +56,7 @@ class UserForm
 
                 TextInput::make('emp_id')
                     ->label('Employee ID (Auto-Generated)')
-                    ->default(fn () => CodeGeneratorService::generateEmpId(null, 'cashier'))
+                    ->default(fn () => CodeGeneratorService::generateEmpId(null, StaffRole::CASHIER->value))
                     ->maxLength(50)
                     ->unique('users', 'emp_id', ignoreRecord: true)
                     ->helperText('Auto-generated from Branch + Position + Sequence.'),

@@ -6,6 +6,9 @@ use App\Domains\PointOfSale\Models\Order;
 use App\Domains\PointOfSale\Models\OrderItem;
 use App\Domains\PointOfSale\Models\Payment;
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\PaymentMethod;
+use App\Support\Enums\PaymentStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Cache;
@@ -117,8 +120,8 @@ class SalesAggregationService
         // Refunds and Voids Summary
         $refundsQuery = Order::query()
             ->where(function ($q) {
-                $q->where('payment_status', 'refunded')
-                    ->orWhere('status', 'cancelled');
+                $q->where('payment_status', PaymentStatus::REFUNDED->value)
+                    ->orWhere('status', OrderStatus::CANCELLED->value);
             });
 
         if ($startDate) {
@@ -367,8 +370,8 @@ class SalesAggregationService
                 ->leftJoin('meals', 'order_items.meal_id', '=', 'meals.id')
                 ->leftJoin('meal_categories', 'meals.category_id', '=', 'meal_categories.id')
                 ->where(function ($q) {
-                    $q->where('orders.payment_status', 'paid')
-                        ->orWhere('orders.status', 'completed');
+                    $q->where('orders.payment_status', PaymentStatus::PAID->value)
+                        ->orWhere('orders.status', OrderStatus::COMPLETED->value);
                 });
 
             if ($startDate) {
@@ -472,8 +475,8 @@ class SalesAggregationService
             ->leftJoin('meals', 'order_items.meal_id', '=', 'meals.id')
             ->leftJoin('meal_categories', 'meals.category_id', '=', 'meal_categories.id')
             ->where(function ($q) {
-                $q->where('orders.payment_status', 'paid')
-                    ->orWhere('orders.status', 'completed');
+                $q->where('orders.payment_status', PaymentStatus::PAID->value)
+                    ->orWhere('orders.status', OrderStatus::COMPLETED->value);
             });
 
         if ($startDate) {
@@ -871,8 +874,8 @@ class SalesAggregationService
     ): Builder {
         $query = Order::query()
             ->where(function ($q) {
-                $q->where('orders.payment_status', 'paid')
-                    ->orWhere('orders.status', 'completed');
+                $q->where('orders.payment_status', PaymentStatus::PAID->value)
+                    ->orWhere('orders.status', OrderStatus::COMPLETED->value);
             });
 
         if ($startDate) {
@@ -929,13 +932,6 @@ class SalesAggregationService
      */
     protected function formatPaymentMethod(string $method): string
     {
-        return match ($method) {
-            'cash' => 'Cash',
-            'credit_card' => 'Credit Card',
-            'debit_card' => 'Debit Card',
-            'qr_transfer' => 'QR Ph / GCash / Maya',
-            'voucher' => 'Gift Voucher / Coupon',
-            default => ucwords(str_replace('_', ' ', $method)),
-        };
+        return PaymentMethod::labelFor($method);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Domains\Identity\Models;
 
 use App\Domains\Branches\Models\Branch;
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\StaffRole;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -70,7 +71,7 @@ class User extends Authenticatable implements FilamentUser
     {
         static::creating(function (User $user) {
             if (blank($user->emp_id)) {
-                $role = filled($user->email) ? 'branch-manager' : 'cashier';
+                $role = filled($user->email) ? StaffRole::BRANCH_MANAGER->value : StaffRole::CASHIER->value;
                 $user->emp_id = \App\Support\Services\CodeGeneratorService::generateEmpId(
                     $user->branch_id ? (int) $user->branch_id : null,
                     $role
@@ -104,11 +105,11 @@ class User extends Authenticatable implements FilamentUser
             }
 
             // Branch managers get branch-level access only (not full admin privileges)
-            if ($this->hasRole('branch-manager')) {
+            if ($this->hasRole(StaffRole::BRANCH_MANAGER->value)) {
                 return true;
             }
 
-            return $this->hasRole(['owner', 'super-admin', 'branch-manager']) || $this->can('admin.access');
+            return $this->hasRole(StaffRole::managementValues()) || $this->can('admin.access');
         }
 
         return true;
@@ -147,7 +148,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isFloorStaff(): bool
     {
-        return $this->hasAnyRole(['cashier', 'cook', 'chef']);
+        return $this->hasAnyRole(StaffRole::floorValues());
     }
 
     /**
@@ -155,7 +156,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isStrictFloorStaff(): bool
     {
-        return $this->isFloorStaff() && ! $this->hasAnyRole(['owner', 'super-admin', 'branch-manager']);
+        return $this->isFloorStaff() && ! $this->hasAnyRole(StaffRole::managementValues());
     }
 
     /**
@@ -166,13 +167,13 @@ class User extends Authenticatable implements FilamentUser
     public function canManageBranchRoles(): bool
     {
         // Owner and super-admin can manage all roles
-        if ($this->hasAnyRole(['owner', 'super-admin'])) {
+        if ($this->hasAnyRole(StaffRole::executiveValues())) {
             return true;
         }
 
         // Branch managers can manage roles for other staff in their branch,
         // but NOT their own role
-        if ($this->hasRole('branch-manager')) {
+        if ($this->hasRole(StaffRole::BRANCH_MANAGER->value)) {
             // They can manage roles for staff with a different branch_id or NULL branch
             // They cannot manage their OWN role promotion
             return true;
@@ -186,15 +187,15 @@ class User extends Authenticatable implements FilamentUser
      */
     public function stationTitle(): string
     {
-        if ($this->hasRole('cashier')) {
+        if ($this->hasRole(StaffRole::CASHIER->value)) {
             return 'POS Register Terminal';
         }
 
-        if ($this->hasRole('chef')) {
+        if ($this->hasRole(StaffRole::CHEF->value)) {
             return 'Chef\'s Menu & Kitchen Station';
         }
 
-        if ($this->hasRole('cook')) {
+        if ($this->hasRole(StaffRole::COOK->value)) {
             return 'Kitchen Display System (KDS)';
         }
 
@@ -210,19 +211,19 @@ class User extends Authenticatable implements FilamentUser
             return route('login');
         }
 
-        if ($this->hasRole('cashier')) {
+        if ($this->hasRole(StaffRole::CASHIER->value)) {
             return route('pos');
         }
 
-        if ($this->hasRole('chef')) {
+        if ($this->hasRole(StaffRole::CHEF->value)) {
             return route('menu');
         }
 
-        if ($this->hasRole('cook')) {
+        if ($this->hasRole(StaffRole::COOK->value)) {
             return route('kitchen');
         }
 
-        if ($this->hasRole('branch-manager')) {
+        if ($this->hasRole(StaffRole::BRANCH_MANAGER->value)) {
             return route('pos');
         }
 
@@ -234,7 +235,7 @@ class User extends Authenticatable implements FilamentUser
      */
     public function isOwner(): bool
     {
-        return $this->hasAnyRole(['owner', 'super-admin']);
+        return $this->hasAnyRole(StaffRole::executiveValues());
     }
 
     /**

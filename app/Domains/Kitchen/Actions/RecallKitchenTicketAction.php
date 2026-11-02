@@ -4,6 +4,8 @@ namespace App\Domains\Kitchen\Actions;
 
 use App\Domains\Kitchen\Events\KitchenTicketStatusUpdated;
 use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
 use Illuminate\Support\Facades\DB;
 
 class RecallKitchenTicketAction
@@ -21,20 +23,20 @@ class RecallKitchenTicketAction
             $previousStatus = $ticket->status;
 
             $ticket->update([
-                'status' => 'ready',
+                'status' => KitchenTicketStatus::READY->value,
                 'served_at' => null,
             ]);
 
             if ($ticket->order) {
                 $ticket->order->update([
-                    'status' => 'in_kitchen',
+                    'status' => OrderStatus::IN_KITCHEN->value,
                     'completed_at' => null,
                 ]);
             }
 
             $ticket->load(['items.orderItem.meal', 'order', 'cook']);
 
-            event(new KitchenTicketStatusUpdated($ticket, $previousStatus, 'ready'));
+            event(new KitchenTicketStatusUpdated($ticket, $previousStatus, KitchenTicketStatus::READY->value));
 
             return $ticket;
         });

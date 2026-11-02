@@ -23,9 +23,32 @@ enum OrderStatus: string
     {
         return match ($this) {
             self::PENDING => 'warning',
-            self::IN_KITCHEN => 'info',
+            self::IN_KITCHEN => 'warning',
             self::COMPLETED => 'success',
             self::CANCELLED => 'danger',
         };
+    }
+
+    public static function labelFor(string $value): string
+    {
+        return self::tryFrom($value)?->label() ?? ucfirst(str_replace('_', ' ', $value));
+    }
+
+    public static function colorFor(string $value): string
+    {
+        return self::tryFrom($value)?->color() ?? 'gray';
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function options(): array
+    {
+        $options = [];
+        foreach (self::cases() as $case) {
+            $options[$case->value] = $case->label();
+        }
+
+        return $options;
     }
 }

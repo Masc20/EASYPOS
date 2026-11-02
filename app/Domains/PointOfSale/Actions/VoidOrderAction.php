@@ -5,6 +5,9 @@ namespace App\Domains\PointOfSale\Actions;
 use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Events\OrderVoided;
 use App\Domains\PointOfSale\Models\Order;
+use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\PaymentStatus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -55,7 +58,7 @@ class VoidOrderAction
             throw new InvalidArgumentException("Order #{$data['order_id']} not found.");
         }
 
-        if ($order->status === 'cancelled') {
+        if ($order->status === OrderStatus::CANCELLED->value) {
             throw new InvalidArgumentException("Order #{$order->order_number} is already cancelled.");
         }
 
@@ -80,21 +83,21 @@ class VoidOrderAction
 
             // 1. Update Order status and append audit note
             DB::table('orders')->where('id', $order->id)->update([
-                'status' => 'cancelled',
-                'payment_status' => 'refunded',
+                'status' => OrderStatus::CANCELLED->value,
+                'payment_status' => PaymentStatus::REFUNDED->value,
                 'notes' => $updatedNotes,
                 'updated_at' => now(),
             ]);
 
             // 2. Mark payments as refunded
             DB::table('payments')->where('order_id', $order->id)->update([
-                'status' => 'refunded',
+                'status' => PaymentStatus::REFUNDED->value,
                 'updated_at' => now(),
             ]);
 
             // 3. Cancel any linked kitchen tickets
             DB::table('kitchen_tickets')->where('order_id', $order->id)->update([
-                'status' => 'cancelled',
+                'status' => KitchenTicketStatus::CANCELLED->value,
                 'updated_at' => now(),
             ]);
 

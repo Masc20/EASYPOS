@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Pages;
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Filament\Resources\Users\UserResource;
+use App\Support\Enums\StaffRole;
 use App\Support\Services\CodeGeneratorService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -41,28 +42,24 @@ class ListUsers extends ListRecords
                         ->searchable()
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $role = $get('role') ?: 'cashier';
+                            $role = $get('role') ?: StaffRole::CASHIER->value;
                             $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
                         }),
 
                     Select::make('role')
                         ->label('Station Position')
-                        ->options([
-                            'cashier' => 'Cashier (POS Register)',
-                            'cook' => 'Kitchen Cook (KDS)',
-                            'chef' => 'Head Chef (Menu & Kitchen)',
-                        ])
-                        ->default('cashier')
+                        ->options(StaffRole::floorOptions())
+                        ->default(StaffRole::CASHIER->value)
                         ->required()
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                             $branchId = $get('branch_id') ? (int) $get('branch_id') : null;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: 'cashier'));
+                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: StaffRole::CASHIER->value));
                         }),
 
                     TextInput::make('emp_id')
                         ->label('Employee ID (Auto-Generated)')
-                        ->default(fn () => CodeGeneratorService::generateEmpId(1, 'cashier'))
+                        ->default(fn () => CodeGeneratorService::generateEmpId(1, StaffRole::CASHIER->value))
                         ->required()
                         ->maxLength(50)
                         ->unique('users', 'emp_id')
@@ -139,28 +136,24 @@ class ListUsers extends ListRecords
                         ->searchable()
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $role = $get('role') ?: 'branch-manager';
+                            $role = $get('role') ?: StaffRole::BRANCH_MANAGER->value;
                             $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
                         }),
 
                     Select::make('role')
                         ->label('Administrative Role')
-                        ->options([
-                            'branch-manager' => 'Branch Manager',
-                            'super-admin' => 'Super Administrator',
-                            'owner' => 'System Owner',
-                        ])
-                        ->default('branch-manager')
+                        ->options(StaffRole::managementOptions())
+                        ->default(StaffRole::BRANCH_MANAGER->value)
                         ->required()
                         ->live()
                         ->afterStateUpdated(function ($state, callable $set, callable $get) {
                             $branchId = $get('branch_id') ? (int) $get('branch_id') : null;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: 'branch-manager'));
+                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: StaffRole::BRANCH_MANAGER->value));
                         }),
 
                     TextInput::make('emp_id')
                         ->label('Employee ID (Auto-Generated)')
-                        ->default(fn () => CodeGeneratorService::generateEmpId(null, 'branch-manager'))
+                        ->default(fn () => CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value))
                         ->required()
                         ->maxLength(50)
                         ->unique('users', 'emp_id')

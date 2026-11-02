@@ -4,6 +4,7 @@ namespace App\Domains\PointOfSale\Models;
 
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
+use App\Support\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,13 +50,6 @@ class Payment extends Model
      */
     public function getMethodLabelAttribute(): string
     {
-        return match ($this->payment_method) {
-            'cash' => 'Cash',
-            'credit_card' => 'Credit Card',
-            'debit_card' => 'Debit Card',
-            'qr_transfer' => 'QR / E-Wallet',
-            'voucher' => 'Voucher',
-            default => ucfirst(str_replace('_', ' ', $this->payment_method)),
-        };
+        return PaymentMethod::labelFor((string) $this->payment_method);
     }
 }
