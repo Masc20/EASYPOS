@@ -95,6 +95,7 @@ class CreateMealModal extends Component
             'name' => $this->name,
             'menu_code' => $this->menu_code,
             'category_id' => $this->category_id,
+            'branch_id' => auth()->user()?->branch_id,
             'price' => $this->price,
             'description' => $this->description,
             'is_available' => $this->is_available,

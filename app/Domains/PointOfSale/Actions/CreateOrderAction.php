@@ -74,6 +74,10 @@ class CreateOrderAction
                     throw new InvalidArgumentException("Meal ID {$mealId} not found.");
                 }
 
+                if ($meal->branch_id !== null && (int) $meal->branch_id !== (int) $branch->id) {
+                    throw new InvalidArgumentException("Meal '{$meal->name}' is not available for this branch.");
+                }
+
                 if ($meal->isSoldOut()) {
                     throw new InvalidArgumentException("Meal '{$meal->name}' is marked as 86'd / Sold Out.");
                 }

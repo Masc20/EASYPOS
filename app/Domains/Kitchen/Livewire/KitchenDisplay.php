@@ -35,37 +35,42 @@ class KitchenDisplay extends Component
             return;
         }
 
-        $ticket = KitchenTicket::findOrFail($ticketId);
+        $ticket = KitchenTicket::forBranch($user->branch_id ?? 1)->findOrFail($ticketId);
         $action->execute($ticket, $user);
     }
 
     public function markReady(int $ticketId, UpdateKitchenTicketStatusAction $action): void
     {
-        $ticket = KitchenTicket::findOrFail($ticketId);
+        $branchId = Auth::user()->branch_id ?? 1;
+        $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket, 'ready');
     }
 
     public function markServed(int $ticketId, UpdateKitchenTicketStatusAction $action): void
     {
-        $ticket = KitchenTicket::findOrFail($ticketId);
+        $branchId = Auth::user()->branch_id ?? 1;
+        $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket, 'served');
     }
 
     public function toggleItem(int $itemId, ToggleKitchenItemStatusAction $action): void
     {
-        $item = KitchenTicketItem::findOrFail($itemId);
+        $branchId = Auth::user()->branch_id ?? 1;
+        $item = KitchenTicketItem::whereHas('ticket', fn ($q) => $q->forBranch($branchId))->findOrFail($itemId);
         $action->execute($item);
     }
 
     public function togglePriority(int $ticketId, ToggleKitchenTicketPriorityAction $action): void
     {
-        $ticket = KitchenTicket::findOrFail($ticketId);
+        $branchId = Auth::user()->branch_id ?? 1;
+        $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket);
     }
 
     public function recallTicket(int $ticketId, RecallKitchenTicketAction $action): void
     {
-        $ticket = KitchenTicket::findOrFail($ticketId);
+        $branchId = Auth::user()->branch_id ?? 1;
+        $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket);
     }
 

@@ -10,5 +10,8 @@ use App\Domains\Identity\Models\User as DomainUser;
  */
 class User extends DomainUser
 {
-    //
+    public function getMorphClass(): string
+    {
+        return DomainUser::class;
+    }
 }

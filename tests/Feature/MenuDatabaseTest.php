@@ -282,6 +282,54 @@ class MenuDatabaseTest extends TestCase
         \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealDeleted::class);
         $this->assertSoftDeleted('meals', ['id' => $meal->id]);
     }
+
+    public function test_chef_created_meal_is_isolated_to_their_branch(): void
+    {
+        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $this->seed(MenuSeeder::class);
+
+        $chefB1 = User::where('emp_id', 'B01-CHF-001')->firstOrFail();
+        $chefB2 = User::where('emp_id', 'B02-CHF-001')->firstOrFail();
+        $cashierB2 = User::where('emp_id', 'B02-CSH-001')->firstOrFail();
+        $category = MealCategory::firstOrFail();
+
+        // Branch 1 Chef creates a dish
+        Livewire::actingAs($chefB1)
+            ->test(\App\Domains\Menu\Livewire\CreateMealModal::class)
+            ->set('name', 'Manila Secret Adobo')
+            ->set('menu_code', 'M-999')
+            ->set('category_id', $category->id)
+            ->set('price', '350.00')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $branch1Meal = Meal::where('menu_code', 'M-999')->firstOrFail();
+        $this->assertEquals($chefB1->branch_id, $branch1Meal->branch_id);
+
+        // Branch 1 Chef sees it on /menu
+        Livewire::actingAs($chefB1)
+            ->test(MealCatalogTable::class)
+            ->assertSee('Manila Secret Adobo');
+
+        // Branch 2 Chef CANNOT see it on /menu
+        Livewire::actingAs($chefB2)
+            ->test(MealCatalogTable::class)
+            ->assertDontSee('Manila Secret Adobo');
+
+        // Branch 2 Cashier CANNOT see it on /pos
+        Livewire::actingAs($cashierB2)
+            ->test(\App\Domains\PointOfSale\Livewire\MealCatalog::class)
+            ->assertDontSee('Manila Secret Adobo');
+
+        // Branch 2 Chef CANNOT toggle or modify Branch 1's dish
+        $this->actingAs($chefB2);
+        try {
+            (new \App\Domains\Menu\Actions\ToggleMealAvailabilityAction())->handle($branch1Meal);
+            $this->fail('Expected 403 when Branch 2 Chef toggles Branch 1 meal.');
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $this->assertEquals(403, $e->getStatusCode());
+        }
+    }
 }
 
 

@@ -30,8 +30,12 @@ class ReceiptPreview extends Component
     {
         $order = null;
         if ($this->orderId) {
-            $order = Order::with(['items', 'payments', 'cashier', 'branch', 'kitchenTicket'])
-                ->find($this->orderId);
+            $user = auth()->user();
+            $query = Order::with(['items', 'payments', 'cashier', 'branch', 'kitchenTicket']);
+            if ($user && ! $user->isOwner() && $user->branch_id) {
+                $query->where('branch_id', $user->branch_id);
+            }
+            $order = $query->find($this->orderId);
         }
 
         return view('livewire.point-of-sale.checkout.receipt-preview', [

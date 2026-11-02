@@ -16,12 +16,15 @@ class DailySpecialsBoard extends Component
 
     public function render()
     {
-        $limitedSpecials = Meal::where('track_stock', true)
+        $branchId = auth()->user()?->branch_id;
+
+        $limitedSpecials = Meal::forBranch($branchId)
+            ->where('track_stock', true)
             ->where('is_available', true)
             ->orderBy('stock_quantity')
             ->get();
 
-        $soldOutCount = Meal::where('is_available', false)->count();
+        $soldOutCount = Meal::forBranch($branchId)->where('is_available', false)->count();
 
         return view('livewire.menu.daily-specials-board', [
             'limitedSpecials' => $limitedSpecials,

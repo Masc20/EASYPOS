@@ -13,6 +13,7 @@ class CreateMealAction
             'name' => trim($data['name']),
             'menu_code' => !empty($data['menu_code']) ? strtoupper(trim($data['menu_code'])) : null,
             'category_id' => $data['category_id'],
+            'branch_id' => array_key_exists('branch_id', $data) ? $data['branch_id'] : auth()->user()?->branch_id,
             'price' => (float) $data['price'],
             'cost_price' => !empty($data['cost_price']) ? (float) $data['cost_price'] : null,
             'description' => !empty($data['description']) ? trim($data['description']) : null,

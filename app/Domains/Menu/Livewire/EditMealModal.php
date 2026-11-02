@@ -46,7 +46,7 @@ class EditMealModal extends Component
     #[On('edit-meal')]
     public function loadMeal(int $id): void
     {
-        $meal = Meal::findOrFail($id);
+        $meal = Meal::forBranch(auth()->user()?->branch_id)->findOrFail($id);
 
         $this->mealId = $meal->id;
         $this->name = $meal->name;

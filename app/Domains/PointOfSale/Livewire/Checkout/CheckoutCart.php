@@ -33,7 +33,8 @@ class CheckoutCart extends Component
     #[On('add-to-cart')]
     public function addItem(int $mealId): void
     {
-        $meal = Meal::select(['id', 'name', 'menu_code', 'price', 'is_available', 'track_stock', 'stock_quantity'])
+        $meal = Meal::forBranch(auth()->user()?->branch_id)
+            ->select(['id', 'branch_id', 'name', 'menu_code', 'price', 'is_available', 'track_stock', 'stock_quantity'])
             ->find($mealId);
         if (! $meal || $meal->isSoldOut()) {
             $this->dispatch('pos-alert', [

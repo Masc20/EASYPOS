@@ -20,7 +20,8 @@ class ProductSearch extends Component
             return;
         }
 
-        $meal = Meal::where('menu_code', strtoupper($code))
+        $meal = Meal::forBranch(auth()->user()?->branch_id)
+            ->where('menu_code', strtoupper($code))
             ->where('is_active', true)
             ->first();
 

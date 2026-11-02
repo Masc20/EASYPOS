@@ -74,7 +74,7 @@ class MealForm extends Component
     #[On('edit-meal')]
     public function loadMeal(int $id): void
     {
-        $meal = Meal::findOrFail($id);
+        $meal = Meal::forBranch(auth()->user()?->branch_id)->findOrFail($id);
 
         $this->mealId = $meal->id;
         $this->name = $meal->name;
@@ -125,6 +125,7 @@ class MealForm extends Component
             'name' => trim($this->name),
             'menu_code' => $this->menu_code ? strtoupper(trim($this->menu_code)) : null,
             'category_id' => $this->category_id,
+            'branch_id' => auth()->user()?->branch_id,
             'price' => (float) $this->price,
             'cost_price' => filled($this->cost_price) ? (float) $this->cost_price : null,
             'description' => $this->description ? trim($this->description) : null,

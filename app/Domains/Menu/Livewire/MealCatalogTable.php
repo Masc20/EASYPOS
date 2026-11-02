@@ -66,12 +66,17 @@ class MealCatalogTable extends Component
 
     public function render()
     {
-        $categories = MealCategory::withCount('meals')
+        $branchId = auth()->user()?->branch_id;
+
+        $categories = MealCategory::withCount([
+            'meals' => fn ($query) => $query->forBranch($branchId),
+        ])
             ->where('is_active', true)
             ->orderBy('display_order')
             ->get();
 
         $meals = Meal::with('category')
+            ->forBranch($branchId)
             ->when($this->selectedCategory, function ($query) {
                 $query->whereHas('category', fn ($q) => $q->where('slug', $this->selectedCategory));
             })
@@ -91,7 +96,7 @@ class MealCatalogTable extends Component
             ->orderBy('name')
             ->get();
 
-        $totalDishesCount = Meal::count();
+        $totalDishesCount = Meal::forBranch($branchId)->count();
 
         return view('livewire.menu.meal-catalog-table', [
             'categories' => $categories,

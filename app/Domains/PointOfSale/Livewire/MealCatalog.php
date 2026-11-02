@@ -34,6 +34,7 @@ class MealCatalog extends Component
             ->get();
 
         $meals = Meal::query()
+            ->forBranch(auth()->user()?->branch_id)
             ->select([
                 'id',
                 'branch_id',

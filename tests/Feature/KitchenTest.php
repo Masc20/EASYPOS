@@ -217,4 +217,26 @@ class KitchenTest extends TestCase
             ->assertSee($dineInTicket->ticket_number)
             ->assertSee('Table 10');
     }
+
+    public function test_branch_1_orders_are_visible_to_branch_1_cook_and_chef_but_isolated_from_branch_2(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket('dine_in', 'Table 88');
+        $cookB2 = User::where('emp_id', 'B02-COK-001')->firstOrFail();
+
+        // Both Branch 1 Cook and Branch 1 Chef see Branch 1's ticket
+        Livewire::actingAs($this->cook)
+            ->test(KitchenDisplay::class)
+            ->assertSee($ticket->ticket_number)
+            ->assertSee('Table 88');
+
+        Livewire::actingAs($this->chef)
+            ->test(KitchenDisplay::class)
+            ->assertSee($ticket->ticket_number)
+            ->assertSee('Table 88');
+
+        // Branch 2 Cook CANNOT see Branch 1's ticket
+        Livewire::actingAs($cookB2)
+            ->test(KitchenDisplay::class)
+            ->assertDontSee('Table 88');
+    }
 }
