@@ -28,7 +28,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName('EASYPOS Admin')
             ->login()
             ->darkMode(true)
-            ->spa()
+            ->spa(hasPrefetching: true)
             ->colors([
                 'primary' => [
                     50 => '#FBF3F3',
@@ -67,7 +67,7 @@ class AdminPanelProvider extends PanelProvider
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::HEAD_END,
-                fn () => \Illuminate\Support\Facades\Blade::render("@vite(['resources/css/app.css', 'resources/js/app.js'])")
+                fn () => app(\Illuminate\Foundation\Vite::class)(['resources/css/app.css'])
             )
             ->renderHook(
                 \Filament\View\PanelsRenderHook::AUTH_LOGIN_FORM_AFTER,
@@ -107,53 +107,14 @@ class AdminPanelProvider extends PanelProvider
     }
 
     /**
-     * Dynamically discover Filament resources, pages, clusters, and widgets across all domain slices.
+     * Discover Filament resources, pages, and widgets without redundant domain directory globbing.
      */
     protected function discoverDomainComponents(Panel $panel): Panel
     {
-        // Root / shared Filament directories (if present)
-        if (is_dir(app_path('Filament/Resources'))) {
-            $panel->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources');
-        }
-        if (is_dir(app_path('Filament/Pages'))) {
-            $panel->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages');
-        }
-        if (is_dir(app_path('Filament/Widgets'))) {
-            $panel->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets');
-        }
-        if (is_dir(app_path('Filament/Clusters'))) {
-            $panel->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters');
-        }
-
-        // Modular Domain directories: app/Domains/{DomainName}/Filament/...
-        $domainsPath = app_path('Domains');
-        if (is_dir($domainsPath)) {
-            $domainDirs = glob($domainsPath . '/*', GLOB_ONLYDIR) ?: [];
-
-            foreach ($domainDirs as $domainDir) {
-                $domainName = basename($domainDir);
-
-                $resourcesPath = "{$domainDir}/Filament/Resources";
-                if (is_dir($resourcesPath)) {
-                    $panel->discoverResources(in: $resourcesPath, for: "App\\Domains\\{$domainName}\\Filament\\Resources");
-                }
-
-                $pagesPath = "{$domainDir}/Filament/Pages";
-                if (is_dir($pagesPath)) {
-                    $panel->discoverPages(in: $pagesPath, for: "App\\Domains\\{$domainName}\\Filament\\Pages");
-                }
-
-                $widgetsPath = "{$domainDir}/Filament/Widgets";
-                if (is_dir($widgetsPath)) {
-                    $panel->discoverWidgets(in: $widgetsPath, for: "App\\Domains\\{$domainName}\\Filament\\Widgets");
-                }
-
-                $clustersPath = "{$domainDir}/Filament/Clusters";
-                if (is_dir($clustersPath)) {
-                    $panel->discoverClusters(in: $clustersPath, for: "App\\Domains\\{$domainName}\\Filament\\Clusters");
-                }
-            }
-        }
+        $panel
+            ->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+            ->discoverPages(in: app_path('Filament/Pages'), for: 'App\\Filament\\Pages')
+            ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\\Filament\\Widgets');
 
         return $panel;
     }

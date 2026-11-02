@@ -89,6 +89,8 @@ class OrdersTable
                     ->label('Status')
                     ->options(OrderStatus::options()),
             ])
+            ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
+            ->recordAction(null)
             ->recordActions([
                 Action::make('view_receipt')
                     ->label('View Receipt')

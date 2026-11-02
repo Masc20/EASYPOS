@@ -9,6 +9,7 @@ use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class OrderResource extends Resource
@@ -39,5 +40,11 @@ class OrderResource extends Resource
         return [
             'index' => ListOrders::route('/'),
         ];
+    }
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()
+            ->with(['cashier', 'branch', 'payments']);
     }
 }

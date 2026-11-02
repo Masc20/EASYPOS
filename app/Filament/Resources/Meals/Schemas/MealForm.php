@@ -22,20 +22,26 @@ class MealForm
                     ->label('Menu Category')
                     ->relationship('category', 'name')
                     ->required()
-                    ->searchable()
                     ->preload()
-                    ->live()
-                    ->afterStateUpdated(function (?string $state, callable $set, $record) {
-                        if (! $record && filled($state)) {
-                            $set('menu_code', CodeGeneratorService::generateMenuCode((int) $state));
-                        }
-                    }),
+                    ->extraInputAttributes(fn ($record) => $record ? [] : [
+                        'data-code-map' => json_encode(CodeGeneratorService::getCategoryMenuCodeMap()),
+                        'x-on:change' => '
+                            const map = JSON.parse($el.dataset.codeMap || "{}");
+                            const code = map[$el.value];
+                            if (code) {
+                                const codeInput = $el.closest("form")?.querySelector("[data-menu-code-input]");
+                                if (codeInput) {
+                                    codeInput.value = code;
+                                    codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+                                }
+                            }
+                        ',
+                    ]),
 
                 Select::make('branch_id')
                     ->label('Assigned Branch')
                     ->relationship('branch', 'name')
                     ->placeholder('All Branches (Global Menu)')
-                    ->searchable()
                     ->preload()
                     ->default(null),
 
@@ -48,7 +54,8 @@ class MealForm
                     ->label('Menu Code (Auto-Generated)')
                     ->placeholder('Auto-generated from category')
                     ->maxLength(50)
-                    ->helperText('Automatically generated based on selected category.'),
+                    ->extraInputAttributes(['data-menu-code-input' => 'true'])
+                    ->helperText('Instantly generated when a category is selected (or auto-assigned on save).'),
 
                 TextInput::make('price')
                     ->label('Selling Price')
@@ -68,15 +75,13 @@ class MealForm
                     ->default(true),
 
                 Toggle::make('track_stock')
-                    ->label('Track Limited Portions')
-                    ->live(),
+                    ->label('Track Limited Portions'),
 
                 TextInput::make('stock_quantity')
-                    ->label('Available Portions')
+                    ->label('Available Portions (If Tracked)')
                     ->numeric()
                     ->minValue(0)
-                    ->placeholder('Portions count')
-                    ->visible(fn ($get) => (bool) $get('track_stock')),
+                    ->placeholder('Leave blank for unlimited'),
 
                 Toggle::make('is_active')
                     ->label('Active in Menu')

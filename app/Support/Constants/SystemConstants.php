@@ -28,4 +28,12 @@ class SystemConstants
      */
     public const SESSION_AUTH_METHOD = 'auth_method';
     public const SESSION_CURRENT_BRANCH = 'current_branch_id';
+
+    /**
+     * Performance budgets & pagination constants (Core Web Vitals).
+     */
+    public const DEFAULT_TABLE_PAGE_SIZE = 10;
+    public const PERFORMANCE_BUDGET_INP_MS = 200;
+    public const PERFORMANCE_BUDGET_LCP_SECONDS = 2.5;
+    public const PERFORMANCE_BUDGET_CLS_SCORE = 0.1;
 }

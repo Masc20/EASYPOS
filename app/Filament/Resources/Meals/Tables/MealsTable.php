@@ -74,6 +74,8 @@ class MealsTable
                     ->label('In Stock'),
                 TrashedFilter::make(),
             ])
+            ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
+            ->recordAction(null)
             ->recordActions([
                 EditAction::make()
                     ->modal()

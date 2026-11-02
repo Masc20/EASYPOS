@@ -6,7 +6,6 @@ use App\Support\Services\CodeGeneratorService;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Str;
 
 class BranchForm
 {
@@ -18,22 +17,38 @@ class BranchForm
                     ->label('Branch Name')
                     ->required()
                     ->maxLength(255)
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(function (?string $state, callable $set, callable $get, $record) {
-                        if (! $record && filled($state)) {
-                            $set('code', CodeGeneratorService::generateBranchCode($state));
-                        }
-                    }),
+                    ->extraInputAttributes(fn ($record) => $record ? [] : [
+                        'x-on:input' => '
+                            const val = ($el.value || "").trim();
+                            if (!val) return;
+                            const words = val.split(/\s+/);
+                            let code = "";
+                            if (words.length >= 2) {
+                                code = (words[0].substring(0, 2) + words[1].substring(0, 2)).toUpperCase();
+                            } else {
+                                code = val.replace(/[^a-zA-Z0-9]/g, "").substring(0, 4).toUpperCase();
+                            }
+                            if (code.length >= 2) {
+                                const codeInput = $el.closest("form")?.querySelector("[data-branch-code-input]");
+                                if (codeInput) {
+                                    codeInput.value = code;
+                                    codeInput.dispatchEvent(new Event("input", { bubbles: true }));
+                                }
+                            }
+                        ',
+                    ]),
 
                 TextInput::make('code')
                     ->label('Branch Code (Auto-Generated)')
                     ->required()
                     ->maxLength(10)
-                    ->default(fn () => CodeGeneratorService::generateBranchCode())
+                    ->default(fn ($record) => $record ? null : CodeGeneratorService::generateBranchCode())
                     ->unique(ignoreRecord: true)
-                    ->live(onBlur: true)
-                    ->afterStateUpdated(fn (?string $state, callable $set) => $set('code', Str::upper($state ?? '')))
-                    ->helperText('Automatically generated from branch name or sequence.'),
+                    ->extraInputAttributes([
+                        'data-branch-code-input' => 'true',
+                        'x-on:input' => '$el.value = $el.value.toUpperCase()',
+                    ])
+                    ->helperText('Automatically generated as you type the branch name.'),
 
                 TextInput::make('address')
                     ->label('Store Address')

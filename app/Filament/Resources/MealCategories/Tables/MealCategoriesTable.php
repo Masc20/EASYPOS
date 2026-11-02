@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MealCategories\Tables;
 
+use App\Support\Constants\SystemConstants;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -57,6 +58,8 @@ class MealCategoriesTable
                 TernaryFilter::make('is_active')
                     ->label('Active'),
             ])
+            ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
+            ->recordAction(null)
             ->recordActions([
                 EditAction::make()
                     ->modal()

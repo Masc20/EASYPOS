@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Branches\Tables;
 
+use App\Support\Constants\SystemConstants;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -49,6 +50,8 @@ class BranchesTable
                     ->trueLabel('Active Branches Only')
                     ->falseLabel('Inactive Branches Only'),
             ])
+            ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
+            ->recordAction(null)
             ->recordActions([
                 EditAction::make()
                     ->modal()

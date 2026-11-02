@@ -80,6 +80,9 @@ class CodeGeneratorAndEnumsTest extends TestCase
 
         $this->assertEquals('BUR-001', $meal1->menu_code);
         $this->assertEquals('BUR-002', $meal2->menu_code);
+
+        $map = CodeGeneratorService::getCategoryMenuCodeMap();
+        $this->assertEquals('BUR-003', $map[$category->id]);
     }
 
     public function test_auto_generates_emp_id_based_on_branch_position_and_sequence(): void
@@ -102,6 +105,9 @@ class CodeGeneratorAndEnumsTest extends TestCase
 
         $empId2 = CodeGeneratorService::generateEmpId($branch->id, StaffRole::CASHIER->value);
         $this->assertEquals('B01-CSH-002', $empId2);
+
+        $previewMap = CodeGeneratorService::getEmpIdPreviewMap();
+        $this->assertEquals('B01-CSH-002', $previewMap["{$branch->id}:" . StaffRole::CASHIER->value]);
 
         $cookId = CodeGeneratorService::generateEmpId($branch->id, StaffRole::COOK->value);
         $this->assertEquals('B01-COK-001', $cookId);

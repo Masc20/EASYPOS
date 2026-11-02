@@ -20,65 +20,94 @@ class ListUsers extends ListRecords
 
     protected function getHeaderActions(): array
     {
+        $updateEmpIdJs = '
+            const form = $el.closest("form");
+            if (!form) return;
+            const mapEl = form.querySelector("[data-emp-map]");
+            const branchEl = form.querySelector("[data-branch-select]");
+            const roleEl = form.querySelector("[data-role-select]");
+            const empInput = form.querySelector("[data-emp-id-input]");
+            if (mapEl && empInput) {
+                const map = JSON.parse(mapEl.dataset.empMap || "{}");
+                const bId = branchEl && branchEl.value ? branchEl.value : "0";
+                const role = roleEl && roleEl.value ? roleEl.value : "cashier";
+                const code = map[bId + ":" + role];
+                if (code) {
+                    empInput.value = code;
+                    empInput.dispatchEvent(new Event("input", { bubbles: true }));
+                }
+            }
+        ';
+
         return [
-            // 1. Dedicated Modal for Floor Staff (PIN Authentication)
+            // 1. Dedicated Modal for Floor Staff (PIN-Based Terminal Access)
             Action::make('create_floor_staff')
                 ->label('Add Floor Staff (PIN)')
-                ->icon('heroicon-o-identification')
+                ->icon('heroicon-o-Hashtag')
                 ->color('primary')
-                ->modalHeading('Add Floor Staff Member')
-                ->modalDescription('Floor staff sign in to operational terminals (POS, Kitchen, Chef Menu) using their Employee ID and 4-digit PIN.')
+                ->modalHeading('Add Floor Staff (Terminal PIN)')
+                ->modalDescription('Floor staff sign in to POS, KDS, and Menu terminals using their auto-generated Employee ID and a 4-digit PIN.')
                 ->modalWidth('lg')
-                ->schema([
-                    TextInput::make('name')
-                        ->label('Staff Full Name')
-                        ->required()
-                        ->maxLength(255),
+                ->schema(function () use ($updateEmpIdJs) {
+                    $empMap = CodeGeneratorService::getEmpIdPreviewMap();
+                    $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
+                    $firstBranchId = array_key_first($branches) ?? 1;
+                    $defaultCode = $empMap["{$firstBranchId}:" . StaffRole::CASHIER->value]
+                        ?? CodeGeneratorService::generateEmpId((int) $firstBranchId, StaffRole::CASHIER->value);
 
-                    Select::make('branch_id')
-                        ->label('Assigned Branch')
-                        ->options(fn () => Branch::where('is_active', true)->pluck('name', 'id')->toArray())
-                        ->required()
-                        ->searchable()
-                        ->live()
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $role = $get('role') ?: StaffRole::CASHIER->value;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
-                        }),
+                    return [
+                        TextInput::make('name')
+                            ->label('Staff Full Name')
+                            ->required()
+                            ->maxLength(255),
 
-                    Select::make('role')
-                        ->label('Station Position')
-                        ->options(StaffRole::floorOptions())
-                        ->default(StaffRole::CASHIER->value)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $branchId = $get('branch_id') ? (int) $get('branch_id') : null;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: StaffRole::CASHIER->value));
-                        }),
+                        Select::make('branch_id')
+                            ->label('Assigned Branch')
+                            ->options($branches)
+                            ->default($firstBranchId)
+                            ->required()
+                            ->extraInputAttributes([
+                                'data-branch-select' => 'true',
+                                'x-on:change' => $updateEmpIdJs,
+                            ]),
 
-                    TextInput::make('emp_id')
-                        ->label('Employee ID (Auto-Generated)')
-                        ->default(fn () => CodeGeneratorService::generateEmpId(1, StaffRole::CASHIER->value))
-                        ->required()
-                        ->maxLength(50)
-                        ->unique('users', 'emp_id')
-                        ->helperText('Auto-generated based on Branch + Position + Sequence.'),
+                        Select::make('role')
+                            ->label('Station Position')
+                            ->options(StaffRole::floorOptions())
+                            ->default(StaffRole::CASHIER->value)
+                            ->required()
+                            ->extraInputAttributes([
+                                'data-role-select' => 'true',
+                                'x-on:change' => $updateEmpIdJs,
+                            ]),
 
-                    TextInput::make('pin_code')
-                        ->label('4-Digit Terminal PIN')
-                        ->password()
-                        ->revealable()
-                        ->required()
-                        ->maxLength(4)
-                        ->minLength(4)
-                        ->rule('regex:/^[0-9]{4}$/')
-                        ->placeholder('e.g. 1234'),
+                        TextInput::make('emp_id')
+                            ->label('Employee ID (Auto-Generated)')
+                            ->default($defaultCode)
+                            ->required()
+                            ->maxLength(50)
+                            ->unique('users', 'emp_id')
+                            ->extraInputAttributes([
+                                'data-emp-id-input' => 'true',
+                                'data-emp-map' => json_encode($empMap),
+                            ])
+                            ->helperText('Instantly generated from Branch + Position + Sequence.'),
 
-                    Toggle::make('is_active')
-                        ->label('Active Account')
-                        ->default(true),
-                ])
+                        TextInput::make('pin_code')
+                            ->label('4-Digit Terminal PIN')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->maxLength(4)
+                            ->minLength(4)
+                            ->rule('regex:/^[0-9]{4}$/')
+                            ->placeholder('e.g. 1234'),
+
+                        Toggle::make('is_active')
+                            ->label('Active Account')
+                            ->default(true),
+                    ];
+                })
                 ->action(function (array $data) {
                     $empId = filled($data['emp_id'] ?? null)
                         ? $data['emp_id']
@@ -109,80 +138,89 @@ class ListUsers extends ListRecords
                 ->modalHeading('Add Back-Office Admin / Manager')
                 ->modalDescription('Administrators and Branch Managers access the back-office portal using Email and Password.')
                 ->modalWidth('lg')
-                ->schema([
-                    TextInput::make('name')
-                        ->label('Full Name')
-                        ->required()
-                        ->maxLength(255),
+                ->schema(function () use ($updateEmpIdJs) {
+                    $empMap = CodeGeneratorService::getEmpIdPreviewMap();
+                    $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
+                    $defaultCode = $empMap['0:' . StaffRole::BRANCH_MANAGER->value]
+                        ?? CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value);
 
-                    TextInput::make('email')
-                        ->label('Email Address')
-                        ->email()
-                        ->required()
-                        ->maxLength(255)
-                        ->unique('users', 'email'),
+                    return [
+                        TextInput::make('name')
+                            ->label('Full Name')
+                            ->required()
+                            ->maxLength(255),
 
-                    TextInput::make('password')
-                        ->label('Back-Office Password')
-                        ->password()
-                        ->revealable()
-                        ->required()
-                        ->minLength(8),
+                        TextInput::make('email')
+                            ->label('Email Address')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->unique('users', 'email'),
 
-                    Select::make('branch_id')
-                        ->label('Assigned Branch')
-                        ->options(fn () => Branch::where('is_active', true)->pluck('name', 'id')->toArray())
-                        ->placeholder('Global / HQ (All Branches)')
-                        ->searchable()
-                        ->live()
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $role = $get('role') ?: StaffRole::BRANCH_MANAGER->value;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
-                        }),
+                        TextInput::make('password')
+                            ->label('Back-Office Password')
+                            ->password()
+                            ->revealable()
+                            ->required()
+                            ->minLength(8),
 
-                    Select::make('role')
-                        ->label('Administrative Role')
-                        ->options(StaffRole::managementOptions())
-                        ->default(StaffRole::BRANCH_MANAGER->value)
-                        ->required()
-                        ->live()
-                        ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                            $branchId = $get('branch_id') ? (int) $get('branch_id') : null;
-                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $state ?: StaffRole::BRANCH_MANAGER->value));
-                        }),
+                        Select::make('branch_id')
+                            ->label('Assigned Branch')
+                            ->options($branches)
+                            ->placeholder('Global / HQ (All Branches)')
+                            ->extraInputAttributes([
+                                'data-branch-select' => 'true',
+                                'x-on:change' => $updateEmpIdJs,
+                            ]),
 
-                    TextInput::make('emp_id')
-                        ->label('Employee ID (Auto-Generated)')
-                        ->default(fn () => CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value))
-                        ->required()
-                        ->maxLength(50)
-                        ->unique('users', 'emp_id')
-                        ->helperText('Used when approving voids/refunds on floor terminals.'),
+                        Select::make('role')
+                            ->label('Administrative Role')
+                            ->options(StaffRole::managementOptions())
+                            ->default(StaffRole::BRANCH_MANAGER->value)
+                            ->required()
+                            ->extraInputAttributes([
+                                'data-role-select' => 'true',
+                                'x-on:change' => $updateEmpIdJs,
+                            ]),
 
-                    TextInput::make('pin_code')
-                        ->label('Manager 4-Digit Approval PIN')
-                        ->password()
-                        ->revealable()
-                        ->maxLength(4)
-                        ->minLength(4)
-                        ->rule('regex:/^[0-9]{4}$/')
-                        ->placeholder('e.g. 9999 (For approving POS voids)'),
+                        TextInput::make('emp_id')
+                            ->label('Employee ID (Auto-Generated)')
+                            ->default($defaultCode)
+                            ->required()
+                            ->maxLength(50)
+                            ->unique('users', 'emp_id')
+                            ->extraInputAttributes([
+                                'data-emp-id-input' => 'true',
+                                'data-emp-map' => json_encode($empMap),
+                            ])
+                            ->helperText('Used when approving voids/refunds on floor terminals.'),
 
-                    Toggle::make('is_active')
-                        ->label('Active Account')
-                        ->default(true),
-                ])
+                        TextInput::make('pin_code')
+                            ->label('Manager 4-Digit Approval PIN')
+                            ->password()
+                            ->revealable()
+                            ->maxLength(4)
+                            ->minLength(4)
+                            ->rule('regex:/^[0-9]{4}$/')
+                            ->placeholder('Optional 4-digit PIN for POS void approvals'),
+
+                        Toggle::make('is_active')
+                            ->label('Active Account')
+                            ->default(true),
+                    ];
+                })
                 ->action(function (array $data) {
+                    $branchId = filled($data['branch_id'] ?? null) ? (int) $data['branch_id'] : null;
                     $empId = filled($data['emp_id'] ?? null)
                         ? $data['emp_id']
-                        : CodeGeneratorService::generateEmpId($data['branch_id'] ? (int) $data['branch_id'] : null, $data['role']);
+                        : CodeGeneratorService::generateEmpId($branchId, $data['role']);
 
                     $user = User::create([
                         'name' => $data['name'],
                         'email' => $data['email'],
                         'password' => $data['password'],
                         'emp_id' => $empId,
-                        'branch_id' => $data['branch_id'] ?? null,
+                        'branch_id' => $branchId,
                         'pin_code' => filled($data['pin_code'] ?? null) ? $data['pin_code'] : null,
                         'is_active' => $data['is_active'] ?? true,
                     ]);

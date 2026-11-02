@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Users\Tables;
 
 use App\Domains\Identity\Actions\ToggleUserActiveStatusAction;
 use App\Domains\Identity\Models\User;
+use App\Support\Constants\SystemConstants;
 use App\Support\Enums\StaffRole;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
@@ -79,6 +80,8 @@ class UsersTable
                     ->relationship('branch', 'name')
                     ->label('Branch'),
             ])
+            ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
+            ->recordAction(null)
             ->recordActions([
                 Action::make('deactivate')
                     ->label('Deactivate')

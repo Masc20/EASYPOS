@@ -40,9 +40,9 @@ class RolesTable
             ->filters([
                 SelectFilter::make('name')
                     ->label('Role Name')
-                    ->options(\Spatie\Permission\Models\Role::pluck('name', 'name')->toArray())
-                    ->searchable(),
+                    ->options(fn () => \Spatie\Permission\Models\Role::pluck('name', 'name')->toArray()),
             ])
+            ->recordAction(null)
             ->recordActions([
                 EditAction::make()
                     ->modal()
