@@ -1,22 +1,12 @@
 <x-filament-panels::page>
     <div class="flex flex-col gap-6 w-full relative">
 
-        <!-- Instant Skeleton / Loading Indicator for Filter Transitions -->
-        <div wire:loading.delay class="w-full rounded-lg bg-[#960D10]/10 border border-[#960D10]/20 px-4 py-2 text-xs font-semibold text-[#960D10] dark:text-[#F28C18] flex items-center gap-2 animate-pulse">
-            <svg class="h-4 w-4 animate-spin shrink-0" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
-            </svg>
-            <span>Refreshing financial ledger & sales records...</span>
-        </div>
-
         <!-- 1. Unified Filter & Controls Bar -->
         <x-filament::section icon="heroicon-m-funnel" compact>
             <x-slot name="heading">
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                         <h2 class="text-sm font-bold text-gray-900 dark:text-white">Sales Period and Station Filters</h2>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Filter sales, tender, and tax data by timeframe, branch, and cashier station.</p>
                     </div>
 
                     <!-- Actions -->
@@ -126,7 +116,7 @@
             </div>
         </x-filament::section>
 
-        <!-- 2. High-Impact Executive KPI Cards Grid (Visual Badges, Currency Separation, Accent Bars) -->
+        <!-- 2. High-Impact Executive KPI Cards Grid -->
         @php
             $grossParts = explode('.', number_format($summary['gross_sales'], 2));
             $netParts = explode('.', number_format($summary['net_sales'], 2));
@@ -138,126 +128,90 @@
         <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3.5 w-full">
             <!-- 1. Gross Sales -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-gray-400 shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Gross Sales</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
-                            <x-filament::icon icon="heroicon-m-calculator" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $grossParts[0] }}</span>
-                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $grossParts[1] }}</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Gross Sales</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400">
+                        <x-filament::icon icon="heroicon-m-calculator" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
-                    <span class="text-[10px] text-gray-400">Menu Catalog Total</span>
-                    <x-filament::badge color="gray" size="xs">Catalog</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
+                    <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $grossParts[0] }}</span>
+                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $grossParts[1] }}</span>
                 </div>
             </div>
 
-            <!-- 2. Net Revenue (Hero Metric) -->
+            <!-- 2. Net Revenue -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-[#fdf5f5] dark:bg-[#960D10]/15 border border-[#960D10]/25 dark:border-[#960D10]/35 border-l-4 border-l-[#960D10] shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Net Revenue</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-[#960D10]/15 text-[#960D10] dark:text-[#DE9A9D]">
-                            <x-filament::icon icon="heroicon-m-currency-dollar" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xs font-bold text-[#DE9A9D] mr-0.5">₱</span>
-                        <span class="text-xl font-black tracking-tight text-primary-900 dark:text-primary-100 leading-tight">{{ $netParts[0] }}</span>
-                        <span class="text-xs font-semibold text-[#DE9A9D]">.{{ $netParts[1] }}</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-primary-700 dark:text-primary-300">Net Revenue</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-[#960D10]/15 text-[#960D10] dark:text-[#DE9A9D]">
+                        <x-filament::icon icon="heroicon-m-currency-dollar" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-[#960D10]/20 dark:border-[#960D10]/30">
-                    <span class="text-[10px] text-primary-700/80 dark:text-primary-400/80">Realized Income</span>
-                    <x-filament::badge color="primary" size="xs">Hero Metric</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xs font-bold text-[#DE9A9D] mr-0.5">₱</span>
+                    <span class="text-xl font-black tracking-tight text-primary-900 dark:text-primary-100 leading-tight">{{ $netParts[0] }}</span>
+                    <span class="text-xs font-semibold text-[#DE9A9D]">.{{ $netParts[1] }}</span>
                 </div>
             </div>
 
             <!-- 3. Discounts Granted -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-amber-500 shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Discounts</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
-                            <x-filament::icon icon="heroicon-m-tag" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xs font-bold text-amber-500 mr-0.5">-₱</span>
-                        <span class="text-xl font-black tracking-tight text-amber-800 dark:text-amber-300 leading-tight">{{ $discParts[0] }}</span>
-                        <span class="text-xs font-semibold text-amber-500">.{{ $discParts[1] }}</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">Discounts</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <x-filament::icon icon="heroicon-m-tag" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
-                    <span class="text-[10px] text-amber-700/80 dark:text-amber-400/80">Senior / PWD / Promo</span>
-                    <x-filament::badge color="warning" size="xs">Deductions</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xs font-bold text-amber-500 mr-0.5">-₱</span>
+                    <span class="text-xl font-black tracking-tight text-amber-800 dark:text-amber-300 leading-tight">{{ $discParts[0] }}</span>
+                    <span class="text-xs font-semibold text-amber-500">.{{ $discParts[1] }}</span>
                 </div>
             </div>
 
             <!-- 4. Cash in Drawer -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-emerald-500 shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Cash in Drawer</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            <x-filament::icon icon="heroicon-m-banknotes" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xs font-bold text-emerald-500 mr-0.5">₱</span>
-                        <span class="text-xl font-black tracking-tight text-emerald-800 dark:text-emerald-300 leading-tight">{{ $cashParts[0] }}</span>
-                        <span class="text-xs font-semibold text-emerald-500">.{{ $cashParts[1] }}</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">Cash in Drawer</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                        <x-filament::icon icon="heroicon-m-banknotes" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
-                    <span class="text-[10px] text-emerald-700/80 dark:text-emerald-400/80">Physical Cash</span>
-                    <x-filament::badge color="success" size="xs">In Register</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xs font-bold text-emerald-500 mr-0.5">₱</span>
+                    <span class="text-xl font-black tracking-tight text-emerald-800 dark:text-emerald-300 leading-tight">{{ $cashParts[0] }}</span>
+                    <span class="text-xs font-semibold text-emerald-500">.{{ $cashParts[1] }}</span>
                 </div>
             </div>
 
             <!-- 5. Completed Orders -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-blue-500 shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Paid Orders</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
-                            <x-filament::icon icon="heroicon-m-shopping-bag" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ number_format($summary['orders_count']) }}</span>
-                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 ml-1">orders</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Paid Orders</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-blue-500/15 text-blue-600 dark:text-blue-400">
+                        <x-filament::icon icon="heroicon-m-shopping-bag" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
-                    <span class="text-[10px] text-gray-400">Transactions Handled</span>
-                    <x-filament::badge color="info" size="xs">Completed</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ number_format($summary['orders_count']) }}</span>
+                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500 ml-1">orders</span>
                 </div>
             </div>
 
             <!-- 6. Average Ticket (AOV) -->
             <div class="flex flex-col justify-between rounded-xl p-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-white/10 border-l-4 border-l-purple-500 shadow-xs relative overflow-hidden box-border">
-                <div>
-                    <div class="flex items-center justify-between gap-1">
-                        <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Avg Ticket (AOV)</span>
-                        <span class="flex items-center justify-center w-6 h-6 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400">
-                            <x-filament::icon icon="heroicon-m-arrow-trending-up" class="w-3.5 h-3.5" />
-                        </span>
-                    </div>
-                    <div class="flex items-baseline mt-2">
-                        <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
-                        <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $aovParts[0] }}</span>
-                        <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $aovParts[1] }}</span>
-                    </div>
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[11px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">Avg Ticket (AOV)</span>
+                    <span class="flex items-center justify-center w-6 h-6 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400">
+                        <x-filament::icon icon="heroicon-m-arrow-trending-up" class="w-3.5 h-3.5" />
+                    </span>
                 </div>
-                <div class="flex items-center justify-between mt-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
-                    <span class="text-[10px] text-gray-400">Spend per Customer</span>
-                    <x-filament::badge color="gray" size="xs">Basket Size</x-filament::badge>
+                <div class="flex items-baseline mt-2">
+                    <span class="text-xs font-bold text-gray-400 dark:text-gray-500 mr-0.5">₱</span>
+                    <span class="text-xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">{{ $aovParts[0] }}</span>
+                    <span class="text-xs font-semibold text-gray-400 dark:text-gray-500">.{{ $aovParts[1] }}</span>
                 </div>
             </div>
         </div>
@@ -271,10 +225,7 @@
                 <!-- Cash Register Drawer Reconciliation -->
                 <x-filament::section icon="heroicon-m-banknotes" compact>
                     <x-slot name="heading">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-gray-900 dark:text-white">Cash Register Reconciliation</span>
-                            <x-filament::badge color="success" size="xs">Drawer Audit</x-filament::badge>
-                        </div>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cash Register Reconciliation</span>
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
@@ -315,10 +266,7 @@
                 <!-- Payment Tender Reconciliation Table -->
                 <x-filament::section icon="heroicon-m-credit-card" compact>
                     <x-slot name="heading">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-gray-900 dark:text-white">Payment Tender Reconciliation</span>
-                            <span class="text-xs text-gray-400">Cash vs Electronic</span>
-                        </div>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Payment Tender Reconciliation</span>
                     </x-slot>
 
                     @if (empty($summary['payments_breakdown']))
@@ -367,10 +315,7 @@
                 <!-- Cashier & Staff Performance Table -->
                 <x-filament::section icon="heroicon-m-user-group" compact>
                     <x-slot name="heading">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-gray-900 dark:text-white">Cashier and Staff Performance</span>
-                            <span class="text-xs text-gray-400">Terminal activity</span>
-                        </div>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cashier and Staff Performance</span>
                     </x-slot>
 
                     @if (empty($summary['cashier_performance']))
@@ -442,10 +387,7 @@
                 <!-- Philippine BIR Tax Compliance Breakdown -->
                 <x-filament::section icon="heroicon-m-document-check" compact>
                     <x-slot name="heading">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-gray-900 dark:text-white">BIR Tax Compliance Breakdown</span>
-                            <x-filament::badge color="info" size="xs">RR 16-2005</x-filament::badge>
-                        </div>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">BIR Tax Compliance Breakdown</span>
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
@@ -485,10 +427,7 @@
                 <!-- Dining Mode Breakdown -->
                 <x-filament::section icon="heroicon-m-clipboard-document-list" compact>
                     <x-slot name="heading">
-                        <div class="flex items-center justify-between">
-                            <span class="text-sm font-bold text-gray-900 dark:text-white">Dining Mode Breakdown</span>
-                            <span class="text-xs text-gray-400">Order distribution</span>
-                        </div>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Dining Mode Breakdown</span>
                     </x-slot>
 
                     @php
@@ -542,7 +481,6 @@
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
                     <div>
                         <span class="text-sm font-bold text-gray-900 dark:text-white">Periodic Sales Reports (Daily / Weekly / Monthly / Yearly)</span>
-                        <p class="text-xs text-gray-400">Reconciled sales intervals, gross & net totals, and official BIR tax compliance calculations.</p>
                     </div>
 
                     <!-- Periodic Controls & Exports -->

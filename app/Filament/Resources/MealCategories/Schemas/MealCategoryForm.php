@@ -46,8 +46,7 @@ class MealCategoryForm
                 TextInput::make('display_order')
                     ->required()
                     ->numeric()
-                    ->default(0)
-                    ->helperText('Lower numbers appear first in the POS catalog tabs'),
+                    ->default(0),
 
                 Toggle::make('is_active')
                     ->label('Active Category')

@@ -25,8 +25,7 @@ class RoleForm
                     ->relationship('permissions', 'name')
                     ->getOptionLabelFromRecordUsing(fn ($record) => PermissionEnum::label($record->name))
                     ->columns(2)
-                    ->searchable()
-                    ->helperText('Select the capabilities granted to staff assigned this role.'),
+                    ->searchable(),
             ]);
     }
 }

@@ -11,22 +11,7 @@
                 </svg>
             </div>
             <h1 class="text-2xl font-bold tracking-tight text-brand-text">Floor Staff Terminal</h1>
-            <p class="mt-1 text-sm text-brand-text-muted">Sign in with your Employee ID and 4-digit PIN</p>
         </div>
-
-        @if ($errors->any())
-            <div
-                class="mb-5 rounded-md bg-brand-error/10 border border-brand-error/30 p-3.5 text-sm text-brand-error animate-shake">
-                <div class="flex items-center gap-2">
-                    <svg class="h-4 w-4 shrink-0 text-brand-error" fill="none" stroke="currentColor"
-                        viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span class="font-medium">{{ $errors->first() }}</span>
-                </div>
-            </div>
-        @endif
 
         <form wire:submit="login" class="space-y-5">
             <!-- Employee ID Input -->

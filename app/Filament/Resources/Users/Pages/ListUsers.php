@@ -43,10 +43,8 @@ class ListUsers extends ListRecords
             // 1. Dedicated Modal for Floor Staff (PIN-Based Terminal Access)
             Action::make('create_floor_staff')
                 ->label('Add Floor Staff (PIN)')
-                ->icon('heroicon-o-Hashtag')
                 ->color('primary')
                 ->modalHeading('Add Floor Staff (Terminal PIN)')
-                ->modalDescription('Floor staff sign in to POS, KDS, and Menu terminals using their auto-generated Employee ID and a 4-digit PIN.')
                 ->modalWidth('lg')
                 ->schema(function () use ($updateEmpIdJs) {
                     $empMap = CodeGeneratorService::getEmpIdPreviewMap();
@@ -90,8 +88,7 @@ class ListUsers extends ListRecords
                             ->extraInputAttributes([
                                 'data-emp-id-input' => 'true',
                                 'data-emp-map' => json_encode($empMap),
-                            ])
-                            ->helperText('Instantly generated from Branch + Position + Sequence.'),
+                            ]),
 
                         TextInput::make('pin_code')
                             ->label('4-Digit Terminal PIN')
@@ -133,10 +130,8 @@ class ListUsers extends ListRecords
             // 2. Dedicated Modal for Back-Office Admin / Manager (Email & Password)
             Action::make('create_admin_user')
                 ->label('Add Admin / Manager')
-                ->icon('heroicon-o-shield-check')
                 ->color('gray')
                 ->modalHeading('Add Back-Office Admin / Manager')
-                ->modalDescription('Administrators and Branch Managers access the back-office portal using Email and Password.')
                 ->modalWidth('lg')
                 ->schema(function () use ($updateEmpIdJs) {
                     $empMap = CodeGeneratorService::getEmpIdPreviewMap();
@@ -192,8 +187,7 @@ class ListUsers extends ListRecords
                             ->extraInputAttributes([
                                 'data-emp-id-input' => 'true',
                                 'data-emp-map' => json_encode($empMap),
-                            ])
-                            ->helperText('Used when approving voids/refunds on floor terminals.'),
+                            ]),
 
                         TextInput::make('pin_code')
                             ->label('Manager 4-Digit Approval PIN')

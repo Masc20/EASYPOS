@@ -56,11 +56,8 @@
         </div>
 
         <!-- Order Context -->
-        <div class="text-sm text-brand-text-muted">
-            <p class="font-semibold text-brand-text" x-show="orderId">Voiding Order #<span x-text="orderId"></span></p>
-            <p class="text-xs mt-1">Only authorized managers with the <span
-                    class="font-bold text-brand-text">Refund</span> permission
-                can approve order voids. The approving manager must belong to the same branch.</p>
+        <div class="text-sm text-brand-text-muted" x-show="orderId">
+            <p class="font-semibold text-brand-text">Voiding Order #<span x-text="orderId"></span></p>
         </div>
 
         <!-- Manager Employee ID -->

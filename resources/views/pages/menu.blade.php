@@ -3,9 +3,6 @@
     <div class="mb-5 flex items-center justify-between gap-4">
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold tracking-tight text-brand-text">Meal Catalog</h1>
-            <x-ui.badge variant="primary">
-                Chef Station
-            </x-ui.badge>
         </div>
         <x-ui.button
             x-data

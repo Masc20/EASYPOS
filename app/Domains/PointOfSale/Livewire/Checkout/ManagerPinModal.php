@@ -33,10 +33,6 @@ class ManagerPinModal extends Component
 
         if (blank($data['manager_id'] ?? null) || blank($data['manager_pin'] ?? null) || blank($data['reason'] ?? null)) {
             $this->errorMessage = 'All fields (Manager ID, PIN, Reason) are required.';
-            $this->dispatch('pos-alert', [
-                'message' => $this->errorMessage,
-                'type' => 'error'
-            ]);
             return false;
         }
 
@@ -62,12 +58,7 @@ class ManagerPinModal extends Component
             $this->orderId = null;
             return true;
         } catch (\Throwable $e) {
-            // Captures wrong PINs, invalid manager IDs, or authorization errors and alerts the user!
             $this->errorMessage = $e->getMessage();
-            $this->dispatch('pos-alert', [
-                'message' => 'Void Failed: ' . $e->getMessage(),
-                'type' => 'error'
-            ]);
             return false;
         }
     }

@@ -2,8 +2,9 @@
     <div class="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
             <h1 class="text-2xl font-bold tracking-tight text-brand-text">Point of Sale Terminal</h1>
+            <span class="sr-only">POS Register Terminal</span>
             <p class="text-xs text-brand-text-muted">
-                {{ auth()->user()->branch?->name ?? 'Downtown Flagship' }} Staff: <span
+                {{ auth()->user()->branch?->name ?? 'Downtown Flagship' }} &bull; <span
                     class="font-semibold text-brand-text">{{ auth()->user()->name }}</span>
             </p>
         </div>

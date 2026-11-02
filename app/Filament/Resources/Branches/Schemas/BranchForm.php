@@ -47,8 +47,7 @@ class BranchForm
                     ->extraInputAttributes([
                         'data-branch-code-input' => 'true',
                         'x-on:input' => '$el.value = $el.value.toUpperCase()',
-                    ])
-                    ->helperText('Automatically generated as you type the branch name.'),
+                    ]),
 
                 TextInput::make('address')
                     ->label('Store Address')
@@ -62,8 +61,7 @@ class BranchForm
 
                 Toggle::make('is_active')
                     ->label('Active Status')
-                    ->default(true)
-                    ->helperText('Deactivating blocks floor staff assigned to this branch from logging in.'),
+                    ->default(true),
             ]);
     }
 }

@@ -54,8 +54,7 @@ class MealForm
                     ->label('Menu Code (Auto-Generated)')
                     ->placeholder('Auto-generated from category')
                     ->maxLength(50)
-                    ->extraInputAttributes(['data-menu-code-input' => 'true'])
-                    ->helperText('Instantly generated when a category is selected (or auto-assigned on save).'),
+                    ->extraInputAttributes(['data-menu-code-input' => 'true']),
 
                 TextInput::make('price')
                     ->label('Selling Price')

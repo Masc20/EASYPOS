@@ -38,8 +38,7 @@ class UserForm
                     ->label('Employee ID')
                     ->default(fn ($record) => $record ? null : CodeGeneratorService::generateEmpId(null, StaffRole::CASHIER->value))
                     ->maxLength(50)
-                    ->unique('users', 'emp_id', ignoreRecord: true)
-                    ->helperText('Employee ID assigned to this staff member.'),
+                    ->unique('users', 'emp_id', ignoreRecord: true),
 
                 TextInput::make('email')
                     ->label('Email Address (Back-Office Only)')
@@ -56,7 +55,6 @@ class UserForm
                     ->minLength(4)
                     ->rule('regex:/^[0-9]{4}$/')
                     ->placeholder('Leave blank to keep existing PIN')
-                    ->helperText('Used for floor terminal sign-in or manager void approvals.')
                     ->dehydrated(fn ($state) => filled($state)),
 
                 TextInput::make('password')
@@ -65,7 +63,6 @@ class UserForm
                     ->revealable()
                     ->minLength(8)
                     ->placeholder('Leave blank to keep existing password')
-                    ->helperText('Used for back-office /admin portal login.')
                     ->dehydrated(fn ($state) => filled($state)),
 
                 Toggle::make('is_active')
