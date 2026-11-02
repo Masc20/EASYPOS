@@ -74,7 +74,7 @@
       <td valign="top">
         <ul>
           <li><b>Alpine.js Cart</b>: 0ms real-time search & quantity updates.</li>
-          <li><b>Multi-Tender</b>: Cash, Credit/Debit, and QR Ph transfers.</li>
+          <li><b>Multiple Payment Method</b>: Cash, Credit/Debit, and QR Ph transfers.</li>
           <li><b>Manager Void Gate</b>: Transactional rollback with manager PIN approval.</li>
           <li><b>80mm Receipts</b>: BIR-compliant thermal print layout.</li>
         </ul>
