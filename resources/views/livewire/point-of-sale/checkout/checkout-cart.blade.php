@@ -263,8 +263,10 @@
                 <select x-model="discountType"
                     class="rounded-md border border-brand-border bg-brand-bg px-2 py-1 text-xs text-brand-text focus:border-brand-primary focus:outline-none cursor-pointer">
                     <option value="none">No Discount</option>
-                    <option value="senior_pwd">Senior / PWD ({{ \App\Support\Constants\SystemConstants::SENIOR_PWD_DISCOUNT_PERCENTAGE }}%)</option>
-                    <option value="custom">Custom ({{ \App\Support\Constants\SystemConstants::CURRENCY_SYMBOL }})</option>
+                    <option value="senior_pwd">Senior / PWD
+                        ({{ \App\Support\Constants\SystemConstants::SENIOR_PWD_DISCOUNT_PERCENTAGE }}%)</option>
+                    <option value="custom">Custom ({{ \App\Support\Constants\SystemConstants::CURRENCY_SYMBOL }})
+                    </option>
                 </select>
                 <template x-if="discountType === 'custom'">
                     <input type="number" step="0.01" min="0" x-model.number="customDiscount"

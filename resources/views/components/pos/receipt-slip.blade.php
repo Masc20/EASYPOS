@@ -8,10 +8,12 @@
                 body * {
                     visibility: hidden !important;
                 }
+
                 #printable-receipt-{{ $order->id }},
                 #printable-receipt-{{ $order->id }} * {
                     visibility: visible !important;
                 }
+
                 #printable-receipt-{{ $order->id }} {
                     position: fixed !important;
                     left: 0 !important;
@@ -27,6 +29,7 @@
                     font-size: 11px !important;
                     line-height: 1.3 !important;
                 }
+
                 @page {
                     margin: 0;
                     size: 80mm auto;
@@ -35,12 +38,15 @@
         </style>
 
         <!-- Receipt Paper Frame -->
-        <div id="printable-receipt-{{ $order->id }}" class="bg-white text-zinc-900 font-mono text-[11px] leading-snug p-5 rounded-lg border border-zinc-200 shadow-md max-w-[380px] mx-auto text-left box-border">
+        <div id="printable-receipt-{{ $order->id }}"
+            class="bg-white text-zinc-900 font-mono text-[11px] leading-snug p-5 rounded-lg border border-zinc-200 shadow-md max-w-[380px] mx-auto text-left box-border">
 
             <!-- Store & Tax Registration Header -->
             <div class="text-center pb-2">
-                <h2 class="text-[15px] font-black tracking-tight uppercase text-zinc-900 m-0">{{ config('app.name', 'EASYPOS') }}</h2>
-                <p class="text-[11px] font-semibold text-zinc-700 text-center mt-0.5 mb-0">{{ $order->branch?->name ?? 'Downtown Flagship' }}</p>
+                <h2 class="text-[15px] font-black tracking-tight uppercase text-zinc-900 m-0">
+                    {{ config('app.name', 'EASYPOS') }}</h2>
+                <p class="text-[11px] font-semibold text-zinc-700 text-center mt-0.5 mb-0">
+                    {{ $order->branch?->name ?? 'Downtown Flagship' }}</p>
                 @if ($order->branch?->address)
                     <p class="text-[10px] text-zinc-500 text-center mt-px mb-0">{{ $order->branch->address }}</p>
                 @endif
@@ -50,7 +56,8 @@
                 <div class="text-[10px] text-zinc-500 text-center mt-px mb-0 pt-1">
                     <p class="m-0">VAT REG TIN: 009-876-543-000</p>
                     <p class="m-0">MIN: MIN-{{ $order->branch?->code ?? 'B01' }}-POS01</p>
-                    <p class="m-0">SERIAL NO: POS-SN-{{ str_pad($order->branch?->id ?? 1, 4, '0', STR_PAD_LEFT) }}-2026</p>
+                    <p class="m-0">SERIAL NO:
+                        POS-SN-{{ str_pad($order->branch?->id ?? 1, 4, '0', STR_PAD_LEFT) }}-2026</p>
                 </div>
             </div>
 
@@ -65,7 +72,8 @@
                 @if ($order->kitchenTicket)
                     <div class="flex justify-between items-center mb-0.5">
                         <span class="text-zinc-500">Kitchen Ticket:</span>
-                        <span class="bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-bold">
+                        <span
+                            class="bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded text-[10px] font-bold">
                             {{ $order->kitchenTicket->ticket_number }}
                         </span>
                     </div>
@@ -76,7 +84,8 @@
                 </div>
                 <div class="flex justify-between items-start mb-0.5">
                     <span class="text-zinc-500">Cashier:</span>
-                    <span class="text-zinc-900">{{ $order->cashier?->name ?? 'Staff' }} ({{ $order->cashier?->emp_id ?? 'CSH' }})</span>
+                    <span class="text-zinc-900">{{ $order->cashier?->name ?? 'Staff' }}
+                        ({{ $order->cashier?->emp_id ?? 'CSH' }})</span>
                 </div>
                 <div class="flex justify-between items-start mb-0.5">
                     <span class="text-zinc-500">Dining Mode:</span>
@@ -110,10 +119,12 @@
                             <span class="font-bold text-zinc-900 max-w-[250px] truncate">
                                 {{ $item->meal_name ?: ($item->meal?->name ?: 'Menu Item') }}
                             </span>
-                            <span class="font-bold text-zinc-900">₱{{ number_format((float) $item->subtotal, 2) }}</span>
+                            <span
+                                class="font-bold text-zinc-900">₱{{ number_format((float) $item->subtotal, 2) }}</span>
                         </div>
                         <div class="flex justify-between items-start text-[10px] pl-1.5">
-                            <span class="text-zinc-500">{{ $item->quantity }} x ₱{{ number_format((float) $item->unit_price, 2) }}</span>
+                            <span class="text-zinc-500">{{ $item->quantity }} x
+                                ₱{{ number_format((float) $item->unit_price, 2) }}</span>
                             @if ($item->special_instructions)
                                 <span class="text-zinc-500 italic">({{ $item->special_instructions }})</span>
                             @endif
@@ -152,16 +163,19 @@
                 <div class="py-0.5">
                     <div class="flex justify-between items-start mb-0.5">
                         <span class="text-zinc-500">Payment Tender:</span>
-                        <span class="font-bold text-zinc-900 capitalize">{{ str_replace('_', ' ', $payment->payment_method) }}</span>
+                        <span
+                            class="font-bold text-zinc-900 capitalize">{{ str_replace('_', ' ', $payment->payment_method) }}</span>
                     </div>
                     @if ($payment->payment_method === 'cash')
                         <div class="flex justify-between items-start mb-0.5">
                             <span class="text-zinc-500">Amount Tendered:</span>
-                            <span class="text-zinc-900">₱{{ number_format((float) ($payment->amount_tendered ?? $payment->amount), 2) }}</span>
+                            <span
+                                class="text-zinc-900">₱{{ number_format((float) ($payment->amount_tendered ?? $payment->amount), 2) }}</span>
                         </div>
                         <div class="flex justify-between items-start mb-0.5 font-bold">
                             <span class="text-zinc-500">Change Given:</span>
-                            <span class="text-zinc-900">₱{{ number_format((float) ($payment->change_given ?? 0), 2) }}</span>
+                            <span
+                                class="text-zinc-900">₱{{ number_format((float) ($payment->change_given ?? 0), 2) }}</span>
                         </div>
                     @elseif ($payment->reference_number)
                         <div class="flex justify-between items-start mb-0.5">
@@ -236,8 +250,7 @@
         @if ($showActions)
             <!-- Print Action Trigger Button -->
             <div class="mt-3.5 text-center">
-                <button type="button"
-                    onclick="window.print()"
+                <button type="button" onclick="window.print()"
                     class="inline-flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-white font-bold text-xs px-4.5 py-2 rounded-lg cursor-pointer shadow-xs transition-colors">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"

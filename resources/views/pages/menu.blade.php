@@ -4,12 +4,9 @@
         <div class="flex items-center gap-3">
             <h1 class="text-xl font-bold tracking-tight text-brand-text">Meal Catalog</h1>
         </div>
-        <x-ui.button
-            x-data
-            x-on:click="$dispatch('open-modal', 'create-meal-modal')"
-            variant="primary">
+        <x-ui.button x-data x-on:click="$dispatch('open-modal', 'create-meal-modal')" variant="primary">
             <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
             Add New Dish
         </x-ui.button>

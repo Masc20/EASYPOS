@@ -1,19 +1,19 @@
 <x-ui.modal name="create-meal-modal" title="Add New Dish" maxWidth="lg">
-    <form wire:submit="save"
-        x-data="{ isAvailable: @entangle('is_available'), trackStock: @entangle('track_stock') }"
-        x-on:open-modal.window="if ($event.detail === 'create-meal-modal') { $wire.generateCode() }"
-        class="space-y-4">
+    <form wire:submit="save" x-data="{ isAvailable: @entangle('is_available'), trackStock: @entangle('track_stock') }"
+        x-on:open-modal.window="if ($event.detail === 'create-meal-modal') { $wire.generateCode() }" class="space-y-4">
         @include('livewire.menu.partials.meal-form-fields')
 
         <div class="pt-3 border-t border-brand-border flex items-center justify-end gap-2.5">
-            <x-ui.button variant="secondary" type="button" wire:click="resetForm" x-on:click="$dispatch('close-modal', 'create-meal-modal')">
+            <x-ui.button variant="secondary" type="button" wire:click="resetForm"
+                x-on:click="$dispatch('close-modal', 'create-meal-modal')">
                 Cancel
             </x-ui.button>
             <x-ui.button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save">
                 <span wire:loading.remove wire:target="save">Save Dish</span>
                 <span wire:loading wire:target="save" class="inline-flex items-center gap-1.5">
                     <svg class="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                            stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                     </svg>
                     Saving...

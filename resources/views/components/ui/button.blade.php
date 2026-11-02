@@ -5,7 +5,8 @@
 ])
 
 @php
-    $baseClasses = 'inline-flex items-center justify-center font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none';
+    $baseClasses =
+        'inline-flex items-center justify-center font-semibold transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none';
 
     $sizeClasses = match ($size) {
         'sm' => 'px-2.5 py-1 text-xs rounded-sm gap-1.5',

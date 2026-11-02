@@ -1,4 +1,5 @@
-<x-ui.input label="Meal / Dish Name" name="name" wire:model="name" placeholder="e.g. Truffle Mushroom Risotto" :required="true" :error="$errors->first('name')" />
+<x-ui.input label="Meal / Dish Name" name="name" wire:model="name" placeholder="e.g. Truffle Mushroom Risotto"
+    :required="true" :error="$errors->first('name')" />
 
 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
     <div>
@@ -22,20 +23,16 @@
             Menu Code
         </label>
         <div class="relative">
-            <input
-                type="text"
-                name="menu_code"
-                wire:model="menu_code"
-                placeholder="Auto-generated"
-                wire:loading.attr="readonly"
-                wire:target="category_id, generateCode"
-                class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-2 text-sm text-brand-text uppercase font-mono placeholder:text-brand-text-muted/60 focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:focus:ring-brand-secondary/20 transition shadow-2xs {{ $errors->has('menu_code') ? 'border-brand-error ring-1 ring-brand-error/30' : '' }}"
-            />
+            <input type="text" name="menu_code" wire:model="menu_code" placeholder="Auto-generated"
+                wire:loading.attr="readonly" wire:target="category_id, generateCode"
+                class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-2 text-sm text-brand-text uppercase font-mono placeholder:text-brand-text-muted/60 focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 dark:focus:ring-brand-secondary/20 transition shadow-2xs {{ $errors->has('menu_code') ? 'border-brand-error ring-1 ring-brand-error/30' : '' }}" />
 
             <div wire:loading.flex wire:target="category_id, generateCode"
                 class="absolute inset-0 rounded-md border border-brand-border bg-brand-bg px-3.5 items-center gap-2 text-xs font-medium text-brand-text-muted pointer-events-none">
-                <svg class="h-3.5 w-3.5 animate-spin text-brand-primary dark:text-brand-secondary shrink-0" viewBox="0 0 24 24" fill="none">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <svg class="h-3.5 w-3.5 animate-spin text-brand-primary dark:text-brand-secondary shrink-0"
+                    viewBox="0 0 24 24" fill="none">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                        stroke-width="4"></circle>
                     <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path>
                 </svg>
                 <span>Generating code...</span>
@@ -47,7 +44,9 @@
     </div>
 </div>
 
-<x-ui.input label="Selling Price ({{ $currencySymbol }})" name="price" type="number" step="0.01" min="0" wire:model="price" placeholder="0.00" :prefix="$currencySymbol" :required="true" class="font-mono font-semibold" :error="$errors->first('price')" />
+<x-ui.input label="Selling Price ({{ $currencySymbol }})" name="price" type="number" step="0.01" min="0"
+    wire:model="price" placeholder="0.00" :prefix="$currencySymbol" :required="true" class="font-mono font-semibold"
+    :error="$errors->first('price')" />
 
 <div>
     <label class="block text-xs font-semibold uppercase tracking-wider text-brand-text mb-1.5">
@@ -63,13 +62,15 @@
 
 <div class="grid grid-cols-2 gap-3 pt-1">
     <button type="button" x-on:click="isAvailable = true"
-        :class="isAvailable ? 'border-brand-success bg-brand-success/10 text-brand-success font-semibold' : 'border-brand-border bg-brand-bg/40 opacity-60 text-brand-text-muted'"
+        :class="isAvailable ? 'border-brand-success bg-brand-success/10 text-brand-success font-semibold' :
+            'border-brand-border bg-brand-bg/40 opacity-60 text-brand-text-muted'"
         class="flex items-center gap-2 rounded-md border p-2.5 text-left transition cursor-pointer">
         <span class="h-2 w-2 rounded-full" :class="isAvailable ? 'bg-brand-success' : 'bg-brand-border'"></span>
         <span class="text-xs">In Stock</span>
     </button>
     <button type="button" x-on:click="isAvailable = false"
-        :class="!isAvailable ? 'border-brand-error bg-brand-error/10 text-brand-error font-semibold' : 'border-brand-border bg-brand-bg/40 opacity-60 text-brand-text-muted'"
+        :class="!isAvailable ? 'border-brand-error bg-brand-error/10 text-brand-error font-semibold' :
+            'border-brand-border bg-brand-bg/40 opacity-60 text-brand-text-muted'"
         class="flex items-center gap-2 rounded-md border p-2.5 text-left transition cursor-pointer">
         <span class="h-2 w-2 rounded-full" :class="!isAvailable ? 'bg-brand-error' : 'bg-brand-border'"></span>
         <span class="text-xs">Sold Out (86'd)</span>
@@ -81,7 +82,9 @@
         <span class="text-xs font-medium text-brand-text">Track Daily Limited Portions</span>
         <label class="relative inline-flex items-center cursor-pointer">
             <input type="checkbox" x-model="trackStock" class="sr-only peer">
-            <div class="w-8 h-4.5 bg-brand-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-brand-secondary"></div>
+            <div
+                class="w-8 h-4.5 bg-brand-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-brand-secondary">
+            </div>
         </label>
     </div>
     <div x-show="trackStock" x-cloak class="pt-2 border-t border-brand-border/60 flex items-center gap-3">

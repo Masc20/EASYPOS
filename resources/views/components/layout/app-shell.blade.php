@@ -5,7 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ config('app.name', 'EASYPOS') }}</title>
-    <script>document.documentElement.classList.remove('dark');</script>
+    <script>
+        document.documentElement.classList.remove('dark');
+    </script>
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     @livewireStyles
@@ -21,12 +23,12 @@
     </main>
 
     @livewireScripts
-    @if(auth()->check() && auth()->user()->isStrictFloorStaff())
+    @if (auth()->check() && auth()->user()->isStrictFloorStaff())
         <script>
             // Terminal Page Lock: Trap browser back navigation on active terminal
             (function() {
                 history.pushState(null, document.title, location.href);
-                window.addEventListener('popstate', function () {
+                window.addEventListener('popstate', function() {
                     history.pushState(null, document.title, location.href);
                 });
             })();

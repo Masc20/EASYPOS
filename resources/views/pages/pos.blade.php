@@ -83,7 +83,8 @@
                 </template>
                 <template x-if="t.type === 'error'">
                     <svg class="h-4 w-4 shrink-0 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12" />
                     </svg>
                 </template>
                 <template x-if="t.type !== 'success' && t.type !== 'error'">

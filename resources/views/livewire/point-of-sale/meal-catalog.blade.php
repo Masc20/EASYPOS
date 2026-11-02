@@ -25,15 +25,17 @@
     <!-- Category Filter Tabs & 86'd Quick Filter (Instant 0ms Client-Side Alpine Switch) -->
     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
         <button type="button" x-on:click="filterCategory(null)"
-            :class="(activeCategory === null && !showSoldOutOnly) ? 'bg-brand-primary text-white border-brand-primary shadow-2xs' :
-                'border-brand-border bg-brand-bg text-brand-text-muted hover:text-brand-text hover:bg-brand-card'"
+            :class="(activeCategory === null && !showSoldOutOnly) ?
+            'bg-brand-primary text-white border-brand-primary shadow-2xs' :
+            'border-brand-border bg-brand-bg text-brand-text-muted hover:text-brand-text hover:bg-brand-card'"
             class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer select-none border">
             All Dishes
         </button>
         @foreach ($categories as $cat)
             <button type="button" x-on:click="filterCategory({{ $cat->id }})"
-                :class="(activeCategory == {{ $cat->id }} && !showSoldOutOnly) ? 'bg-brand-primary text-white border-brand-primary shadow-2xs' :
-                    'border-brand-border bg-brand-bg text-brand-text-muted hover:text-brand-text hover:bg-brand-card'"
+                :class="(activeCategory == {{ $cat->id }} && !showSoldOutOnly) ?
+                'bg-brand-primary text-white border-brand-primary shadow-2xs' :
+                'border-brand-border bg-brand-bg text-brand-text-muted hover:text-brand-text hover:bg-brand-card'"
                 class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer select-none border">
                 {{ $cat->name }}
             </button>
@@ -44,7 +46,8 @@
             :class="showSoldOutOnly ? 'bg-brand-error text-white border-brand-error shadow-2xs' :
                 'border-brand-border bg-brand-bg text-brand-error hover:bg-brand-error/10 hover:border-brand-error/40'"
             class="shrink-0 px-3 py-1.5 text-xs font-semibold rounded-md transition cursor-pointer select-none border inline-flex items-center gap-1.5 ml-auto">
-            <span class="inline-block h-2 w-2 rounded-full" :class="showSoldOutOnly ? 'bg-white' : 'bg-brand-error'"></span>
+            <span class="inline-block h-2 w-2 rounded-full"
+                :class="showSoldOutOnly ? 'bg-white' : 'bg-brand-error'"></span>
             <span>Sold Out (86'd)</span>
             <span :class="showSoldOutOnly ? 'bg-white/20 text-white' : 'bg-brand-error/15 text-brand-error'"
                 class="ml-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-bold">
@@ -63,8 +66,7 @@
             <div x-show="matches({{ $meal->category_id }}, '{{ $searchableText }}', {{ $isSoldOut ? 'true' : 'false' }})"
                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
-                @if (!$isSoldOut)
-                    x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $meal->track_stock ? $meal->stock_quantity : 'null' }} })"
+                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $meal->track_stock ? $meal->stock_quantity : 'null' }} })"
                     role="button"
                     tabindex="0"
                     onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $meal->track_stock ? $meal->stock_quantity : 'null' }} }); }"
@@ -72,8 +74,7 @@
                     x-on:click="$dispatch('pos-alert', { type: 'warning', message: 'Item \'{{ addslashes($meal->name) }}\' is 86\'d (Sold Out) and cannot be added.' })"
                     role="button"
                     tabindex="0"
-                    aria-disabled="true"
-                @endif
+                    aria-disabled="true" @endif
                 class="group relative flex flex-col justify-between rounded-md border p-3 transition select-none text-left
                     {{ $isSoldOut
                         ? 'border-brand-error/30 bg-brand-bg/50 grayscale opacity-60 cursor-not-allowed'
@@ -95,7 +96,9 @@
                             <span
                                 class="inline-flex items-center gap-1 rounded-sm bg-brand-error/15 border border-brand-error/40 px-1.5 py-0.5 text-[10px] font-bold text-brand-error uppercase tracking-wider">
                                 <svg class="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+                                    <path fill-rule="evenodd"
+                                        d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                                        clip-rule="evenodd" />
                                 </svg>
                                 86'd / Sold Out
                             </span>
@@ -116,7 +119,8 @@
 
                 <!-- Footer: Price & Add Icon / Sold Out Indicator -->
                 <div class="mt-3 pt-2 border-t border-brand-border/50 flex items-center justify-between">
-                    <span class="font-mono text-sm font-bold {{ $isSoldOut ? 'text-brand-text-muted line-through' : 'text-brand-text' }}">
+                    <span
+                        class="font-mono text-sm font-bold {{ $isSoldOut ? 'text-brand-text-muted line-through' : 'text-brand-text' }}">
                         ₱{{ number_format($meal->price, 2) }}
                     </span>
 
@@ -129,7 +133,8 @@
                             </svg>
                         </span>
                     @else
-                        <span class="text-[10px] font-semibold uppercase tracking-wider text-brand-error bg-brand-error/10 px-1.5 py-0.5 rounded border border-brand-error/20">
+                        <span
+                            class="text-[10px] font-semibold uppercase tracking-wider text-brand-error bg-brand-error/10 px-1.5 py-0.5 rounded border border-brand-error/20">
                             Unavailable
                         </span>
                     @endif
