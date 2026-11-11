@@ -222,7 +222,8 @@
                                 :class="item.is_sold_out ? 'text-brand-error line-through' : 'text-brand-text'"
                                 x-text="item.name"></span>
                             <template x-if="item.is_sold_out">
-                                <span class="rounded-xs bg-brand-error/15 border border-brand-error/30 px-1 py-0.2 text-[9px] font-bold text-brand-error uppercase tracking-wider">
+                                <span
+                                    class="rounded-xs bg-brand-error/15 border border-brand-error/30 px-1 py-0.2 text-[9px] font-bold text-brand-error uppercase tracking-wider">
                                     Sold Out
                                 </span>
                             </template>
