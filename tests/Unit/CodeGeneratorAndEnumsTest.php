@@ -38,7 +38,7 @@ class CodeGeneratorAndEnumsTest extends TestCase
 
         // Friendly Permission Labels
         $this->assertEquals('Approve Voids & Refunds', PermissionEnum::label('pos.refund'));
-        $this->assertEquals('Point of Sale Terminal Access', PermissionEnum::label('pos.access'));
+        $this->assertEquals('Open POS Register', PermissionEnum::label('pos.access'));
     }
 
     public function test_auto_generates_branch_code(): void

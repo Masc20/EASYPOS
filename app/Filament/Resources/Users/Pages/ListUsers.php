@@ -8,6 +8,7 @@ use App\Filament\Resources\Users\UserResource;
 use App\Support\Enums\StaffRole;
 use App\Support\Services\CodeGeneratorService;
 use Filament\Actions\Action;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -28,9 +29,14 @@ class ListUsers extends ListRecords
                 ->modalHeading('Add Floor Staff (Terminal PIN)')
                 ->modalWidth('lg')
                 ->schema(function () {
-                    $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
-                    $firstBranchId = array_key_first($branches) ?? 1;
-                    $defaultCode = CodeGeneratorService::generateEmpId((int) $firstBranchId, StaffRole::CASHIER->value);
+                    $currentUser = auth()->user();
+                    $isBranchScoped = $currentUser && $currentUser->isBranchScoped();
+
+                    $branches = $isBranchScoped
+                        ? Branch::where('id', $currentUser->branch_id)->pluck('name', 'id')->toArray()
+                        : Branch::where('is_active', true)->pluck('name', 'id')->toArray();
+                    $defaultBranchId = $isBranchScoped ? $currentUser->branch_id : (array_key_first($branches) ?? 1);
+                    $defaultCode = CodeGeneratorService::generateEmpId((int) $defaultBranchId, StaffRole::CASHIER->value);
 
                     return [
                         TextInput::make('name')
@@ -38,16 +44,20 @@ class ListUsers extends ListRecords
                             ->required()
                             ->maxLength(255),
 
-                        Select::make('branch_id')
-                            ->label('Assigned Branch')
-                            ->options($branches)
-                            ->default($firstBranchId)
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                $role = $get('role') ?: StaffRole::CASHIER->value;
-                                $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
-                            }),
+                        $isBranchScoped
+                            ? Hidden::make('branch_id')
+                                ->default($currentUser->branch_id)
+                                ->dehydrateStateUsing(fn () => $currentUser->branch_id)
+                            : Select::make('branch_id')
+                                ->label('Assigned Branch')
+                                ->options($branches)
+                                ->default($defaultBranchId)
+                                ->required()
+                                ->live()
+                                ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                    $role = $get('role') ?: StaffRole::CASHIER->value;
+                                    $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
+                                }),
 
                         Select::make('role')
                             ->label('Station Position')
@@ -55,8 +65,8 @@ class ListUsers extends ListRecords
                             ->default(StaffRole::CASHIER->value)
                             ->required()
                             ->live()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                $branchId = $get('branch_id');
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) use ($isBranchScoped, $currentUser) {
+                                $branchId = $isBranchScoped ? $currentUser->branch_id : $get('branch_id');
                                 $role = $state ?: StaffRole::CASHIER->value;
                                 $set('emp_id', CodeGeneratorService::generateEmpId($branchId ? (int) $branchId : null, $role));
                             }),
@@ -84,6 +94,14 @@ class ListUsers extends ListRecords
                     ];
                 })
                 ->action(function (array $data) {
+                    $currentUser = auth()->user();
+                    if ($currentUser && $currentUser->isBranchScoped()) {
+                        $data['branch_id'] = $currentUser->branch_id;
+                        if (! in_array($data['role'], StaffRole::floorValues(), true)) {
+                            abort(403, 'Unauthorized role assignment.');
+                        }
+                    }
+
                     $empId = filled($data['emp_id'] ?? null)
                         ? $data['emp_id']
                         : CodeGeneratorService::generateEmpId((int) $data['branch_id'], $data['role']);
@@ -111,6 +129,7 @@ class ListUsers extends ListRecords
                 ->color('gray')
                 ->modalHeading('Add Back-Office Admin / Manager')
                 ->modalWidth('lg')
+                ->visible(fn (): bool => (bool) (auth()->user()?->isOwner() || auth()->user()?->hasRole(StaffRole::SUPER_ADMIN->value)))
                 ->schema(function () {
                     $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
                     $defaultCode = CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value);
@@ -179,6 +198,11 @@ class ListUsers extends ListRecords
                     ];
                 })
                 ->action(function (array $data) {
+                    $currentUser = auth()->user();
+                    if (! $currentUser || (! $currentUser->isOwner() && ! $currentUser->hasRole(StaffRole::SUPER_ADMIN->value))) {
+                        abort(403, 'Unauthorized to create administrative users.');
+                    }
+
                     $branchId = filled($data['branch_id'] ?? null) ? (int) $data['branch_id'] : null;
                     $empId = filled($data['emp_id'] ?? null)
                         ? $data['emp_id']

@@ -239,6 +239,26 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
+     * Determine if the user is restricted to a single assigned branch.
+     */
+    public function isBranchScoped(): bool
+    {
+        return ! $this->isOwner() && $this->branch_id !== null;
+    }
+
+    /**
+     * Resolve the effective branch ID for queries and reports, enforcing branch isolation for branch-scoped staff.
+     */
+    public function effectiveBranchId(?int $requestedBranchId = null): ?int
+    {
+        if ($this->isBranchScoped()) {
+            return (int) $this->branch_id;
+        }
+
+        return $requestedBranchId;
+    }
+
+    /**
      * Create a new factory instance for the model.
      */
     protected static function newFactory(): UserFactory

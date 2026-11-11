@@ -20,7 +20,7 @@
             this.activeCategory = null;
         }
     }
-}" x-on:catalog-search.window="searchQuery = $event.detail.query" class="space-y-4">
+}" x-on:catalog-search.window="searchQuery = $event.detail.query" wire:poll.visible.10s="syncAvailability" class="space-y-4">
 
     <!-- Category Filter Tabs & 86'd Quick Filter (Instant 0ms Client-Side Alpine Switch) -->
     <div class="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">

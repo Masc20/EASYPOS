@@ -7,6 +7,7 @@ use App\Domains\PointOfSale\Actions\ProcessPaymentAction;
 use App\Support\Enums\OrderType;
 use App\Support\Enums\PaymentMethod;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -19,7 +20,9 @@ class CheckoutModal extends Component
     public string $tableNumber = '';
     public string $customerName = '';
     public float $subtotal = 0.00;
+    public string $discountType = 'none';
     public float $discountAmount = 0.00;
+    public float $customDiscount = 0.00;
     public float $totalAmount = 0.00;
     public string $notes = '';
 
@@ -39,7 +42,9 @@ class CheckoutModal extends Component
         float|int $discount_amount = 0,
         float|int $total_amount = 0,
         string $notes = '',
-        ?array $payload = null
+        ?array $payload = null,
+        string $discount_type = 'none',
+        float|int $custom_discount = 0
     ): void {
         $this->resetErrorBag();
         $this->errorMessage = null;
@@ -56,7 +61,9 @@ class CheckoutModal extends Component
             $table_number = $payload['table_number'] ?? $table_number;
             $customer_name = $payload['customer_name'] ?? $customer_name;
             $subtotal = $payload['subtotal'] ?? $subtotal;
+            $discount_type = $payload['discount_type'] ?? $discount_type;
             $discount_amount = $payload['discount_amount'] ?? $discount_amount;
+            $custom_discount = $payload['custom_discount'] ?? $custom_discount;
             $total_amount = $payload['total_amount'] ?? $total_amount;
             $notes = $payload['notes'] ?? $notes;
         }
@@ -66,7 +73,9 @@ class CheckoutModal extends Component
         $this->tableNumber = $table_number;
         $this->customerName = $customer_name;
         $this->subtotal = (float) $subtotal;
+        $this->discountType = $discount_type;
         $this->discountAmount = (float) $discount_amount;
+        $this->customDiscount = (float) $custom_discount;
         $this->totalAmount = (float) $total_amount;
         $this->notes = $notes;
 
@@ -119,7 +128,9 @@ class CheckoutModal extends Component
         $this->orderType = $data['order_type'] ?? OrderType::DINE_IN->value;
         $this->tableNumber = $data['table_number'] ?? '';
         $this->customerName = $data['customer_name'] ?? '';
+        $this->discountType = $data['discount_type'] ?? 'none';
         $this->discountAmount = (float) ($data['discount_amount'] ?? 0);
+        $this->customDiscount = (float) ($data['custom_discount'] ?? 0);
         $this->notes = $data['notes'] ?? '';
         $this->paymentMethod = $data['payment_method'] ?? PaymentMethod::CASH->value;
         $this->amountTendered = (string) ($data['amount_tendered'] ?? '');
@@ -168,31 +179,38 @@ class CheckoutModal extends Component
         }
 
         try {
-            // 1. Create Order and Items
-            $order = $createOrderAction->execute([
-                'branch_id' => $branchId,
-                'cashier_id' => $user->id,
-                'order_type' => $this->orderType,
-                'table_number' => $this->tableNumber,
-                'customer_name' => $this->customerName,
-                'discount_amount' => $this->discountAmount,
-                'notes' => $this->notes,
-                'items' => array_map(function ($item) {
-                    return [
-                        'meal_id' => $item['meal_id'],
-                        'quantity' => $item['quantity'],
-                        'special_instructions' => $item['special_instructions'] ?? null,
-                    ];
-                }, $this->items),
-            ]);
+            $order = DB::transaction(function () use ($createOrderAction, $processPaymentAction, $branchId, $user, $tenderedFloat) {
+                // 1. Create Order and Items
+                $order = $createOrderAction->execute([
+                    'branch_id' => $branchId,
+                    'cashier_id' => $user->id,
+                    'order_type' => $this->orderType,
+                    'table_number' => $this->tableNumber,
+                    'customer_name' => $this->customerName,
+                    'discount_type' => $this->discountType,
+                    'discount_amount' => $this->discountAmount,
+                    'custom_discount' => $this->customDiscount,
+                    'notes' => $this->notes,
+                    'items' => array_map(function ($item) {
+                        return [
+                            'meal_id' => $item['meal_id'],
+                            'quantity' => $item['quantity'],
+                            'special_instructions' => $item['special_instructions'] ?? null,
+                            'selected_options' => $item['selected_options'] ?? [],
+                        ];
+                    }, $this->items),
+                ]);
 
-            // 2. Process Payment & Dispatch to Kitchen
-            $result = $processPaymentAction->execute($order, [
-                'cashier_id' => $user->id,
-                'payment_method' => $this->paymentMethod,
-                'amount_tendered' => $tenderedFloat,
-                'reference_number' => $this->referenceNumber,
-            ]);
+                // 2. Process Payment & Dispatch to Kitchen
+                $result = $processPaymentAction->execute($order, [
+                    'cashier_id' => $user->id,
+                    'payment_method' => $this->paymentMethod,
+                    'amount_tendered' => $tenderedFloat,
+                    'reference_number' => $this->referenceNumber,
+                ]);
+
+                return $order;
+            });
 
             $this->isOpen = false;
 

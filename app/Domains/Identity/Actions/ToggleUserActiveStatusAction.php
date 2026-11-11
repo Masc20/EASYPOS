@@ -3,6 +3,7 @@
 namespace App\Domains\Identity\Actions;
 
 use App\Domains\Identity\Models\User;
+use App\Support\Enums\StaffRole;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -15,13 +16,29 @@ class ToggleUserActiveStatusAction
      */
     public function execute(User $user, ?User $actor = null): User
     {
-        $actorId = $actor?->id ?? auth()->id();
+        $actor = $actor ?? auth()->user();
+        $actorId = $actor?->id;
 
-        // Prevent self-deactivation
-        if ($user->is_active && $actorId && (int) $user->id === (int) $actorId) {
+        // Prevent modifying own account active status (neither deactivate nor reactivate self)
+        if ($actorId && (int) $user->id === (int) $actorId) {
             throw ValidationException::withMessages([
-                'user' => 'You cannot deactivate your own account.',
+                'user' => 'You cannot modify your own account active status.',
             ]);
+        }
+
+        // Branch-scoped user restrictions (Branch Managers)
+        if ($actor && $actor->isBranchScoped()) {
+            if ((int) $user->branch_id !== (int) $actor->branch_id) {
+                throw ValidationException::withMessages([
+                    'user' => 'Unauthorized. You cannot modify staff from another branch.',
+                ]);
+            }
+
+            if (! $user->hasAnyRole(StaffRole::floorValues())) {
+                throw ValidationException::withMessages([
+                    'user' => 'Unauthorized. You can only toggle floor staff (Cashier, Cook, Chef).',
+                ]);
+            }
         }
 
         // Toggle state

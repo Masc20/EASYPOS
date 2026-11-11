@@ -6,11 +6,13 @@
         isProcessing: false,
         error: '{{ $errorMessage ?? '' }}',
         orderId: {{ $orderId ?? 'null' }},
+        orderNumber: '',
     
         init() {
             this.slideOver = document.getElementById('order-progress-drawer');
             window.addEventListener('open-manager-pin', (e) => {
                 this.orderId = e.detail?.orderId ?? null;
+                this.orderNumber = e.detail?.orderNumber ?? '';
                 this.empId = '';
                 this.pin = '';
                 this.reason = '';
@@ -56,8 +58,8 @@
         </div>
 
         <!-- Order Context -->
-        <div class="text-sm text-brand-text-muted" x-show="orderId">
-            <p class="font-semibold text-brand-text">Voiding Order #<span x-text="orderId"></span></p>
+        <div class="text-sm text-brand-text-muted" x-show="orderId" x-cloak>
+            <p class="font-semibold text-brand-text">Voiding Order #<span x-text="orderNumber || orderId"></span></p>
         </div>
 
         <!-- Manager Employee ID -->
@@ -65,17 +67,17 @@
             <label class="block text-xs font-bold uppercase tracking-wider text-brand-text mb-1.5">
                 Manager Employee ID
             </label>
-            <input type="text" x-model="empId" placeholder="e.g. A01-ABC-001"
+            <input type="text" x-model="empId" placeholder="e.g. B01-MGR-001"
                 class="block w-full rounded-md border border-brand-border bg-brand-bg/60 px-3.5 py-2 text-sm font-medium text-brand-text shadow-2xs placeholder:text-brand-text-muted/50 focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-2 focus:ring-brand-primary/20 transition uppercase">
         </div>
 
         <!-- 4-Digit PIN -->
         <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-brand-text mb-1.5">
+            <label for="manager-pin-input" class="block text-xs font-bold uppercase tracking-wider text-brand-text mb-1.5">
                 4-Digit Manager PIN
             </label>
-            <div
-                class="flex items-center justify-center gap-3 py-2 bg-brand-bg/70 rounded-md border border-brand-border">
+            <div x-on:click="$refs.pinInput.focus()"
+                class="relative flex items-center justify-center gap-3 py-2.5 bg-brand-bg/70 rounded-md border border-brand-border cursor-text focus-within:border-brand-primary focus-within:ring-2 focus-within:ring-brand-primary/20 transition">
                 <template x-for="i in 4" :key="i">
                     <div class="h-4 w-4 rounded-full transition-all duration-150"
                         :class="pin.length >= i ?
@@ -83,9 +85,9 @@
                             'border-2 border-brand-border bg-brand-card'">
                     </div>
                 </template>
+                <input x-ref="pinInput" x-model="pin" type="password" maxlength="4" inputmode="numeric" pattern="[0-9]*"
+                    class="absolute inset-0 w-full h-full opacity-0 cursor-text" id="manager-pin-input" />
             </div>
-            <input x-model="pin" type="password" maxlength="4" inputmode="numeric" pattern="[0-9]*" class="sr-only"
-                id="manager-pin-input" />
         </div>
 
         <!-- Cancellation Reason -->

@@ -16,6 +16,9 @@ class MealForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $user = auth()->user();
+        $isBranchScoped = $user && $user->isBranchScoped();
+
         return $schema
             ->components([
                 Select::make('category_id')
@@ -35,12 +38,16 @@ class MealForm
                         $set('menu_code', CodeGeneratorService::generateMenuCode((int) $state));
                     }),
 
-                Select::make('branch_id')
-                    ->label('Assigned Branch')
-                    ->relationship('branch', 'name')
-                    ->placeholder('All Branches (Global Menu)')
-                    ->preload()
-                    ->default(null),
+                $isBranchScoped
+                    ? Hidden::make('branch_id')
+                        ->default($user->branch_id)
+                        ->dehydrateStateUsing(fn () => $user->branch_id)
+                    : Select::make('branch_id')
+                        ->label('Assigned Branch')
+                        ->relationship('branch', 'name')
+                        ->placeholder('All Branches (Global Menu)')
+                        ->preload()
+                        ->default(null),
 
                 TextInput::make('name')
                     ->label('Dish Name')

@@ -79,7 +79,8 @@ class OrdersTable
             ->filters([
                 SelectFilter::make('branch_id')
                     ->relationship('branch', 'name')
-                    ->label('Branch'),
+                    ->label('Branch')
+                    ->visible(fn () => ! auth()->user()?->isBranchScoped()),
 
                 SelectFilter::make('order_type')
                     ->label('Dining Mode')
@@ -108,7 +109,46 @@ class OrdersTable
                     ->label('Void / Cancel Order')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
-                    ->visible(fn (Order $record): bool => $record->status !== OrderStatus::CANCELLED->value && (auth()->user()->isOwner() || auth()->user()->can('pos.refund')))
+                    ->visible(function (Order $record): bool {
+                        $user = auth()->user();
+                        if (! $user || $record->status === OrderStatus::CANCELLED->value) {
+                            return false;
+                        }
+
+                        if ($user->isOwner()) {
+                            return true;
+                        }
+
+                        if (! $user->can('pos.refund')) {
+                            return false;
+                        }
+
+                        if ($user->isBranchScoped() && (int) $record->branch_id !== (int) $user->branch_id) {
+                            return false;
+                        }
+
+                        return true;
+                    })
+                    ->authorize(function (Order $record): bool {
+                        $user = auth()->user();
+                        if (! $user || $record->status === OrderStatus::CANCELLED->value) {
+                            return false;
+                        }
+
+                        if ($user->isOwner()) {
+                            return true;
+                        }
+
+                        if (! $user->can('pos.refund')) {
+                            return false;
+                        }
+
+                        if ($user->isBranchScoped() && (int) $record->branch_id !== (int) $user->branch_id) {
+                            return false;
+                        }
+
+                        return true;
+                    })
                     ->requiresConfirmation()
                     ->modalHeading(fn (Order $record): string => "Void Order #{$record->order_number}")
                     ->modalDescription('Voiding this order will mark payments as refunded and evict any linked ticket from the kitchen queue. This action cannot be undone.')
@@ -120,6 +160,16 @@ class OrdersTable
                             ->rows(3),
                     ])
                     ->action(function (Order $record, array $data, VoidOrderAction $action) {
+                        $user = auth()->user();
+                        if ($user && $user->isBranchScoped() && (int) $record->branch_id !== (int) $user->branch_id) {
+                            Notification::make()
+                                ->title('Unauthorized')
+                                ->body('You cannot void orders belonging to other branches.')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
                         try {
                             $action->execute([
                                 'order_id' => $record->id,

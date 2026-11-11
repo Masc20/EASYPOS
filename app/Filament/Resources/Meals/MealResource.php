@@ -14,11 +14,19 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use UnitEnum;
 
 class MealResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user && ($user->isOwner() || $user->can('menu.manage') || $user->can('admin.access')));
+    }
+
     protected static ?string $model = Meal::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
@@ -61,8 +69,54 @@ class MealResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['category', 'branch']);
+
+        $user = auth()->user();
+        if ($user && $user->isBranchScoped()) {
+            $query->where(function (Builder $q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                    ->orWhereNull('branch_id');
+            });
+        }
+
+        return $query;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        if ($user->isBranchScoped()) {
+            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
+        }
+
+        return true;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        if ($user->isBranchScoped()) {
+            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
+        }
+
+        return true;
     }
 
     public static function getRecordRouteBindingEloquentQuery(): Builder

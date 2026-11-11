@@ -4,6 +4,7 @@ namespace App\Domains\Menu\Livewire;
 
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -119,6 +120,11 @@ class MealForm extends Component
 
     public function save(): void
     {
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $this->validate();
 
         $data = [
@@ -152,8 +158,10 @@ class MealForm extends Component
         $this->mealId = null;
         $this->name = '';
         $this->menu_code = null;
-        $firstCategory = MealCategory::where('is_active', true)->orderBy('display_order')->first();
-        $this->category_id = $firstCategory?->id;
+        $categories = Cache::remember('meal_categories_active', 3600, function () {
+            return MealCategory::where('is_active', true)->orderBy('display_order')->get();
+        });
+        $this->category_id = $categories->first()?->id;
         $this->price = '';
         $this->cost_price = '';
         $this->description = null;
@@ -165,9 +173,9 @@ class MealForm extends Component
 
     public function render()
     {
-        $categories = MealCategory::where('is_active', true)
-            ->orderBy('display_order')
-            ->get();
+        $categories = Cache::remember('meal_categories_active', 3600, function () {
+            return MealCategory::where('is_active', true)->orderBy('display_order')->get();
+        });
 
         return view('livewire.menu.meal-form', [
             'categories' => $categories,

@@ -4,15 +4,20 @@ namespace App\Filament\Resources\Users\Schemas;
 
 use App\Support\Enums\StaffRole;
 use App\Support\Services\CodeGeneratorService;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class UserForm
 {
     public static function configure(Schema $schema): Schema
     {
+        $user = auth()->user();
+        $isBranchScoped = $user && $user->isBranchScoped();
+
         return $schema
             ->components([
                 TextInput::make('name')
@@ -20,37 +25,47 @@ class UserForm
                     ->required()
                     ->maxLength(255),
 
-                Select::make('branch_id')
-                    ->label('Assigned Branch')
-                    ->relationship('branch', 'name')
-                    ->placeholder('Global / HQ (All Branches)')
-                    ->preload()
-                    ->default(null)
-                    ->live()
-                    ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
-                        $branchId = filled($state) ? (int) $state : null;
-                        $roleIds = (array) ($get('roles') ?? []);
-                        $roleName = ! empty($roleIds)
-                            ? (\Spatie\Permission\Models\Role::whereIn('id', $roleIds)->value('name') ?? StaffRole::CASHIER->value)
-                            : ($record?->roles?->first()?->name ?? StaffRole::CASHIER->value);
+                $isBranchScoped
+                    ? Hidden::make('branch_id')
+                        ->default($user->branch_id)
+                        ->dehydrateStateUsing(fn () => $user->branch_id)
+                    : Select::make('branch_id')
+                        ->label('Assigned Branch')
+                        ->relationship('branch', 'name')
+                        ->placeholder('Global / HQ (All Branches)')
+                        ->preload()
+                        ->default(null)
+                        ->live()
+                        ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
+                            $branchId = filled($state) ? (int) $state : null;
+                            $roleIds = (array) ($get('roles') ?? []);
+                            $roleName = ! empty($roleIds)
+                                ? (\Spatie\Permission\Models\Role::whereIn('id', $roleIds)->value('name') ?? StaffRole::CASHIER->value)
+                                : ($record?->roles?->first()?->name ?? StaffRole::CASHIER->value);
 
-                        if ($record && $record->branch_id === $branchId && $record->hasRole($roleName) && filled($record->emp_id)) {
-                            $set('emp_id', $record->emp_id);
-                            return;
-                        }
+                            if ($record && $record->branch_id === $branchId && $record->hasRole($roleName) && filled($record->emp_id)) {
+                                $set('emp_id', $record->emp_id);
+                                return;
+                            }
 
-                        $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $roleName));
-                    }),
+                            $set('emp_id', CodeGeneratorService::generateEmpId($branchId, $roleName));
+                        }),
 
                 Select::make('roles')
                     ->label('Position / Role')
-                    ->relationship('roles', 'name')
+                    ->relationship(
+                        'roles',
+                        'name',
+                        modifyQueryUsing: $isBranchScoped
+                            ? fn (Builder $query) => $query->whereIn('name', StaffRole::floorValues())
+                            : null
+                    )
                     ->multiple()
                     ->preload()
                     ->required()
                     ->live()
-                    ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
-                        $branchValue = $get('branch_id');
+                    ->afterStateUpdated(function ($state, callable $set, callable $get, $record) use ($isBranchScoped, $user) {
+                        $branchValue = $isBranchScoped ? $user->branch_id : $get('branch_id');
                         $branchId = filled($branchValue) ? (int) $branchValue : null;
                         $roleIds = (array) ($state ?? []);
                         $roleName = ! empty($roleIds)
@@ -67,7 +82,7 @@ class UserForm
 
                 TextInput::make('emp_id')
                     ->label('Employee ID')
-                    ->default(fn ($record) => $record ? null : CodeGeneratorService::generateEmpId(null, StaffRole::CASHIER->value))
+                    ->default(fn ($record) => $record ? null : CodeGeneratorService::generateEmpId($isBranchScoped ? $user->branch_id : null, StaffRole::CASHIER->value))
                     ->maxLength(50)
                     ->unique('users', 'emp_id', ignoreRecord: true),
 
@@ -76,7 +91,8 @@ class UserForm
                     ->email()
                     ->placeholder('Required for Admin / Manager login')
                     ->maxLength(255)
-                    ->unique('users', 'email', ignoreRecord: true),
+                    ->unique('users', 'email', ignoreRecord: true)
+                    ->visible(fn () => ! $isBranchScoped),
 
                 TextInput::make('pin_code')
                     ->label('Floor Terminal 4-Digit PIN')
@@ -94,7 +110,8 @@ class UserForm
                     ->revealable()
                     ->minLength(8)
                     ->placeholder('Leave blank to keep existing password')
-                    ->dehydrated(fn ($state) => filled($state)),
+                    ->dehydrated(fn ($state) => filled($state))
+                    ->visible(fn () => ! $isBranchScoped),
 
                 Toggle::make('is_active')
                     ->label('Active Account')

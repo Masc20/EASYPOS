@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Roles;
 use App\Filament\Resources\Roles\Pages\ListRoles as ListRolesPage;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Filament\Resources\Roles\Tables\RolesTable;
+use App\Support\Enums\StaffRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -15,6 +16,17 @@ use UnitEnum;
 
 class RoleResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user && ($user->isOwner() || $user->hasRole(StaffRole::SUPER_ADMIN->value)));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
     protected static ?string $model = \Spatie\Permission\Models\Role::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShieldCheck;

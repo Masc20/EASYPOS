@@ -31,16 +31,6 @@
         </div>
 
         <div class="flex items-center gap-3">
-            @auth
-                <div
-                    class="hidden sm:flex items-center gap-2 rounded-md border border-brand-border bg-brand-muted/50 px-3 py-1.5 text-xs text-brand-text-muted">
-                    <span class="h-2 w-2 rounded-full bg-brand-success animate-pulse"></span>
-                    <span class="font-medium text-brand-text">{{ auth()->user()->name }}</span>
-                    <span>&bull;</span>
-                    <span class="font-mono">{{ auth()->user()->emp_id ?? 'Staff' }}</span>
-                </div>
-            @endauth
-
         </div>
     </header>
 
@@ -85,36 +75,6 @@
                 <p class="text-sm sm:text-base text-brand-text-muted max-w-md mx-auto leading-relaxed mb-6">
                     @yield('message', 'The requested system operation could not be completed.')
                 </p>
-
-                <!-- Detailed Exception Output (if custom message provided) -->
-                @php
-                    $rawMessage = isset($exception) ? $exception->getMessage() : null;
-                    $commonMessages = [
-                        '',
-                        'Not Found',
-                        'Forbidden',
-                        'Unauthorized',
-                        'Bad Request',
-                        'Page Expired',
-                        'Too Many Requests',
-                        'Server Error',
-                        'Service Unavailable',
-                    ];
-                @endphp
-                @if (!empty($rawMessage) && !in_array($rawMessage, $commonMessages) && !str_starts_with($rawMessage, 'http'))
-                    <div
-                        class="mb-6 mx-auto max-w-md rounded-md border border-brand-border bg-brand-muted/60 p-3 text-left text-xs font-mono text-brand-text-muted">
-                        <div class="flex items-center gap-1.5 font-bold uppercase tracking-wider text-brand-text mb-1">
-                            <svg class="h-3.5 w-3.5 text-brand-secondary" fill="none" stroke="currentColor"
-                                viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                            <span>Terminal Diagnostic</span>
-                        </div>
-                        <p class="break-words leading-relaxed text-brand-text">{{ $rawMessage }}</p>
-                    </div>
-                @endif
 
                 <!-- Action Button Group -->
                 <div class="mt-8 flex flex-wrap items-center justify-center gap-3">

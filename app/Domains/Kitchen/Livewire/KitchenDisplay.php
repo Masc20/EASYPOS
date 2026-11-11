@@ -19,6 +19,7 @@ class KitchenDisplay extends Component
     public bool $showRecallDrawer = false;
     public bool $audioAlertEnabled = true;
     public int $lastKnownNewCount = 0;
+    public ?string $lastTicketVersion = null;
 
     public function mount(): void
     {
@@ -26,12 +27,27 @@ class KitchenDisplay extends Component
         $this->lastKnownNewCount = KitchenTicket::forBranch($branchId)
             ->where('status', 'new')
             ->count();
+        $this->lastTicketVersion = $this->getTicketSignatureVersion($branchId);
+    }
+
+    public function getTicketSignatureVersion(int $branchId): string
+    {
+        $signature = KitchenTicket::forBranch($branchId)
+            ->where(function ($q) {
+                $q->active()->orWhere(function ($sq) {
+                    $sq->whereDate('created_at', today())->orWhereNotNull('served_at');
+                });
+            })
+            ->selectRaw('COUNT(*) as total, MAX(updated_at) as last_updated, MAX(id) as max_id')
+            ->first();
+
+        return md5(($signature->total ?? 0).':'.($signature->last_updated ?? '').':'.($signature->max_id ?? 0));
     }
 
     public function claimTicket(int $ticketId, ClaimKitchenTicketAction $action): void
     {
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 
@@ -76,17 +92,27 @@ class KitchenDisplay extends Component
 
     public function toggleRecallDrawer(): void
     {
-        $this->showRecallDrawer = !$this->showRecallDrawer;
+        $this->showRecallDrawer = ! $this->showRecallDrawer;
     }
 
     public function toggleAudioAlert(): void
     {
-        $this->audioAlertEnabled = !$this->audioAlertEnabled;
+        $this->audioAlertEnabled = ! $this->audioAlertEnabled;
     }
 
     public function pollUpdates(): void
     {
         $branchId = Auth::user()->branch_id ?? 1;
+        $version = $this->getTicketSignatureVersion($branchId);
+
+        if ($this->lastTicketVersion !== null && $version === $this->lastTicketVersion) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->lastTicketVersion = $version;
+
         $currentNewCount = KitchenTicket::forBranch($branchId)
             ->where('status', 'new')
             ->count();
@@ -104,6 +130,13 @@ class KitchenDisplay extends Component
 
         $baseQuery = KitchenTicket::query()
             ->forBranch($branchId)
+            ->where('status', '!=', 'cancelled')
+            ->where(function ($q) {
+                $q->whereNull('order_id')->orWhereHas('order', function ($oq) {
+                    $oq->where('status', '!=', 'cancelled')
+                        ->where('payment_status', '!=', 'refunded');
+                });
+            })
             ->with(['items.orderItem.meal', 'order', 'cook'])
             ->rushFirst();
 
@@ -119,7 +152,9 @@ class KitchenDisplay extends Component
             $baseQuery->where('priority', 'rush');
         }
 
-        $allTickets = (clone $baseQuery)->active()->get();
+        $totalActiveCount = (clone $baseQuery)->active()->count();
+        $allTickets = (clone $baseQuery)->active()->limit(75)->get();
+        $overflowCount = max(0, $totalActiveCount - 75);
 
         $newTickets = $allTickets->where('status', 'new')->values();
         $inPrepTickets = $allTickets->where('status', 'in_prep')->values();
@@ -127,7 +162,14 @@ class KitchenDisplay extends Component
 
         $recentServedTickets = KitchenTicket::query()
             ->forBranch($branchId)
+            ->where('status', '!=', 'cancelled')
             ->whereNotNull('served_at')
+            ->where(function ($q) {
+                $q->whereNull('order_id')->orWhereHas('order', function ($oq) {
+                    $oq->where('status', '!=', 'cancelled')
+                        ->where('payment_status', '!=', 'refunded');
+                });
+            })
             ->with(['items.orderItem.meal', 'order', 'cook'])
             ->orderBy('served_at', 'desc')
             ->limit(10)
@@ -138,11 +180,13 @@ class KitchenDisplay extends Component
             'inPrepTickets' => $inPrepTickets,
             'readyTickets' => $readyTickets,
             'recentServedTickets' => $recentServedTickets,
+            'totalActiveCount' => $totalActiveCount,
+            'overflowCount' => $overflowCount,
             'counts' => [
                 'new' => $newTickets->count(),
                 'in_prep' => $inPrepTickets->count(),
                 'ready' => $readyTickets->count(),
-                'total_active' => $allTickets->count(),
+                'total_active' => $totalActiveCount,
             ],
         ]);
     }

@@ -11,8 +11,7 @@
         <div class="flex items-center gap-2">
             <!-- Order Progress Slide-Over Trigger Button -->
             <button type="button" x-data
-                x-on:click="$dispatch('open-order-progress'); if (window.Livewire) { Livewire.dispatch('open-order-progress'); }"
-                onclick="window.dispatchEvent(new CustomEvent('open-order-progress')); if (window.Livewire) { Livewire.dispatch('open-order-progress'); }"
+                x-on:click="$dispatch('open-order-progress')"
                 class="inline-flex items-center gap-1.5 rounded-md border border-brand-border bg-brand-card hover:bg-brand-muted px-3 py-1.5 text-xs font-semibold text-brand-text transition shadow-2xs cursor-pointer focus:outline-none focus-visible:ring-1 focus-visible:ring-brand-primary active:scale-95 select-none">
                 <svg class="h-4 w-4 text-brand-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -54,6 +53,9 @@
     <livewire:pos.checkout.checkout-modal />
     <livewire:pos.checkout.receipt-preview />
     <livewire:pos.checkout.manager-pin-modal />
+
+    <!-- Reusable in-app feedback modal for POS validation notices -->
+    <x-ui.notice-modal />
 
     <!-- Toast Alert Notification Container for POS Warnings & 86'd alerts (Highest Z-Index) -->
     <div x-data="{

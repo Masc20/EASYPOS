@@ -17,6 +17,68 @@ use Illuminate\Support\Facades\DB;
 class SalesAggregationService
 {
     /**
+     * Resolve effective branch ID for caching and tenancy isolation.
+     */
+    public function resolveBranchScope(?int $branchId): ?int
+    {
+        if (auth()->check()) {
+            $user = auth()->user();
+            if ($user && method_exists($user, 'isBranchScoped') && $user->isBranchScoped()) {
+                return (int) $user->branch_id;
+            }
+        }
+
+        return $branchId;
+    }
+
+    /**
+     * Build branch-isolated cache key for sales summary.
+     */
+    public function buildSummaryCacheKey(?string $startDate, ?string $endDate, ?int $branchId, ?int $cashierId): string
+    {
+        $b = $branchId !== null ? (string) $branchId : 'global';
+        $c = $cashierId !== null ? (string) $cashierId : 'all';
+        $s = $startDate ?: 'none';
+        $e = $endDate ?: 'none';
+
+        return "sales_summary_b{$b}_c{$c}_{$s}_{$e}";
+    }
+
+    /**
+     * Build branch-isolated cache key for hourly sales distribution.
+     */
+    public function buildHourlyCacheKey(?string $startDate, ?string $endDate, ?int $branchId, ?int $cashierId): string
+    {
+        $b = $branchId !== null ? (string) $branchId : 'global';
+        $c = $cashierId !== null ? (string) $cashierId : 'all';
+        $s = $startDate ?: 'none';
+        $e = $endDate ?: 'none';
+
+        return "sales_hourly_b{$b}_c{$c}_{$s}_{$e}";
+    }
+
+    /**
+     * Build branch-isolated cache key for best-selling rankings.
+     */
+    public function buildBestSellersCacheKey(
+        ?string $startDate,
+        ?string $endDate,
+        ?int $branchId,
+        ?int $cashierId,
+        ?int $categoryId,
+        int $limit,
+        string $sortBy
+    ): string {
+        $b = $branchId !== null ? (string) $branchId : 'global';
+        $c = $cashierId !== null ? (string) $cashierId : 'all';
+        $cat = $categoryId !== null ? (string) $categoryId : 'all';
+        $s = $startDate ?: 'none';
+        $e = $endDate ?: 'none';
+
+        return "sales_best_sellers_b{$b}_c{$c}_{$cat}_{$limit}_{$sortBy}_{$s}_{$e}";
+    }
+
+    /**
      * Get aggregated financial and volume summary for a given date range and optional filters.
      *
      * @return array{
@@ -33,17 +95,69 @@ class SalesAggregationService
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
+        ?int $cashierId = null,
+        bool $useCache = true
+    ): array {
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
+
+        if ($useCache) {
+            $cacheKey = $this->buildSummaryCacheKey($startDate, $endDate, $effectiveBranchId, $cashierId);
+            return Cache::remember($cacheKey, 60, function () use ($startDate, $endDate, $effectiveBranchId, $cashierId) {
+                return $this->computeSummary($startDate, $endDate, $effectiveBranchId, $cashierId);
+            });
+        }
+
+        return $this->computeSummary($startDate, $endDate, $effectiveBranchId, $cashierId);
+    }
+
+    /**
+     * Compute summary calculations without cache lookup.
+     */
+    protected function computeSummary(
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $branchId = null,
         ?int $cashierId = null
     ): array {
-        $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
+        $vatDivisor = SystemConstants::VAT_DIVISOR;
+        $vatRate = SystemConstants::VAT_RATE;
 
-        $orderStats = (clone $ordersQuery)
-            ->selectRaw('
-                COALESCE(SUM(orders.subtotal), 0) as gross_sales,
-                COALESCE(SUM(orders.total_amount), 0) as net_sales,
-                COALESCE(SUM(orders.discount_amount), 0) as total_discounts,
-                COUNT(orders.id) as orders_count
-            ')
+        // Base query with date, branch, and cashier filtering
+        $baseOrdersQuery = Order::query();
+        if ($startDate) {
+            $baseOrdersQuery->where('orders.created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        }
+        if ($endDate) {
+            $baseOrdersQuery->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        }
+        if ($branchId) {
+            $baseOrdersQuery->where('orders.branch_id', $branchId);
+        }
+        if ($cashierId) {
+            $baseOrdersQuery->where('orders.cashier_id', $cashierId);
+        }
+
+        // Consolidated Query 1: Financials, tax compliance, order types, and refunds/voids on orders
+        $orderStats = (clone $baseOrdersQuery)
+            ->where(function ($q) {
+                $q->where('orders.payment_status', PaymentStatus::PAID->value)
+                    ->orWhere('orders.status', OrderStatus::COMPLETED->value)
+                    ->orWhere('orders.payment_status', PaymentStatus::REFUNDED->value)
+                    ->orWhere('orders.status', OrderStatus::CANCELLED->value);
+            })
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' THEN orders.subtotal ELSE 0 END), 0) as gross_sales,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' THEN orders.total_amount ELSE 0 END), 0) as net_sales,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' THEN orders.discount_amount ELSE 0 END), 0) as total_discounts,
+                COUNT(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' THEN orders.id ELSE NULL END) as orders_count,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' AND (orders.discount_amount + 0) > 0 THEN orders.total_amount ELSE 0 END), 0) as aggregated_vat_exempt_sales,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' AND (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) ELSE 0 END), 0) as aggregated_vatable_sales,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' AND (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) * {$vatRate} ELSE 0 END), 0) as aggregated_vat_amount,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' AND orders.order_type = 'dine_in' THEN 1 ELSE 0 END), 0) as dine_in_count,
+                COALESCE(SUM(CASE WHEN (orders.payment_status = 'paid' OR orders.status = 'completed') AND orders.payment_status != 'refunded' AND orders.status != 'cancelled' AND orders.order_type = 'takeout' THEN 1 ELSE 0 END), 0) as takeout_count,
+                COALESCE(SUM(CASE WHEN orders.payment_status = 'refunded' OR orders.status = 'cancelled' THEN orders.total_amount ELSE 0 END), 0) as refunded_amount,
+                COUNT(CASE WHEN orders.payment_status = 'refunded' OR orders.status = 'cancelled' THEN orders.id ELSE NULL END) as refunded_count
+            ")
             ->first();
 
         $grossSales = (float) ($orderStats->gross_sales ?? 0.00);
@@ -52,15 +166,49 @@ class SalesAggregationService
         $ordersCount = (int) ($orderStats->orders_count ?? 0);
         $aov = $ordersCount > 0 ? round($netSales / $ordersCount, 2) : 0.00;
 
-        // Payment method breakdown
+        $typeRows = [];
+        $dineIn = (int) ($orderStats->dine_in_count ?? 0);
+        $takeout = (int) ($orderStats->takeout_count ?? 0);
+        if ($dineIn > 0) {
+            $typeRows['dine_in'] = $dineIn;
+        }
+        if ($takeout > 0) {
+            $typeRows['takeout'] = $takeout;
+        }
+
+        $taxSummary = [
+            'vatable_sales' => round((float) ($orderStats->aggregated_vatable_sales ?? 0.00), 2),
+            'vat_amount' => round((float) ($orderStats->aggregated_vat_amount ?? 0.00), 2),
+            'vat_exempt_sales' => round((float) ($orderStats->aggregated_vat_exempt_sales ?? 0.00), 2),
+            'zero_rated_sales' => 0.00,
+        ];
+
+        $refundsSummary = [
+            'refunded_amount' => (float) ($orderStats->refunded_amount ?? 0.00),
+            'refunded_count' => (int) ($orderStats->refunded_count ?? 0),
+        ];
+
+        // Consolidated Query 2: Payment method breakdown and cash drawer reconciliation on payments
         $paymentsQuery = $this->buildFilteredPaymentsQuery($startDate, $endDate, $branchId, $cashierId);
         $paymentRows = (clone $paymentsQuery)
-            ->select('payment_method', DB::raw('COUNT(id) as txn_count'), DB::raw('SUM(amount) as total_amount'))
+            ->selectRaw("
+                payment_method,
+                COUNT(id) as txn_count,
+                SUM(amount) as total_amount,
+                COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN amount ELSE 0 END), 0) as net_cash,
+                COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN COALESCE(amount_tendered, amount) ELSE 0 END), 0) as cash_tendered,
+                COALESCE(SUM(CASE WHEN payment_method = 'cash' THEN COALESCE(change_given, 0) ELSE 0 END), 0) as change_given,
+                COALESCE(SUM(CASE WHEN payment_method != 'cash' THEN amount ELSE 0 END), 0) as digital_tendered
+            ")
             ->groupBy('payment_method')
             ->get();
 
-        $totalPaid = $paymentRows->sum('total_amount');
+        $totalPaid = (float) $paymentRows->sum('total_amount');
         $paymentsBreakdown = [];
+        $netCash = 0.0;
+        $cashTendered = 0.0;
+        $changeGiven = 0.0;
+        $digitalTendered = 0.0;
 
         foreach ($paymentRows as $row) {
             $amount = (float) $row->total_amount;
@@ -73,81 +221,39 @@ class SalesAggregationService
                 'total' => $amount,
                 'percentage' => $percentage,
             ];
+
+            $netCash += (float) $row->net_cash;
+            $cashTendered += (float) $row->cash_tendered;
+            $changeGiven += (float) $row->change_given;
+            $digitalTendered += (float) $row->digital_tendered;
         }
-
-        // Order types breakdown
-        $typeRows = (clone $ordersQuery)
-            ->select('orders.order_type', DB::raw('COUNT(orders.id) as count'))
-            ->groupBy('orders.order_type')
-            ->pluck('count', 'orders.order_type')
-            ->toArray();
-
-        // BIR & Philippine Tax Summary
-        $vatDivisor = SystemConstants::VAT_DIVISOR;
-        $vatRate = SystemConstants::VAT_RATE;
-        $taxStats = (clone $ordersQuery)
-            ->selectRaw("
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) > 0 THEN orders.total_amount ELSE 0 END), 0) as aggregated_vat_exempt_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) ELSE 0 END), 0) as aggregated_vatable_sales,
-                COALESCE(SUM(CASE WHEN (orders.discount_amount + 0) = 0 THEN (orders.total_amount / {$vatDivisor}) * {$vatRate} ELSE 0 END), 0) as aggregated_vat_amount
-            ")
-            ->first();
-
-        $taxSummary = [
-            'vatable_sales' => round((float) ($taxStats->aggregated_vatable_sales ?? 0.00), 2),
-            'vat_amount' => round((float) ($taxStats->aggregated_vat_amount ?? 0.00), 2),
-            'vat_exempt_sales' => round((float) ($taxStats->aggregated_vat_exempt_sales ?? 0.00), 2),
-            'zero_rated_sales' => 0.00,
-        ];
-
-        // Cash Register Drawer & Tender Reconciliation
-        $cashStats = (clone $paymentsQuery)
-            ->selectRaw('
-                COALESCE(SUM(CASE WHEN payment_method = \'cash\' THEN amount ELSE 0 END), 0) as net_cash,
-                COALESCE(SUM(CASE WHEN payment_method = \'cash\' THEN COALESCE(amount_tendered, amount) ELSE 0 END), 0) as cash_tendered,
-                COALESCE(SUM(CASE WHEN payment_method = \'cash\' THEN COALESCE(change_given, 0) ELSE 0 END), 0) as change_given,
-                COALESCE(SUM(CASE WHEN payment_method != \'cash\' THEN amount ELSE 0 END), 0) as digital_tendered
-            ')
-            ->first();
 
         $cashReconciliation = [
-            'net_cash_in_drawer' => (float) ($cashStats->net_cash ?? 0.00),
-            'total_cash_tendered' => (float) ($cashStats->cash_tendered ?? 0.00),
-            'total_change_given' => (float) ($cashStats->change_given ?? 0.00),
-            'total_digital' => (float) ($cashStats->digital_tendered ?? 0.00),
+            'net_cash_in_drawer' => $netCash,
+            'total_cash_tendered' => $cashTendered,
+            'total_change_given' => $changeGiven,
+            'total_digital' => $digitalTendered,
         ];
 
-        // Refunds and Voids Summary
-        $refundsQuery = Order::query()
-            ->where(function ($q) {
-                $q->where('payment_status', PaymentStatus::REFUNDED->value)
-                    ->orWhere('status', OrderStatus::CANCELLED->value);
-            });
-
-        if ($startDate) {
-            $refundsQuery->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
-        }
-        if ($endDate) {
-            $refundsQuery->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
-        }
-        if ($branchId) {
-            $refundsQuery->where('branch_id', $branchId);
-        }
-        if ($cashierId) {
-            $refundsQuery->where('cashier_id', $cashierId);
+        // If no orders exist, avoid executing downstream queries
+        if ($ordersCount === 0) {
+            return [
+                'gross_sales' => $grossSales,
+                'net_sales' => $netSales,
+                'total_discounts' => $totalDiscounts,
+                'orders_count' => $ordersCount,
+                'average_order_value' => $aov,
+                'payments_breakdown' => $paymentsBreakdown,
+                'order_types_breakdown' => $typeRows,
+                'tax_summary' => $taxSummary,
+                'cash_reconciliation' => $cashReconciliation,
+                'refunds_summary' => $refundsSummary,
+                'top_selling_items' => [],
+                'cashier_performance' => [],
+            ];
         }
 
-        $refundStats = $refundsQuery->selectRaw('
-            COALESCE(SUM(total_amount), 0) as refunded_amount,
-            COUNT(id) as refunded_count
-        ')->first();
-
-        $refundsSummary = [
-            'refunded_amount' => (float) ($refundStats->refunded_amount ?? 0.00),
-            'refunded_count' => (int) ($refundStats->refunded_count ?? 0),
-        ];
-
-        // Top 5 Best-Selling Menu Items
+        // Query 3: Top 5 Best-Selling Menu Items (passing precomputed $netSales to skip sum query)
         $topSellingItems = $this->getBestSellingRankings(
             $startDate,
             $endDate,
@@ -156,10 +262,12 @@ class SalesAggregationService
             null,
             5,
             'quantity',
-            false
+            false,
+            $netSales
         );
 
-        // Cashier & Staff Performance
+        // Query 4: Cashier & Staff Performance
+        $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
         $cashierStatsQuery = (clone $ordersQuery)
             ->join('users', 'orders.cashier_id', '=', 'users.id')
             ->select(
@@ -242,7 +350,7 @@ class SalesAggregationService
     }
 
     /**
-     * Get distribution series for payment methods chart.
+     * Get distribution series for payment methods chart (deduplicated by delegating to cached getSummary).
      *
      * @return array{labels: array<int, string>, values: array<int, float>}
      */
@@ -252,17 +360,15 @@ class SalesAggregationService
         ?int $branchId = null,
         ?int $cashierId = null
     ): array {
-        $payments = $this->buildFilteredPaymentsQuery($startDate, $endDate, $branchId, $cashierId)
-            ->select('payment_method', DB::raw('SUM(amount) as total'))
-            ->groupBy('payment_method')
-            ->get();
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
+        $summary = $this->getSummary($startDate, $endDate, $effectiveBranchId, $cashierId);
 
         $labels = [];
         $values = [];
 
-        foreach ($payments as $payment) {
-            $labels[] = $this->formatPaymentMethod($payment->payment_method);
-            $values[] = round((float) $payment->total, 2);
+        foreach ($summary['payments_breakdown'] as $payment) {
+            $labels[] = $payment['label'];
+            $values[] = round((float) $payment['total'], 2);
         }
 
         return [
@@ -272,23 +378,24 @@ class SalesAggregationService
     }
 
     /**
-     * Export sales records as a formatted CSV string.
+     * Stream filtered orders directly to an output resource (e.g. php://output) in chunks.
+     *
+     * @param resource $output
      */
-    public function exportCsv(
+    public function streamOrdersCsv(
+        $output,
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
         ?int $cashierId = null
-    ): string {
-        $orders = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId)
-            ->with(['branch', 'cashier', 'payments'])
-            ->orderBy('created_at', 'desc')
-            ->get();
+    ): void {
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
 
-        $handle = fopen('php://temp', 'r+');
+        // Emit UTF-8 BOM for Microsoft Excel compatibility
+        fwrite($output, "\xEF\xBB\xBF");
 
-        // CSV Headers
-        fputcsv($handle, [
+        // Output CSV Headers
+        fputcsv($output, [
             'Order #',
             'Date & Time',
             'Branch',
@@ -302,10 +409,31 @@ class SalesAggregationService
             'Status',
         ]);
 
-        foreach ($orders as $order) {
+        $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId)
+            ->select([
+                'orders.id',
+                'orders.order_number',
+                'orders.created_at',
+                'orders.branch_id',
+                'orders.cashier_id',
+                'orders.order_type',
+                'orders.table_number',
+                'orders.subtotal',
+                'orders.discount_amount',
+                'orders.total_amount',
+                'orders.status',
+            ])
+            ->with([
+                'branch:id,name',
+                'cashier:id,name',
+                'payments:id,order_id,payment_method',
+            ]);
+
+        // Stream orders in bounded chunks using lazyById(500) for O(1) memory
+        foreach ($query->lazyById(500) as $order) {
             $paymentMethod = $order->payments->pluck('payment_method')->unique()->implode(', ') ?: 'Unpaid';
 
-            fputcsv($handle, [
+            fputcsv($output, [
                 $order->order_number,
                 $order->created_at?->format('Y-m-d H:i:s') ?? '',
                 $order->branch?->name ?? 'Global',
@@ -319,7 +447,19 @@ class SalesAggregationService
                 ucfirst($order->status),
             ]);
         }
+    }
 
+    /**
+     * Export sales records as a formatted CSV string (buffered wrapper over streamOrdersCsv).
+     */
+    public function exportCsv(
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $branchId = null,
+        ?int $cashierId = null
+    ): string {
+        $handle = fopen('php://temp', 'r+');
+        $this->streamOrdersCsv($handle, $startDate, $endDate, $branchId, $cashierId);
         rewind($handle);
         $csvContent = stream_get_contents($handle);
         fclose($handle);
@@ -349,21 +489,16 @@ class SalesAggregationService
         ?int $categoryId = null,
         int $limit = 10,
         string $sortBy = 'quantity',
-        bool $useCache = true
+        bool $useCache = true,
+        ?float $totalNetSales = null
     ): array {
-        $cacheKey = 'sales_best_sellers_' . md5(json_encode([
-            $startDate,
-            $endDate,
-            $branchId,
-            $cashierId,
-            $categoryId,
-            $limit,
-            $sortBy,
-        ]));
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
 
-        $calculator = function () use ($startDate, $endDate, $branchId, $cashierId, $categoryId, $limit, $sortBy) {
-            $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
-            $totalNetSales = (float) ((clone $ordersQuery)->sum('orders.total_amount') ?: 0.0);
+        $calculator = function () use ($startDate, $endDate, $effectiveBranchId, $cashierId, $categoryId, $limit, $sortBy, $totalNetSales) {
+            if ($totalNetSales === null) {
+                $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
+                $totalNetSales = (float) ((clone $ordersQuery)->sum('orders.total_amount') ?: 0.0);
+            }
 
             $query = OrderItem::query()
                 ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -380,8 +515,8 @@ class SalesAggregationService
             if ($endDate) {
                 $query->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
             }
-            if ($branchId) {
-                $query->where('orders.branch_id', $branchId);
+            if ($effectiveBranchId) {
+                $query->where('orders.branch_id', $effectiveBranchId);
             }
             if ($cashierId) {
                 $query->where('orders.cashier_id', $cashierId);
@@ -441,6 +576,16 @@ class SalesAggregationService
         };
 
         if ($useCache) {
+            $cacheKey = $this->buildBestSellersCacheKey(
+                $startDate,
+                $endDate,
+                $effectiveBranchId,
+                $cashierId,
+                $categoryId,
+                $limit,
+                $sortBy
+            );
+
             return Cache::remember($cacheKey, 60, $calculator);
         }
 
@@ -465,10 +610,15 @@ class SalesAggregationService
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
-        ?int $cashierId = null
+        ?int $cashierId = null,
+        ?float $totalNetSales = null
     ): array {
-        $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
-        $totalNetSales = (float) ((clone $ordersQuery)->sum('orders.total_amount') ?: 0.0);
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
+
+        if ($totalNetSales === null) {
+            $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
+            $totalNetSales = (float) ((clone $ordersQuery)->sum('orders.total_amount') ?: 0.0);
+        }
 
         $query = OrderItem::query()
             ->join('orders', 'order_items.order_id', '=', 'orders.id')
@@ -759,6 +909,28 @@ class SalesAggregationService
      * }
      */
     public function getHourlySalesDistribution(
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $branchId = null,
+        ?int $cashierId = null,
+        bool $useCache = true
+    ): array {
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
+
+        if ($useCache) {
+            $cacheKey = $this->buildHourlyCacheKey($startDate, $endDate, $effectiveBranchId, $cashierId);
+            return Cache::remember($cacheKey, 60, function () use ($startDate, $endDate, $effectiveBranchId, $cashierId) {
+                return $this->computeHourlySalesDistribution($startDate, $endDate, $effectiveBranchId, $cashierId);
+            });
+        }
+
+        return $this->computeHourlySalesDistribution($startDate, $endDate, $effectiveBranchId, $cashierId);
+    }
+
+    /**
+     * Compute 24-hour distribution calculation without cache lookup.
+     */
+    protected function computeHourlySalesDistribution(
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,

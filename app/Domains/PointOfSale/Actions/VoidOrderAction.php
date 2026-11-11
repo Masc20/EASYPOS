@@ -5,9 +5,11 @@ namespace App\Domains\PointOfSale\Actions;
 use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Events\OrderVoided;
 use App\Domains\PointOfSale\Models\Order;
+use App\Support\Constants\SystemConstants;
 use App\Support\Enums\KitchenTicketStatus;
 use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -44,8 +46,18 @@ class VoidOrderAction
             throw new InvalidArgumentException("Manager record not found.");
         }
 
-        $skipPin = $data['skip_pin_check'] ?? false;
-        if (! $skipPin) {
+        $skipPin = (bool) ($data['skip_pin_check'] ?? false);
+        if ($skipPin) {
+            // Floor terminal sessions cannot bypass manager PIN verification
+            if (session(SystemConstants::SESSION_AUTH_METHOD) === 'pin' || session('auth_method') === 'pin') {
+                throw new InvalidArgumentException("Floor terminal sessions cannot bypass manager PIN verification.");
+            }
+
+            // Reject untrusted callers when authenticated user cannot approve refunds
+            if (Auth::check() && ! Auth::user()->isOwner() && ! Auth::user()->can('pos.refund')) {
+                throw new InvalidArgumentException("Unauthorized back-office void attempt.");
+            }
+        } else {
             $pin = (string) ($data['manager_pin'] ?? '');
             if (! $manager->verifyPin($pin)) {
                 throw new InvalidArgumentException("Invalid manager PIN.");
@@ -76,7 +88,18 @@ class VoidOrderAction
             throw new InvalidArgumentException("A valid cancellation reason is required.");
         }
 
-        return DB::transaction(function () use ($order, $manager, $data) {
+        return DB::transaction(function () use ($manager, $data) {
+            // Acquire pessimistic row lock on target order to serialize voids and prevent double stock restoration
+            $order = Order::where('id', $data['order_id'])->lockForUpdate()->firstOrFail();
+
+            if ($order->status === OrderStatus::CANCELLED->value) {
+                throw new InvalidArgumentException("Order #{$order->order_number} is already cancelled.");
+            }
+
+            // Re-verify branch isolation under row lock
+            if (! $manager->isOwner() && $order->branch_id && $manager->branch_id !== $order->branch_id) {
+                throw new InvalidArgumentException("Manager does not belong to this branch.");
+            }
             $previousStatus = $order->status;
             $auditStamp = "[VOIDED by {$manager->name} ({$manager->emp_id}) on " . now()->toDateTimeString() . ": {$data['reason']}]";
             $updatedNotes = trim(($order->notes ? $order->notes . "\n" : '') . $auditStamp);
@@ -98,6 +121,7 @@ class VoidOrderAction
             // 3. Cancel any linked kitchen tickets
             DB::table('kitchen_tickets')->where('order_id', $order->id)->update([
                 'status' => KitchenTicketStatus::CANCELLED->value,
+                'served_at' => null,
                 'updated_at' => now(),
             ]);
 

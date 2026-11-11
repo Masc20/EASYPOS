@@ -22,6 +22,7 @@ class DailySpecialsBoard extends Component
             ->where('track_stock', true)
             ->where('is_available', true)
             ->orderBy('stock_quantity')
+            ->limit(15)
             ->get();
 
         $soldOutCount = Meal::forBranch($branchId)->where('is_available', false)->count();

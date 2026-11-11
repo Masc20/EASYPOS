@@ -63,6 +63,7 @@
                         </x-filament::input.wrapper>
                     </div>
 
+                    @if (! ($isBranchScoped ?? false))
                     <div>
                         <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Branch
                             Scope</label>
@@ -75,6 +76,14 @@
                             </x-filament::input.select>
                         </x-filament::input.wrapper>
                     </div>
+                    @else
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Branch</label>
+                        <div class="px-3 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white">
+                            {{ auth()->user()->branch?->name ?? 'Branch #' . auth()->user()->branch_id }}
+                        </div>
+                    </div>
+                    @endif
                 </div>
             </div>
         </x-filament::section>
@@ -214,8 +223,7 @@
                     <x-filament::icon icon="heroicon-m-fire" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Peak Sales
-                        Rush</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Peak Sales Rush</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white">{{ $hourlyDistribution['peak_hour_label'] }}</span>
                     <span
@@ -229,8 +237,7 @@
                     <x-filament::icon icon="heroicon-m-sun" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Lunch Rush (11 AM
-                        - 2 PM)</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Lunch Rush (11 AM - 2 PM)</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white font-mono">₱{{ number_format($hourlyDistribution['lunch_rush']['revenue'], 2) }}</span>
                     <span
@@ -244,8 +251,7 @@
                     <x-filament::icon icon="heroicon-m-moon" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Dinner Rush (5 PM
-                        - 9 PM)</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Dinner Rush (5 PM - 9 PM)</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white font-mono">₱{{ number_format($hourlyDistribution['dinner_rush']['revenue'], 2) }}</span>
                     <span

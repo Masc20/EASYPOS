@@ -14,6 +14,22 @@
         window.addEventListener('cart-reset', () => {
             this.clear();
         });
+        window.addEventListener('meal-availability-synced', () => {
+            if (window.Livewire) {
+                @this.call('verifyCartAvailability');
+            }
+        });
+        window.addEventListener('cart-availability-updated', (e) => {
+            if (e.detail && e.detail.items) {
+                this.items = e.detail.items;
+            }
+        });
+    },
+
+    showNotice(title, message) {
+        window.dispatchEvent(new CustomEvent('show-notice-modal', {
+            detail: { title, message }
+        }));
     },
 
     addMeal(meal) {
@@ -24,7 +40,7 @@
         const existing = this.items.find(i => i.meal_id === meal.id);
         if (existing) {
             if (meal.maxQty !== null && existing.quantity >= meal.maxQty) {
-                alert('Maximum daily portion limit reached for ' + meal.name + ' (' + meal.maxQty + ' available).');
+                this.showNotice('Portion limit reached', 'Maximum daily portions reached for ' + meal.name + '. Only ' + meal.maxQty + ' available.');
                 return;
             }
             existing.quantity++;
@@ -45,7 +61,7 @@
         const item = this.items[index];
         if (!item) return;
         if (item.max_quantity !== null && item.quantity >= item.max_quantity) {
-            alert('Cannot exceed ' + item.max_quantity + ' portions.');
+            this.showNotice('Portion limit reached', 'Cannot exceed ' + item.max_quantity + ' portions for ' + item.name + '.');
             return;
         }
         item.quantity++;
@@ -102,7 +118,13 @@
 
     proceed() {
         if (this.items.length === 0) {
-            alert('Your cart is empty. Tap dishes on the left to add items.');
+            this.showNotice('Cart is empty', 'Add at least one dish before proceeding to checkout.');
+            return;
+        }
+        const soldOutItems = this.items.filter(i => i.is_sold_out);
+        if (soldOutItems.length > 0) {
+            const names = soldOutItems.map(i => i.name).join(', ');
+            window.dispatchEvent(new CustomEvent('pos-alert', { detail: { type: 'error', message: 'Cannot proceed to checkout. The following item(s) are sold out: ' + names } }));
             return;
         }
         const data = {
@@ -185,17 +207,25 @@
     <div class="flex-1 overflow-y-auto max-h-[320px] space-y-2 pr-1 scrollbar-thin">
         <!-- Dynamic Alpine Items -->
         <template x-for="(item, index) in items" :key="item.meal_id">
-            <div class="rounded-md border border-brand-border bg-brand-bg/50 p-2.5 transition space-y-2">
+            <div :class="item.is_sold_out ? 'border-brand-error/50 bg-brand-error/5' : 'border-brand-border bg-brand-bg/50'"
+                class="rounded-md border p-2.5 transition space-y-2">
                 <div class="flex items-start justify-between gap-2">
                     <div class="flex-1">
-                        <div class="flex items-center gap-1.5">
+                        <div class="flex items-center gap-1.5 flex-wrap">
                             <template x-if="item.menu_code">
                                 <span
                                     class="rounded-sm bg-brand-card px-1 py-0.2 text-[9px] font-mono font-bold text-brand-text-muted border border-brand-border"
                                     x-text="item.menu_code">
                                 </span>
                             </template>
-                            <span class="text-xs font-semibold text-brand-text leading-tight" x-text="item.name"></span>
+                            <span class="text-xs font-semibold leading-tight"
+                                :class="item.is_sold_out ? 'text-brand-error line-through' : 'text-brand-text'"
+                                x-text="item.name"></span>
+                            <template x-if="item.is_sold_out">
+                                <span class="rounded-xs bg-brand-error/15 border border-brand-error/30 px-1 py-0.2 text-[9px] font-bold text-brand-error uppercase tracking-wider">
+                                    Sold Out
+                                </span>
+                            </template>
                         </div>
                         <span class="text-[11px] font-mono text-brand-text-muted"
                             x-text="formatCurrency(item.price)"></span>
@@ -301,7 +331,7 @@
 
     <!-- Checkout Action Button -->
     <div class="pt-1">
-        <button type="button" x-on:click="proceed()" :disabled="items.length === 0"
+        <button type="button" x-on:click="proceed()" :disabled="items.length === 0 || items.some(i => i.is_sold_out)"
             class="w-full flex items-center justify-center gap-2 rounded-md bg-brand-primary hover:bg-brand-primary-hover disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm py-3 px-4 shadow-sm transition uppercase tracking-wider cursor-pointer">
             <span>Checkout &amp; Pay</span>
             <span class="font-mono font-bold" x-text="formatCurrency(totalAmount)"></span>

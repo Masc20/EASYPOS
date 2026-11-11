@@ -8,6 +8,7 @@ use App\Filament\Resources\Branches\Pages\EditBranch;
 use App\Filament\Resources\Branches\Pages\ListBranches;
 use App\Filament\Resources\Branches\Schemas\BranchForm;
 use App\Filament\Resources\Branches\Tables\BranchesTable;
+use App\Support\Enums\StaffRole;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -17,6 +18,17 @@ use UnitEnum;
 
 class BranchResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user && ($user->isOwner() || $user->hasRole(StaffRole::SUPER_ADMIN->value)));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
     protected static ?string $model = Branch::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice;

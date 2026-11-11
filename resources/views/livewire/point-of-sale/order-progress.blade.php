@@ -14,9 +14,9 @@
         const cleanTable = q.replace(/^table\s+/i, '');
         return searchableText.includes(q) || (cleanTable.length > 0 && searchableText.includes(cleanTable));
     }
-}" x-show="open" x-on:open-order-progress.window="open = true; $wire.open();"
-    x-on:close-order-progress.window="open = false; $wire.close();"
-    x-on:keydown.escape.window="open = false; $wire.close();" class="relative z-50">
+}" x-show="open" x-cloak x-on:open-order-progress.window="if (!open) { open = true; $wire.open(); }"
+    x-on:close-order-progress.window="if (open) { open = false; $wire.close(); }"
+    x-on:keydown.escape.window="if (open) { open = false; $wire.close(); }" class="relative z-50">
 
     <!-- Backdrop -->
     <div x-show="open" x-transition:enter="ease-out duration-150" x-transition:enter-start="opacity-0"
@@ -110,7 +110,7 @@
                         <span
                             :class="activeFilter === 'all' ? 'bg-white/20 text-white' :
                                 'bg-brand-muted text-brand-text-muted'"
-                            class="rounded-full px-1.5 py-0.2 text-[9px] font-bold">
+                            class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {{ $counts['all'] }}
                         </span>
                     </button>
@@ -126,7 +126,7 @@
                         <span
                             :class="activeFilter === 'new' ? 'bg-white/20 text-white' :
                                 'bg-sky-500/15 text-sky-700 dark:text-sky-300'"
-                            class="rounded-full px-1.5 py-0.2 text-[9px] font-bold">
+                            class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {{ $counts['new'] }}
                         </span>
                     </button>
@@ -142,7 +142,7 @@
                         <span
                             :class="activeFilter === 'in_prep' ? 'bg-white/20 text-white' :
                                 'bg-amber-500/15 text-amber-700 dark:text-amber-300'"
-                            class="rounded-full px-1.5 py-0.2 text-[9px] font-bold">
+                            class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {{ $counts['in_prep'] }}
                         </span>
                     </button>
@@ -158,7 +158,7 @@
                         <span
                             :class="activeFilter === 'ready' ? 'bg-white/20 text-white' :
                                 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'"
-                            class="rounded-full px-1.5 py-0.2 text-[9px] font-bold">
+                            class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {{ $counts['ready'] }}
                         </span>
                     </button>
@@ -174,7 +174,7 @@
                         <span
                             :class="activeFilter === 'served' ? 'bg-white/20 text-white' :
                                 'bg-brand-muted text-brand-text-muted'"
-                            class="rounded-full px-1.5 py-0.2 text-[9px] font-bold">
+                            class="inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] font-bold leading-none">
                             {{ $counts['served'] }}
                         </span>
                     </button>
@@ -183,6 +183,28 @@
 
             <!-- Ticket List Body -->
             <div class="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-thin">
+                <!-- Loading Skeleton during Drawer Opening or Ticket Refresh -->
+                <div wire:loading wire:target="open, refreshTickets" class="w-full space-y-3">
+                    <div class="animate-pulse space-y-3">
+                        @for ($i = 0; $i < 3; $i++)
+                            <div class="rounded-lg border border-brand-border bg-brand-card/60 p-3.5 space-y-3">
+                                <div class="flex items-start justify-between">
+                                    <div class="space-y-1.5">
+                                        <div class="h-4 w-24 bg-brand-muted rounded"></div>
+                                        <div class="h-3 w-36 bg-brand-muted/70 rounded"></div>
+                                    </div>
+                                    <div class="h-6 w-20 bg-brand-muted rounded-md"></div>
+                                </div>
+                                <div class="space-y-2 pt-2 border-t border-brand-border/40">
+                                    <div class="h-3 w-40 bg-brand-muted/50 rounded"></div>
+                                    <div class="h-3 w-32 bg-brand-muted/50 rounded"></div>
+                                </div>
+                            </div>
+                        @endfor
+                    </div>
+                </div>
+
+                <div wire:loading.remove wire:target="open, refreshTickets" class="space-y-3">
                 @forelse ($tickets as $ticket)
                     @php
                         $statusBadgeClass = match ($ticket->status) {
@@ -222,9 +244,10 @@
                         );
                     @endphp
 
-                    <div x-show="matches('{{ $ticket->status }}', '{{ addslashes($searchable) }}')"
+                    <div wire:key="order-progress-ticket-{{ $ticket->id }}"
+                        x-show="matches('{{ $ticket->status }}', '{{ addslashes($searchable) }}')"
                         x-transition:enter="transition ease-out duration-100"
-                        x-transition:enter-start="opacity-0 scale-98" x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
                         class="rounded-lg border p-3.5 transition select-none
                              {{ $isReady
                                  ? 'border-emerald-500/50 bg-emerald-500/5 shadow-xs ring-1 ring-emerald-500/20'
@@ -239,7 +262,7 @@
                                     </span>
                                     @if ($ticket->priority === 'rush')
                                         <span
-                                            class="inline-flex items-center gap-1 rounded-sm bg-brand-error/15 border border-brand-error/30 px-1.5 py-0.2 text-[10px] font-bold text-brand-error uppercase tracking-wider animate-pulse">
+                                            class="inline-flex items-center gap-1 rounded-sm bg-brand-error/15 border border-brand-error/30 px-1.5 py-0.5 text-[10px] font-bold text-brand-error uppercase tracking-wider animate-pulse">
                                             Rush
                                         </span>
                                     @endif
@@ -280,19 +303,7 @@
                             </div>
                         </div>
 
-                        {{-- Void Order Button --}}
-                        <button type="button"
-                            class="text-[10px] font-semibold text-brand-text-muted hover:text-brand-primary transition cursor-pointer"
-                            x-on:click="window.dispatchEvent(new CustomEvent('open-manager-pin', { detail: { orderId: {{ $ticket->order?->id ?? 0 }} }}))"
-                            title="Void Order">
-                            <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.985-1.858L5 7m5 4v6m4-4v6m-4-4h8m-4-8v6m-4-8h8" />
-                            </svg>
-                            Void
-                        </button>
-
-                        <!-- Ticket Items Breakwidth -->
+                        <!-- Ticket Items Breakdown -->
                         <div class="pt-2.5 space-y-1.5">
                             @foreach ($ticket->items as $item)
                                 @php
@@ -336,9 +347,9 @@
                             @endforeach
                         </div>
 
-                        <!-- Read-only Footer Tag -->
+                        <!-- Read-only Footer Tag & Void Trigger -->
                         <div
-                            class="mt-2.5 pt-2 border-t border-brand-border/40 flex items-center justify-between text-[10px] text-brand-text-muted">
+                            class="mt-2.5 pt-2 border-t border-brand-border/40 flex items-center justify-between gap-2 text-[10px] text-brand-text-muted">
                             <span class="inline-flex items-center gap-1 font-mono">
                                 <svg class="h-3 w-3 text-brand-text-muted/60" fill="none" stroke="currentColor"
                                     viewBox="0 0 24 24">
@@ -347,19 +358,34 @@
                                 </svg>
                                 Read-only • Floor Terminal
                             </span>
-                            @if ($ticket->ready_at)
-                                <span class="text-emerald-600 dark:text-emerald-400 font-medium">
-                                    Ready since {{ $ticket->ready_at->format('g:i A') }}
-                                </span>
-                            @elseif ($ticket->started_at)
-                                <span>
-                                    Started {{ $ticket->started_at->format('g:i A') }}
-                                </span>
-                            @endif
+                            <div class="flex items-center gap-2.5">
+                                @if ($ticket->ready_at)
+                                    <span class="text-emerald-600 dark:text-emerald-400 font-medium">
+                                        Ready since {{ $ticket->ready_at->format('g:i A') }}
+                                    </span>
+                                @elseif ($ticket->started_at)
+                                    <span>
+                                        Started {{ $ticket->started_at->format('g:i A') }}
+                                    </span>
+                                @endif
+
+                                @if ($ticket->order && $ticket->order->status !== 'cancelled' && $ticket->order->payment_status !== 'refunded')
+                                    <button type="button"
+                                        class="inline-flex items-center gap-1 rounded border border-brand-error/30 bg-brand-error/10 px-2 py-0.5 text-[10px] font-semibold text-brand-error hover:bg-brand-error hover:text-white transition cursor-pointer"
+                                        x-on:click="window.dispatchEvent(new CustomEvent('open-manager-pin', { detail: { orderId: {{ $ticket->order->id }}, orderNumber: '{{ $ticket->order->order_number }}' } })); if (window.Livewire) { Livewire.dispatch('open-manager-pin', { orderId: {{ $ticket->order->id }} }); }"
+                                        title="Void Order">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.985-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                        <span>Void</span>
+                                    </button>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 @empty
-                    <div class="py-16 text-center">
+                    <div wire:key="order-progress-empty" class="py-16 text-center">
                         <svg class="mx-auto h-12 w-12 text-brand-text-muted/40 mb-3" fill="none"
                             stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
@@ -370,6 +396,7 @@
                             appear here in real time.</p>
                     </div>
                 @endforelse
+                </div>
             </div>
         </div>
     </div>

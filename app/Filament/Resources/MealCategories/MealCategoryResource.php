@@ -14,10 +14,18 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
 
 class MealCategoryResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user && ($user->isOwner() || $user->can('menu.manage') || $user->can('admin.access')));
+    }
+
     protected static ?string $model = MealCategory::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
@@ -41,7 +49,11 @@ class MealCategoryResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return MealCategoriesTable::configure($table);
+        $configured = MealCategoriesTable::configure($table);
+
+        $configured->getFilter('branch_id')?->visible(fn () => ! auth()->user()?->isBranchScoped());
+
+        return $configured;
     }
 
     public static function getRelations(): array
@@ -60,7 +72,53 @@ class MealCategoryResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['branch']);
+
+        $user = auth()->user();
+        if ($user && $user->isBranchScoped()) {
+            $query->where(function (Builder $q) use ($user) {
+                $q->where('branch_id', $user->branch_id)
+                    ->orWhereNull('branch_id');
+            });
+        }
+
+        return $query;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        if ($user->isBranchScoped()) {
+            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
+        }
+
+        return true;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->isOwner()) {
+            return true;
+        }
+
+        if ($user->isBranchScoped()) {
+            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
+        }
+
+        return true;
     }
 }

@@ -20,6 +20,20 @@ class MealCategory extends Model
     ];
 
     /**
+     * Cache invalidation hooks for active categories.
+     */
+    protected static function booted(): void
+    {
+        static::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('meal_categories_active');
+        });
+
+        static::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('meal_categories_active');
+        });
+    }
+
+    /**
      * Meals under this category.
      */
     public function meals(): HasMany

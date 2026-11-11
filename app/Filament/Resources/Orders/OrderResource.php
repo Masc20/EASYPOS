@@ -44,7 +44,14 @@ class OrderResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
+        $query = parent::getEloquentQuery()
             ->with(['cashier', 'branch', 'payments']);
+
+        $user = auth()->user();
+        if ($user && $user->isBranchScoped()) {
+            $query->where('branch_id', $user->branch_id);
+        }
+
+        return $query;
     }
 }

@@ -5,11 +5,13 @@ namespace App\Domains\Menu\Livewire;
 use App\Domains\Menu\Actions\CreateMealAction;
 use App\Domains\Menu\Models\MealCategory;
 use App\Support\Services\CodeGeneratorService;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class CreateMealModal extends Component
 {
+    public bool $isOpen = false;
     public string $name = '';
     public ?string $menu_code = null;
     public ?string $lastAutoCode = null;
@@ -45,17 +47,28 @@ class CreateMealModal extends Component
 
     public function mount(): void
     {
-        $this->setDefaultCategory();
+        // Defer category loading and default category assignment until opened
+    }
+
+    protected function getCachedActiveCategories()
+    {
+        return Cache::remember('meal_categories_active', 3600, function () {
+            return MealCategory::where('is_active', true)->orderBy('display_order')->get();
+        });
     }
 
     private function setDefaultCategory(): void
     {
-        $firstCategory = MealCategory::where('is_active', true)->orderBy('display_order')->first();
+        $firstCategory = $this->getCachedActiveCategories()->first();
         $this->category_id = $firstCategory?->id;
     }
 
     public function generateCode(): void
     {
+        if (! $this->category_id) {
+            $this->setDefaultCategory();
+        }
+
         if ($this->category_id && (blank($this->menu_code) || $this->menu_code === $this->lastAutoCode)) {
             $code = CodeGeneratorService::generateMenuCode((int) $this->category_id);
             $this->menu_code = $code;
@@ -80,15 +93,34 @@ class CreateMealModal extends Component
     }
 
     #[On('open-create-meal-modal')]
-    public function openModal(): void
+    public function openCreateModal(): void
     {
+        $this->isOpen = true;
         $this->resetForm();
+        $this->setDefaultCategory();
         $this->generateCode();
         $this->dispatch('open-modal', 'create-meal-modal');
     }
 
+    public function openModal(): void
+    {
+        $this->openCreateModal();
+    }
+
+    public function closeModal(): void
+    {
+        $this->isOpen = false;
+        $this->resetForm();
+        $this->dispatch('close-modal', 'create-meal-modal');
+    }
+
     public function save(CreateMealAction $action): void
     {
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $this->validate();
 
         $action->handle([
@@ -104,6 +136,7 @@ class CreateMealModal extends Component
             'created_by' => auth()->id(),
         ]);
 
+        $this->isOpen = false;
         $this->dispatch('close-modal', 'create-meal-modal');
         $this->dispatch('meal-saved');
         $this->resetForm();
@@ -114,7 +147,11 @@ class CreateMealModal extends Component
         $this->name = '';
         $this->menu_code = null;
         $this->lastAutoCode = null;
-        $this->setDefaultCategory();
+        if ($this->isOpen) {
+            $this->setDefaultCategory();
+        } else {
+            $this->category_id = null;
+        }
         $this->price = '';
         $this->description = null;
         $this->is_available = true;
@@ -125,9 +162,9 @@ class CreateMealModal extends Component
 
     public function render()
     {
-        $categories = MealCategory::where('is_active', true)
-            ->orderBy('display_order')
-            ->get();
+        $categories = $this->isOpen
+            ? $this->getCachedActiveCategories()
+            : collect();
 
         return view('livewire.menu.create-meal-modal', [
             'categories' => $categories,

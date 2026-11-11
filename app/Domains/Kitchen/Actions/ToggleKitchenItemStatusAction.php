@@ -35,6 +35,7 @@ class ToggleKitchenItemStatusAction
 
             // If ticket was 'new', claiming an item promotes ticket to 'in_prep'
             $ticket = $item->ticket;
+            $ticket?->touch();
             if ($ticket && $ticket->status === 'new') {
                 $ticket->update([
                     'status' => 'in_prep',

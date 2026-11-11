@@ -40,12 +40,31 @@ class RolesAndPermissionsSeeder extends Seeder
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
-        // 2. Define roles and assign permissions
+        // 2. Define roles and assign explicit canonical permissions (no wildcard Permission::all())
         $ownerRole = Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
-        $ownerRole->syncPermissions(Permission::all());
+        $ownerRole->syncPermissions([
+            'admin.access',
+            'pos.access',
+            'pos.checkout',
+            'pos.refund',
+            'menu.view',
+            'menu.manage',
+            'branch.manage',
+            'users.manage',
+            'reports.view',
+            'financial.control',
+        ]);
 
         $superAdminRole = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
-        $superAdminRole->syncPermissions(Permission::all());
+        $superAdminRole->syncPermissions([
+            'admin.access',
+            'pos.refund',
+            'menu.manage',
+            'branch.manage',
+            'users.manage',
+            'reports.view',
+            'financial.control',
+        ]);
 
         $branchManagerRole = Role::firstOrCreate(['name' => 'branch-manager', 'guard_name' => 'web']);
         $branchManagerRole->syncPermissions([
@@ -57,7 +76,7 @@ class RolesAndPermissionsSeeder extends Seeder
             'kitchen.prepare',
             'menu.view',
             'menu.manage',
-            'branch.manage',
+            'users.manage',
             'reports.view',
         ]);
 

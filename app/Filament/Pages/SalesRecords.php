@@ -45,6 +45,9 @@ class SalesRecords extends Page
 
     public function mount(): void
     {
+        if (auth()->user()?->isBranchScoped()) {
+            $this->branchId = (int) auth()->user()->branch_id;
+        }
         $this->setPreset('today');
     }
 
@@ -119,7 +122,9 @@ class SalesRecords extends Page
 
     public function resetFilters(): void
     {
-        $this->branchId = null;
+        $this->branchId = auth()->user()?->isBranchScoped()
+            ? (int) auth()->user()->branch_id
+            : null;
         $this->cashierId = null;
         $this->bestSellerCategoryId = null;
         $this->bestSellerSortBy = 'quantity';
@@ -132,30 +137,54 @@ class SalesRecords extends Page
 
     public function exportCsv(SalesAggregationService $service): StreamedResponse
     {
-        $csvData = $service->exportCsv(
-            $this->startDate,
-            $this->endDate,
-            $this->branchId,
-            $this->cashierId
-        );
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $cashierId = $this->cashierId;
+
+        if ($user && $user->isBranchScoped() && $cashierId) {
+            $cashierBelongs = User::where('id', $cashierId)->where('branch_id', $effectiveBranchId)->exists();
+            if (! $cashierBelongs) {
+                $cashierId = null;
+            }
+        }
 
         $filename = 'sales-records-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
 
-        return response()->streamDownload(function () use ($csvData) {
-            echo $csvData;
+        return response()->streamDownload(function () use ($service, $effectiveBranchId, $cashierId) {
+            $handle = fopen('php://output', 'w');
+            $service->streamOrdersCsv(
+                $handle,
+                $this->startDate,
+                $this->endDate,
+                $effectiveBranchId,
+                $cashierId
+            );
+            fclose($handle);
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
+            'X-Accel-Buffering' => 'no',
         ]);
     }
 
     public function exportPeriodicCsv(SalesAggregationService $service): StreamedResponse
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $cashierId = $this->cashierId;
+
+        if ($user && $user->isBranchScoped() && $cashierId) {
+            $cashierBelongs = User::where('id', $cashierId)->where('branch_id', $effectiveBranchId)->exists();
+            if (! $cashierBelongs) {
+                $cashierId = null;
+            }
+        }
+
         $csvData = $service->exportPeriodicCsv(
             $this->periodicInterval,
             $this->startDate,
             $this->endDate,
-            $this->branchId,
-            $this->cashierId
+            $effectiveBranchId,
+            $cashierId
         );
 
         $filename = 'periodic-sales-' . $this->periodicInterval . '-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
@@ -169,37 +198,52 @@ class SalesRecords extends Page
 
     protected function getViewData(): array
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $this->branchId = $effectiveBranchId;
+
+        if ($user && $user->isBranchScoped() && $this->cashierId) {
+            $cashierBelongs = User::where('id', $this->cashierId)->where('branch_id', $effectiveBranchId)->exists();
+            if (! $cashierBelongs) {
+                $this->cashierId = null;
+            }
+        }
+
         $service = app(SalesAggregationService::class);
         $summary = $service->getSummary(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
+            $effectiveBranchId,
             $this->cashierId
         );
+
+        $netSales = (float) ($summary['net_sales'] ?? 0.0);
 
         $bestSellingRankings = $service->getBestSellingRankings(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
+            $effectiveBranchId,
             $this->cashierId,
             $this->bestSellerCategoryId,
             $this->bestSellerLimit,
             $this->bestSellerSortBy,
-            false
+            true,
+            $netSales
         );
 
         $categoryRankings = $service->getCategoryRankings(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
-            $this->cashierId
+            $effectiveBranchId,
+            $this->cashierId,
+            $netSales
         );
 
         $periodicReport = $service->getPeriodicReport(
             $this->periodicInterval,
             $this->startDate,
             $this->endDate,
-            $this->branchId,
+            $effectiveBranchId,
             $this->cashierId
         );
 
@@ -222,15 +266,23 @@ class SalesRecords extends Page
         $hourlyDistribution = $service->getHourlySalesDistribution(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
+            $effectiveBranchId,
             $this->cashierId
         );
 
-        $branches = Branch::query()->orderBy('name')->get();
-        $cashiers = User::query()
+        $branches = ($user && $user->isBranchScoped())
+            ? Branch::where('id', $user->branch_id)->get()
+            : Branch::query()->orderBy('name')->get();
+
+        $cashiersQuery = User::query()
             ->whereHas('roles', fn ($q) => $q->whereIn('name', ['cashier', 'branch-manager', 'owner', 'super-admin']))
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
+
+        if ($user && $user->isBranchScoped()) {
+            $cashiersQuery->where('branch_id', $user->branch_id);
+        }
+
+        $cashiers = $cashiersQuery->get();
         $categories = MealCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return [
@@ -242,6 +294,7 @@ class SalesRecords extends Page
             'branches' => $branches,
             'cashiers' => $cashiers,
             'categories' => $categories,
+            'isBranchScoped' => $user?->isBranchScoped() ?? false,
         ];
     }
 }

@@ -51,6 +51,11 @@ class MealCatalogTable extends Component
      */
     public function toggleAvailability(int $mealId, \App\Domains\Menu\Actions\ToggleMealAvailabilityAction $action): void
     {
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $action->handle($mealId);
         $this->dispatch('meal-saved');
     }
@@ -60,6 +65,11 @@ class MealCatalogTable extends Component
      */
     public function deleteMeal(int $mealId, \App\Domains\Menu\Actions\DeleteMealAction $action): void
     {
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $action->handle($mealId);
         $this->dispatch('meal-saved');
     }
@@ -96,7 +106,9 @@ class MealCatalogTable extends Component
             ->orderBy('name')
             ->get();
 
-        $totalDishesCount = Meal::forBranch($branchId)->count();
+        $totalDishesCount = (! $this->selectedCategory && $this->statusFilter === 'all' && empty(trim($this->search)))
+            ? $meals->count()
+            : Meal::forBranch($branchId)->count();
 
         return view('livewire.menu.meal-catalog-table', [
             'categories' => $categories,

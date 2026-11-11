@@ -18,7 +18,8 @@ class CheckoutCart extends Component
      *     price: float,
      *     quantity: int,
      *     special_instructions: ?string,
-     *     max_quantity?: ?int
+     *     max_quantity?: ?int,
+     *     is_sold_out?: bool
      * }>
      */
     public array $items = [];
@@ -29,6 +30,12 @@ class CheckoutCart extends Component
     public string $discountType = 'none'; // none, senior_pwd, custom
     public float $customDiscount = 0.00;
     public string $notes = '';
+
+    #[On('meal-availability-synced')]
+    public function handleAvailabilitySynced(): void
+    {
+        $this->verifyCartAvailability();
+    }
 
     #[On('add-to-cart')]
     public function addItem(int $mealId): void
@@ -41,6 +48,7 @@ class CheckoutCart extends Component
                 'type' => 'warning',
                 'message' => "Item '{$meal?->name}' is 86'd (Sold Out) and cannot be added to order.",
             ]);
+
             return;
         }
 
@@ -54,9 +62,11 @@ class CheckoutCart extends Component
                         'type' => 'warning',
                         'message' => "Maximum daily portion limit reached for {$meal->name} ({$maxQty} available).",
                     ]);
+
                     return;
                 }
                 $this->items[$index]['quantity']++;
+
                 return;
             }
         }
@@ -75,7 +85,7 @@ class CheckoutCart extends Component
 
     public function incrementQuantity(int $index): void
     {
-        if (!isset($this->items[$index])) {
+        if (! isset($this->items[$index])) {
             return;
         }
 
@@ -85,6 +95,7 @@ class CheckoutCart extends Component
                 'type' => 'warning',
                 'message' => "Cannot exceed {$item['max_quantity']} portions.",
             ]);
+
             return;
         }
 
@@ -93,7 +104,7 @@ class CheckoutCart extends Component
 
     public function decrementQuantity(int $index): void
     {
-        if (!isset($this->items[$index])) {
+        if (! isset($this->items[$index])) {
             return;
         }
 
@@ -156,6 +167,57 @@ class CheckoutCart extends Component
         return max(0.00, round($this->subtotal - $this->discountAmount, 2));
     }
 
+    public function getHasSoldOutItemsProperty(): bool
+    {
+        foreach ($this->items as $item) {
+            if (! empty($item['is_sold_out'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function verifyCartAvailability(): bool
+    {
+        if (empty($this->items)) {
+            return true;
+        }
+
+        $mealIds = array_column($this->items, 'meal_id');
+        $meals = Meal::whereIn('id', $mealIds)->get()->keyBy('id');
+        $hasSoldOut = false;
+        $soldOutNames = [];
+
+        foreach ($this->items as &$item) {
+            $meal = $meals->get($item['meal_id']);
+            if (! $meal || $meal->isSoldOut()) {
+                $item['is_sold_out'] = true;
+                $hasSoldOut = true;
+                $soldOutNames[] = $item['name'];
+            } else {
+                $item['is_sold_out'] = false;
+                if ($meal->track_stock) {
+                    $item['max_quantity'] = $meal->stock_quantity;
+                }
+            }
+        }
+        unset($item);
+
+        if ($hasSoldOut) {
+            $uniqueNames = implode(', ', array_unique($soldOutNames));
+            $this->dispatch('pos-alert', [
+                'type' => 'error',
+                'message' => "Item(s) in your cart are now Sold Out (86'd): {$uniqueNames}. Please remove them before checkout.",
+            ]);
+            $this->dispatch('cart-availability-updated', items: $this->items);
+
+            return false;
+        }
+
+        return true;
+    }
+
     public function proceedToCheckout(): void
     {
         if (empty($this->items)) {
@@ -166,6 +228,10 @@ class CheckoutCart extends Component
             return;
         }
 
+        if (! $this->verifyCartAvailability()) {
+            return;
+        }
+
         // Open checkout modal with payload
         $this->dispatch('open-checkout', [
             'items' => $this->items,
@@ -173,7 +239,9 @@ class CheckoutCart extends Component
             'table_number' => $this->tableNumber,
             'customer_name' => $this->customerName,
             'subtotal' => $this->subtotal,
+            'discount_type' => $this->discountType,
             'discount_amount' => $this->discountAmount,
+            'custom_discount' => $this->customDiscount,
             'total_amount' => $this->totalAmount,
             'notes' => $this->notes,
         ]);
@@ -186,6 +254,7 @@ class CheckoutCart extends Component
             'discountAmount' => $this->discountAmount,
             'totalAmount' => $this->totalAmount,
             'itemCount' => array_sum(array_column($this->items, 'quantity')),
+            'hasSoldOutItems' => $this->hasSoldOutItems,
         ]);
     }
 }

@@ -5,11 +5,13 @@ namespace App\Domains\Menu\Livewire;
 use App\Domains\Menu\Actions\UpdateMealAction;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class EditMealModal extends Component
 {
+    public bool $isOpen = false;
     public ?int $mealId = null;
     public string $name = '';
     public ?string $menu_code = null;
@@ -43,6 +45,13 @@ class EditMealModal extends Component
         'stock_quantity.required_if' => 'Please specify daily portion quantity when stock countdown is enabled.',
     ];
 
+    public function mount(?int $mealId = null): void
+    {
+        if ($mealId) {
+            $this->loadMeal($mealId);
+        }
+    }
+
     #[On('edit-meal')]
     public function loadMeal(int $id): void
     {
@@ -57,9 +66,17 @@ class EditMealModal extends Component
         $this->is_available = (bool) $meal->is_available;
         $this->track_stock = (bool) $meal->track_stock;
         $this->stock_quantity = $meal->stock_quantity;
+        $this->isOpen = true;
         $this->resetValidation();
 
         $this->dispatch('open-modal', 'edit-meal-modal');
+    }
+
+    public function closeModal(): void
+    {
+        $this->isOpen = false;
+        $this->mealId = null;
+        $this->dispatch('close-modal', 'edit-meal-modal');
     }
 
     public function updatedCategoryId($value): void
@@ -71,6 +88,11 @@ class EditMealModal extends Component
 
     public function save(UpdateMealAction $action): void
     {
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
         $this->validate();
 
         if ($this->mealId) {
@@ -86,15 +108,19 @@ class EditMealModal extends Component
             ]);
         }
 
+        $this->isOpen = false;
+        $this->mealId = null;
         $this->dispatch('close-modal', 'edit-meal-modal');
         $this->dispatch('meal-saved');
     }
 
     public function render()
     {
-        $categories = MealCategory::where('is_active', true)
-            ->orderBy('display_order')
-            ->get();
+        $categories = ($this->mealId !== null && $this->isOpen)
+            ? Cache::remember('meal_categories_active', 3600, function () {
+                return MealCategory::where('is_active', true)->orderBy('display_order')->get();
+            })
+            : collect();
 
         return view('livewire.menu.edit-meal-modal', [
             'categories' => $categories,

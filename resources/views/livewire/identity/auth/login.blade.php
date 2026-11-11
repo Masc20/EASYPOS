@@ -107,46 +107,5 @@
                 </button>
             </div>
         </form>
-
-        <!-- Floor Staff Quick Credentials for Development -->
-        <div class="mt-6 rounded-md bg-brand-bg/60 border border-brand-border p-3.5 text-xs text-brand-text-muted">
-            <p class="font-semibold text-brand-text mb-2 flex items-center justify-between">
-                <span>Branch 01 Staff Credentials:</span>
-                <span
-                    class="text-[10px] text-brand-primary dark:text-brand-accent bg-brand-secondary/15 px-2 py-0.5 rounded-full font-bold">1-Click
-                    Auto Fill</span>
-            </p>
-            <div class="grid grid-cols-3 gap-2 text-center text-[11px]">
-                <button type="button" @click="quickFill('B01-CSH-001', '1234')"
-                    class="rounded-md bg-brand-card p-2 border border-brand-border hover:border-brand-secondary hover:bg-brand-secondary/5 transition text-left shadow-2xs cursor-pointer">
-                    <span class="block font-bold text-brand-text">Cashier</span>
-                    <span class="block text-brand-text-muted font-mono text-[10px]">B01-CSH-001</span>
-                    <span class="block text-brand-secondary font-mono text-[10px] font-semibold">PIN: 1234</span>
-                </button>
-                <button type="button" @click="quickFill('B01-CHF-001', '2345')"
-                    class="rounded-md bg-brand-card p-2 border border-brand-border hover:border-brand-secondary hover:bg-brand-secondary/5 transition text-left shadow-2xs cursor-pointer">
-                    <span class="block font-bold text-brand-text">Chef</span>
-                    <span class="block text-brand-text-muted font-mono text-[10px]">B01-CHF-001</span>
-                    <span class="block text-brand-secondary font-mono text-[10px] font-semibold">PIN: 2345</span>
-                </button>
-                <button type="button" @click="quickFill('B01-COK-001', '3456')"
-                    class="rounded-md bg-brand-card p-2 border border-brand-border hover:border-brand-secondary hover:bg-brand-secondary/5 transition text-left shadow-2xs cursor-pointer">
-                    <span class="block font-bold text-brand-text">Cook</span>
-                    <span class="block text-brand-text-muted font-mono text-[10px]">B01-COK-001</span>
-                    <span class="block text-brand-secondary font-mono text-[10px] font-semibold">PIN: 3456</span>
-                </button>
-            </div>
-        </div>
-
-        <!-- Switch to Owner / Management Login -->
-        <div class="mt-6 border-t border-brand-border pt-4 text-center">
-            <p class="text-xs text-brand-text-muted">
-                Are you an Owner or Branch Manager?
-            </p>
-            <a href="{{ url('/admin/login') }}"
-                class="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-brand-primary dark:text-brand-secondary hover:text-brand-secondary dark:hover:text-brand-accent hover:underline transition">
-                Sign in with Email & Password in Admin Panel &rarr;
-            </a>
-        </div>
     </div>
 </div>

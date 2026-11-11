@@ -7,6 +7,7 @@ use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use App\Support\Enums\StaffRole;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class CodeGeneratorService
@@ -30,14 +31,25 @@ class CodeGeneratorService
 
         $prefix = "{$branchCode}-{$rolePrefix}-";
 
-        $maxSequence = User::where('emp_id', 'like', "{$prefix}%")
-            ->pluck('emp_id')
-            ->map(function ($id) use ($prefix) {
-                $num = str_replace($prefix, '', $id);
-                return is_numeric($num) ? (int) $num : 0;
-            })
-            ->max() ?? 0;
+        try {
+            $driver = DB::connection()->getDriverName();
+            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
+            $startPos = strlen($prefix) + 1;
 
+            $maxSequence = User::where('emp_id', 'like', "{$prefix}%")
+                ->selectRaw("MAX(CAST(SUBSTR(emp_id, {$startPos}) AS {$castType})) as max_seq")
+                ->value('max_seq');
+        } catch (\Throwable) {
+            $maxSequence = User::where('emp_id', 'like', "{$prefix}%")
+                ->pluck('emp_id')
+                ->map(function ($id) use ($prefix) {
+                    $num = str_replace($prefix, '', (string) $id);
+                    return is_numeric($num) ? (int) $num : 0;
+                })
+                ->max();
+        }
+
+        $maxSequence = (int) ($maxSequence ?? 0);
         $nextNumber = str_pad((string) ($maxSequence + 1), 3, '0', STR_PAD_LEFT);
 
         return "{$prefix}{$nextNumber}";
@@ -108,15 +120,27 @@ class CodeGeneratorService
 
         $codePrefix = "{$prefix}-";
 
-        $maxSequence = Meal::withTrashed()
-            ->where('menu_code', 'like', "{$codePrefix}%")
-            ->pluck('menu_code')
-            ->map(function ($code) use ($codePrefix) {
-                $num = str_replace($codePrefix, '', $code);
-                return is_numeric($num) ? (int) $num : 0;
-            })
-            ->max() ?? 0;
+        try {
+            $driver = DB::connection()->getDriverName();
+            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
+            $startPos = strlen($codePrefix) + 1;
 
+            $maxSequence = Meal::withTrashed()
+                ->where('menu_code', 'like', "{$codePrefix}%")
+                ->selectRaw("MAX(CAST(SUBSTR(menu_code, {$startPos}) AS {$castType})) as max_seq")
+                ->value('max_seq');
+        } catch (\Throwable) {
+            $maxSequence = Meal::withTrashed()
+                ->where('menu_code', 'like', "{$codePrefix}%")
+                ->pluck('menu_code')
+                ->map(function ($code) use ($codePrefix) {
+                    $num = str_replace($codePrefix, '', (string) $code);
+                    return is_numeric($num) ? (int) $num : 0;
+                })
+                ->max();
+        }
+
+        $maxSequence = (int) ($maxSequence ?? 0);
         $nextNumber = str_pad((string) ($maxSequence + 1), 3, '0', STR_PAD_LEFT);
 
         return "{$codePrefix}{$nextNumber}";
@@ -161,27 +185,35 @@ class CodeGeneratorService
      */
     public static function generateBranchCode(?string $branchName = null): string
     {
-        $existingCodes = array_flip(Branch::pluck('code')->map(fn ($c) => Str::upper((string) $c))->toArray());
-
         if (filled($branchName)) {
             $words = preg_split('/\s+/', trim($branchName)) ?: [];
             if (count($words) >= 2) {
                 $acronym = Str::upper(substr($words[0], 0, 2) . substr($words[1], 0, 2));
-                if (! isset($existingCodes[$acronym])) {
+                if (! Branch::whereRaw('UPPER(code) = ?', [$acronym])->exists()) {
                     return $acronym;
                 }
             } else {
                 $candidate = Str::upper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $branchName), 0, 4));
-                if (strlen($candidate) >= 3 && ! isset($existingCodes[$candidate])) {
+                if (strlen($candidate) >= 3 && ! Branch::whereRaw('UPPER(code) = ?', [$candidate])->exists()) {
                     return $candidate;
                 }
             }
         }
 
-        $count = count($existingCodes) + 1;
-        $code = 'B' . str_pad((string) $count, 2, '0', STR_PAD_LEFT);
+        // Sequential fallback: find next unused B{NN} code via direct SQL
+        try {
+            $driver = DB::connection()->getDriverName();
+            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
+            $maxSeq = Branch::where('code', 'like', 'B%')
+                ->selectRaw("MAX(CAST(SUBSTR(code, 2) AS {$castType})) as max_seq")
+                ->value('max_seq');
+            $count = ((int) ($maxSeq ?? 0)) + 1;
+        } catch (\Throwable) {
+            $count = Branch::count() + 1;
+        }
 
-        while (isset($existingCodes[$code])) {
+        $code = 'B' . str_pad((string) $count, 2, '0', STR_PAD_LEFT);
+        while (Branch::whereRaw('UPPER(code) = ?', [$code])->exists()) {
             $count++;
             $code = 'B' . str_pad((string) $count, 2, '0', STR_PAD_LEFT);
         }

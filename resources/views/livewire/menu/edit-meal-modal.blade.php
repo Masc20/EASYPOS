@@ -3,7 +3,7 @@
         @include('livewire.menu.partials.meal-form-fields')
 
         <div class="pt-3 border-t border-brand-border flex items-center justify-end gap-2.5">
-            <x-ui.button variant="secondary" type="button" x-on:click="$dispatch('close-modal', 'edit-meal-modal')">
+            <x-ui.button variant="secondary" type="button" wire:click="closeModal" x-on:click="$dispatch('close-modal', 'edit-meal-modal')">
                 Cancel
             </x-ui.button>
             <x-ui.button type="submit" variant="primary" wire:loading.attr="disabled" wire:target="save">

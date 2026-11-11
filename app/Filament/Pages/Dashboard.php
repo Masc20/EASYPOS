@@ -35,6 +35,9 @@ class Dashboard extends BaseDashboard
 
     public function mount(): void
     {
+        if (auth()->user()?->isBranchScoped()) {
+            $this->branchId = (int) auth()->user()->branch_id;
+        }
         $this->setPreset('today');
     }
 
@@ -87,7 +90,9 @@ class Dashboard extends BaseDashboard
 
     public function resetFilters(): void
     {
-        $this->branchId = null;
+        $this->branchId = auth()->user()?->isBranchScoped()
+            ? (int) auth()->user()->branch_id
+            : null;
         $this->bestSellerCategoryId = null;
         $this->bestSellerSortBy = 'quantity';
         $this->bestSellerLimit = 10;
@@ -96,38 +101,49 @@ class Dashboard extends BaseDashboard
 
     protected function getViewData(): array
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $this->branchId = $effectiveBranchId;
+
         $service = app(SalesAggregationService::class);
 
         $summary = $service->getSummary(
             $this->startDate,
             $this->endDate,
-            $this->branchId
+            $effectiveBranchId
         );
 
         $hourlyDistribution = $service->getHourlySalesDistribution(
             $this->startDate,
             $this->endDate,
-            $this->branchId
+            $effectiveBranchId
         );
+
+        $netSales = (float) ($summary['net_sales'] ?? 0.0);
 
         $bestSellingRankings = $service->getBestSellingRankings(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
+            $effectiveBranchId,
             null,
             $this->bestSellerCategoryId,
             $this->bestSellerLimit,
             $this->bestSellerSortBy,
-            false
+            true,
+            $netSales
         );
 
         $categoryRankings = $service->getCategoryRankings(
             $this->startDate,
             $this->endDate,
-            $this->branchId
+            $effectiveBranchId,
+            null,
+            $netSales
         );
 
-        $branches = Branch::query()->orderBy('name')->get();
+        $branches = ($user && $user->isBranchScoped())
+            ? Branch::where('id', $user->branch_id)->get()
+            : Branch::query()->orderBy('name')->get();
         $categories = MealCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return [
@@ -137,6 +153,7 @@ class Dashboard extends BaseDashboard
             'categoryRankings' => $categoryRankings,
             'branches' => $branches,
             'categories' => $categories,
+            'isBranchScoped' => $user?->isBranchScoped() ?? false,
         ];
     }
 }

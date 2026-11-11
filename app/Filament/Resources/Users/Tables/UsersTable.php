@@ -78,7 +78,8 @@ class UsersTable
 
                 SelectFilter::make('branch_id')
                     ->relationship('branch', 'name')
-                    ->label('Branch'),
+                    ->label('Branch')
+                    ->visible(fn () => ! auth()->user()?->isBranchScoped()),
             ])
             ->defaultPaginationPageOption(SystemConstants::DEFAULT_TABLE_PAGE_SIZE)
             ->recordAction(null)
@@ -87,8 +88,24 @@ class UsersTable
                     ->label('Deactivate')
                     ->icon('heroicon-o-user-minus')
                     ->color('danger')
-                    ->visible(fn (User $record): bool => (bool) $record->is_active)
-                    ->disabled(fn (User $record): bool => $record->id === auth()->id())
+                    ->visible(function (User $record): bool {
+                        if (! (bool) $record->is_active) {
+                            return false;
+                        }
+                        $actor = auth()->user();
+                        if (! $actor || (int) $record->id === (int) $actor->id) {
+                            return false;
+                        }
+                        if ($actor->isBranchScoped()) {
+                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
+                                return false;
+                            }
+                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
                     ->requiresConfirmation()
                     ->modalHeading('Deactivate Staff Account')
                     ->modalDescription(fn (User $record): string => "Are you sure you want to deactivate {$record->name}'s account? They will be immediately blocked from logging into POS terminals and back-office portals.")
@@ -105,7 +122,24 @@ class UsersTable
                     ->label('Reactivate')
                     ->icon('heroicon-o-user-plus')
                     ->color('success')
-                    ->visible(fn (User $record): bool => ! (bool) $record->is_active)
+                    ->visible(function (User $record): bool {
+                        if ((bool) $record->is_active) {
+                            return false;
+                        }
+                        $actor = auth()->user();
+                        if (! $actor || (int) $record->id === (int) $actor->id) {
+                            return false;
+                        }
+                        if ($actor->isBranchScoped()) {
+                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
+                                return false;
+                            }
+                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })
                     ->requiresConfirmation()
                     ->modalHeading('Reactivate Staff Account')
                     ->modalDescription(fn (User $record): string => "Reactivate {$record->name}'s account? They will regain access to their assigned station and permissions.")
@@ -120,7 +154,28 @@ class UsersTable
 
                 EditAction::make()
                     ->modal()
-                    ->modalWidth('lg'),
+                    ->modalWidth('lg')
+                    ->visible(function (User $record): bool {
+                        $actor = auth()->user();
+                        if (! $actor) {
+                            return false;
+                        }
+                        if ($actor->isOwner()) {
+                            return true;
+                        }
+                        if ($actor->isBranchScoped()) {
+                            if ((int) $record->id === (int) $actor->id) {
+                                return false;
+                            }
+                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
+                                return false;
+                            }
+                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -134,11 +189,18 @@ class UsersTable
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
                             $toggleService = app(ToggleUserActiveStatusAction::class);
                             $count = 0;
+                            $actor = auth()->user();
                             foreach ($records as $record) {
-                                if ($record->id !== auth()->id() && $record->is_active) {
-                                    $toggleService->execute($record);
-                                    $count++;
+                                if ((int) $record->id === (int) $actor?->id || ! $record->is_active) {
+                                    continue;
                                 }
+                                if ($actor?->isBranchScoped()) {
+                                    if ((int) $record->branch_id !== (int) $actor->branch_id || ! $record->hasAnyRole(StaffRole::floorValues())) {
+                                        continue;
+                                    }
+                                }
+                                $toggleService->execute($record);
+                                $count++;
                             }
                             Notification::make()
                                 ->title('Accounts Deactivated')
@@ -157,11 +219,18 @@ class UsersTable
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
                             $toggleService = app(ToggleUserActiveStatusAction::class);
                             $count = 0;
+                            $actor = auth()->user();
                             foreach ($records as $record) {
-                                if (! $record->is_active) {
-                                    $toggleService->execute($record);
-                                    $count++;
+                                if ((int) $record->id === (int) $actor?->id || $record->is_active) {
+                                    continue;
                                 }
+                                if ($actor?->isBranchScoped()) {
+                                    if ((int) $record->branch_id !== (int) $actor->branch_id || ! $record->hasAnyRole(StaffRole::floorValues())) {
+                                        continue;
+                                    }
+                                }
+                                $toggleService->execute($record);
+                                $count++;
                             }
                             Notification::make()
                                 ->title('Accounts Reactivated')
@@ -170,7 +239,21 @@ class UsersTable
                                 ->send();
                         }),
 
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            $actor = auth()->user();
+                            foreach ($records as $record) {
+                                if ((int) $record->id === (int) $actor?->id) {
+                                    continue;
+                                }
+                                if ($actor?->isBranchScoped()) {
+                                    if ((int) $record->branch_id !== (int) $actor->branch_id || ! $record->hasAnyRole(StaffRole::floorValues())) {
+                                        continue;
+                                    }
+                                }
+                                $record->delete();
+                            }
+                        }),
                 ]),
             ]);
     }

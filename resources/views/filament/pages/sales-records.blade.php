@@ -53,8 +53,7 @@
                 <div
                     class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-2.5 border-t border-gray-100 dark:border-white/10">
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start
-                            Date</label>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Start Date</label>
                         <x-filament::input.wrapper prefixIcon="heroicon-m-calendar">
                             <x-filament::input type="date" wire:model.live="startDate" />
                         </x-filament::input.wrapper>
@@ -67,9 +66,9 @@
                         </x-filament::input.wrapper>
                     </div>
 
+                    @if (! ($isBranchScoped ?? false))
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Branch
-                            Location</label>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Location</label>
                         <x-filament::input.wrapper prefixIcon="heroicon-m-building-storefront">
                             <x-filament::input.select wire:model.live="branchId">
                                 <option value="">All Branches</option>
@@ -79,10 +78,17 @@
                             </x-filament::input.select>
                         </x-filament::input.wrapper>
                     </div>
+                    @else
+                    <div>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Branch</label>
+                        <div class="px-3 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white">
+                            {{ auth()->user()->branch?->name ?? 'Branch #' . auth()->user()->branch_id }}
+                        </div>
+                    </div>
+                    @endif
 
                     <div>
-                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Cashier
-                            Station</label>
+                        <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Cashier Station</label>
                         <x-filament::input.wrapper prefixIcon="heroicon-m-user">
                             <x-filament::input.select wire:model.live="cashierId">
                                 <option value="">All Staff Members</option>
@@ -233,8 +239,7 @@
                 <!-- Cash Register Drawer Reconciliation -->
                 <x-filament::section icon="heroicon-m-banknotes" compact>
                     <x-slot name="heading">
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cash Register
-                            Reconciliation</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cash Register Reconciliation</span>
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
@@ -343,8 +348,7 @@
                 <!-- Cashier & Staff Performance Table -->
                 <x-filament::section icon="heroicon-m-user-group" compact>
                     <x-slot name="heading">
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cashier and Staff
-                            Performance</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Cashier and Staff Performance</span>
                     </x-slot>
 
                     @if (empty($summary['cashier_performance']))
@@ -441,8 +445,7 @@
                 <!-- Philippine BIR Tax Compliance Breakdown -->
                 <x-filament::section icon="heroicon-m-document-check" compact>
                     <x-slot name="heading">
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">BIR Tax Compliance
-                            Breakdown</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">BIR Tax Compliance Breakdown</span>
                     </x-slot>
 
                     <div class="divide-y divide-gray-100 text-xs dark:divide-white/10">
@@ -544,8 +547,7 @@
             <x-slot name="heading">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full">
                     <div>
-                        <span class="text-sm font-bold text-gray-900 dark:text-white">Periodic Sales Reports (Daily /
-                            Weekly / Monthly / Yearly)</span>
+                        <span class="text-sm font-bold text-gray-900 dark:text-white">Periodic Sales Reports (Daily / Weekly / Monthly / Yearly)</span>
                     </div>
 
                     <!-- Periodic Controls & Exports -->

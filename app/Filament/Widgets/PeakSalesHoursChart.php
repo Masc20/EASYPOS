@@ -32,12 +32,23 @@ class PeakSalesHoursChart extends ChartWidget
 
     protected function getData(): array
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $cashierId = $this->cashierId;
+
+        if ($user && $user->isBranchScoped() && $cashierId) {
+            $cashierBelongs = \App\Domains\Identity\Models\User::where('id', $cashierId)->where('branch_id', $effectiveBranchId)->exists();
+            if (! $cashierBelongs) {
+                $cashierId = null;
+            }
+        }
+
         $service = app(SalesAggregationService::class);
         $distribution = $service->getHourlySalesDistribution(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
-            $this->cashierId
+            $effectiveBranchId,
+            $cashierId
         );
 
         $labels = [];

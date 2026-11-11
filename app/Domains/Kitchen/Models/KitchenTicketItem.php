@@ -13,6 +13,13 @@ class KitchenTicketItem extends Model
 
     protected $guarded = [];
 
+    /**
+     * All of the relationships to be touched.
+     *
+     * @var array<int, string>
+     */
+    protected $touches = ['ticket'];
+
     protected $casts = [
         'completed_at' => 'datetime',
     ];

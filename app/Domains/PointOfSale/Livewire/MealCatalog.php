@@ -4,13 +4,46 @@ namespace App\Domains\PointOfSale\Livewire;
 
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class MealCatalog extends Component
 {
     public ?int $selectedCategoryId = null;
+
     public string $search = '';
+
+    public ?string $lastMenuVersion = null;
+
+    public function mount(): void
+    {
+        $branchId = auth()->user()?->branch_id ?? 1;
+        $this->lastMenuVersion = $this->getCurrentMenuVersion($branchId);
+    }
+
+    public function getCurrentMenuVersion(?int $branchId): string
+    {
+        $branchVersion = Cache::get("branch_{$branchId}_menu_version", 0);
+        $globalVersion = Cache::get('branch_global_menu_version', 0);
+
+        return "{$branchVersion}:{$globalVersion}";
+    }
+
+    public function syncAvailability(): void
+    {
+        $branchId = auth()->user()?->branch_id ?? 1;
+        $currentVersion = $this->getCurrentMenuVersion($branchId);
+
+        if ($this->lastMenuVersion !== null && $this->lastMenuVersion === $currentVersion) {
+            $this->skipRender();
+
+            return;
+        }
+
+        $this->lastMenuVersion = $currentVersion;
+        $this->dispatch('meal-availability-synced');
+    }
 
     #[On('meal-updated')]
     #[On('meal-availability-toggled')]
@@ -18,7 +51,9 @@ class MealCatalog extends Component
     #[On('order-voided')]
     public function refreshCatalog(): void
     {
-        // Re-render when menu items or stock levels change
+        $branchId = auth()->user()?->branch_id ?? 1;
+        $this->lastMenuVersion = $this->getCurrentMenuVersion($branchId);
+        $this->dispatch('meal-availability-synced');
     }
 
     public function selectCategory(?int $categoryId): void
