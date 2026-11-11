@@ -92,10 +92,9 @@
             <div class="pt-2">
                 <button type="submit"
                     class="flex w-full items-center justify-center gap-2 rounded-md bg-brand-primary hover:bg-brand-primary-hover text-white shadow-sm shadow-brand-primary/30 active:scale-[0.99] focus:outline-none focus:ring-2 focus:ring-brand-primary focus:ring-offset-2 transition-all disabled:opacity-50 cursor-pointer py-3.5 text-sm font-semibold">
-                    <span wire:loading.remove wire:target="login">Clock In / Enter Terminal</span>
-                    <span wire:loading wire:target="login"
-                        class="inline-flex flex-row justfy-center justify-center gap-2">
-                        <svg class="h-4 w-4 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                    <span wire:loading.remove wire:target="login">Clock In</span>
+                    <span wire:loading.flex wire:target="login" class="items-center justify-center gap-2 leading-none">
+                        <svg class="block h-4 w-4 shrink-0 animate-spin text-white" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
                                 stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor"

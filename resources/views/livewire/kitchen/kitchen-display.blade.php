@@ -144,7 +144,7 @@
                                     </svg>
                                     <span>Start Cooking</span>
                                 </span>
-                                <span wire:loading wire:target="claimTicket({{ $ticket->id }})"
+                                <span wire:loading.flex wire:target="claimTicket({{ $ticket->id }})"
                                     class="inline-flex items-center gap-1.5">
                                     <svg class="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="none">
                                         <circle class="opacity-25" cx="12" cy="12" r="10"
@@ -292,7 +292,7 @@
                                     </svg>
                                     <span>Mark Ready</span>
                                 </span>
-                                <span wire:loading wire:target="markReady({{ $ticket->id }})"
+                                <span wire:loading.flex wire:target="markReady({{ $ticket->id }})"
                                     class="inline-flex items-center gap-1.5">
                                     <svg class="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24"
                                         fill="none">
@@ -401,7 +401,7 @@
                                     </svg>
                                     <span>Bump Ticket</span>
                                 </span>
-                                <span wire:loading wire:target="markServed({{ $ticket->id }})"
+                                <span wire:loading.flex wire:target="markServed({{ $ticket->id }})"
                                     class="inline-flex items-center gap-1.5">
                                     <svg class="animate-spin h-3.5 w-3.5 text-white" viewBox="0 0 24 24"
                                         fill="none">
