@@ -7,10 +7,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "aws/aws-sdk-php": "^3.300",
         "filament/filament": "4.*",
         "laravel/breeze": "*",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10.1",
+        "league/flysystem-aws-s3-v3": "^3.28",
+        "predis/predis": "^2.2",
         "spatie/laravel-permission": "*"
     },
     "require-dev": {
