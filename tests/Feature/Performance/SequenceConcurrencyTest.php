@@ -126,7 +126,7 @@ class SequenceConcurrencyTest extends TestCase
 
         // Verify BranchDailySequence row state
         $seqRow = BranchDailySequence::where('branch_id', $this->branch1->id)
-            ->whereDate('sequence_date', today()->toDateString())
+            ->where('sequence_date', today()->toDateString())
             ->where('sequence_type', 'order')
             ->first();
 
@@ -173,7 +173,7 @@ class SequenceConcurrencyTest extends TestCase
 
         // Verify BranchDailySequence state for kitchen_ticket
         $seqRow = BranchDailySequence::where('branch_id', $this->branch1->id)
-            ->whereDate('sequence_date', today()->toDateString())
+            ->where('sequence_date', today()->toDateString())
             ->where('sequence_type', 'kitchen_ticket')
             ->first();
 
@@ -268,5 +268,28 @@ class SequenceConcurrencyTest extends TestCase
         // Kitchen ticket sequence is independent
         $ticketSeq1 = BranchDailySequence::getNextSequence($this->branch1->id, 'kitchen_ticket');
         $this->assertEquals(1, $ticketSeq1);
+    }
+
+    /**
+     * Test sequence allocation query uses sargable column comparison without wrapping in date().
+     */
+    /**
+     * Test sequence allocation query uses sargable column comparison without wrapping in date().
+     */
+    public function test_sequence_queries_are_sargable_and_avoid_redundant_selects(): void
+    {
+        \Illuminate\Support\Facades\DB::enableQueryLog();
+        \Illuminate\Support\Facades\DB::flushQueryLog();
+
+        $seq = BranchDailySequence::getNextSequence($this->branch1->id, 'order');
+        $this->assertGreaterThan(0, $seq);
+
+        $queries = \Illuminate\Support\Facades\DB::getQueryLog();
+        \Illuminate\Support\Facades\DB::disableQueryLog();
+
+        foreach ($queries as $q) {
+            $sql = strtolower($q['query']);
+            $this->assertStringNotContainsString('date(sequence_date)', $sql, 'Sequence query must not wrap sequence_date in date() scalar function.');
+        }
     }
 }

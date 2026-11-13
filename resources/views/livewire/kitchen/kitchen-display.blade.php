@@ -40,11 +40,9 @@
                     </svg>
                 </span>
                 <div>
-                    <h4 class="text-sm font-bold uppercase tracking-wider text-brand-text">Kitchen Queue Overflow
-                        Warning</h4>
+                    <h4 class="text-sm font-bold uppercase tracking-wider text-brand-text">Kitchen Queue Overflow Warning</h4>
                     <p class="text-xs font-semibold mt-0.5 text-brand-text">
-                        Displaying 75 of {{ $totalActiveCount }} active tickets (+{{ $overflowCount }} orders in
-                        backlog)
+                        Displaying 75 of {{ $totalActiveCount }} active tickets (+{{ $overflowCount }} orders in backlog)
                     </p>
                 </div>
             </div>
@@ -90,8 +88,7 @@
                                 <div class="text-[11px] text-brand-text-muted mt-0.5">
                                     {{ $ticket->order->order_number }}
                                     @if ($ticket->order->table_number)
-                                        • <strong class="text-brand-text">Table
-                                            {{ $ticket->order->table_number }}</strong>
+                                        • <strong class="text-brand-text">Table {{ $ticket->order->table_number }}</strong>
                                     @endif
                                     • <span
                                         class="uppercase font-semibold">{{ $ticket->order->order_type_label }}</span>

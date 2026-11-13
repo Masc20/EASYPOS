@@ -73,17 +73,6 @@ class CreateOrderAction
             try {
                 return DB::transaction(function () use ($data, $orderType, $tableNumber, $customerName, $notes) {
                     $branch = Branch::findOrFail($data['branch_id']);
-                    $branchCode = $branch->code ?? 'B01';
-                    $dateStr = today()->format('Ymd');
-
-                    // Sequential order number generation via atomic BranchDailySequence row-level counter
-                    $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
-                    $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
-
-                    while (Order::where('order_number', $orderNumber)->exists()) {
-                        $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
-                        $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
-                    }
 
                     // 1. Group/consolidate required stock quantities per distinct meal_id across cart items
                     $consolidatedQuantities = [];
@@ -218,6 +207,18 @@ class CreateOrderAction
                     $discountAmount = min($subtotal, max(0.00, $discountAmount));
                     $taxAmount = 0.00; // In Philippine dining, prices are VAT-inclusive
                     $totalAmount = max(0.00, round($subtotal - $discountAmount + $taxAmount, 2));
+
+                    // Sequential order number generation via atomic BranchDailySequence row-level counter
+                    // Allocated right before order creation to minimize lock duration on branch_daily_sequences
+                    $branchCode = $branch->code ?? 'B01';
+                    $dateStr = today()->format('Ymd');
+                    $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
+                    $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
+
+                    while (Order::where('order_number', $orderNumber)->exists()) {
+                        $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
+                        $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
+                    }
 
                     // Create Order
                     $order = Order::create([

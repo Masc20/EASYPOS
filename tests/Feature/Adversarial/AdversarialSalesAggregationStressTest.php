@@ -580,25 +580,28 @@ class AdversarialSalesAggregationStressTest extends TestCase
         
         // Because $branchId is null, line 638 is skipped and queries all branches,
         // leaking Branch B's category 'Beverages & Desserts' to Manager A!
-        $this->assertContains(
+        $this->assertNotContains(
             'Beverages & Desserts',
             $nullBranchNames,
-            'CONFIRMED VULNERABILITY: getCategoryRankings() ignores $effectiveBranchId when $branchId is null, leaking cross-branch categories!'
+            'Branch A Manager querying with null branch must not receive Branch B categories.'
         );
 
         // When Manager A passes branchId = Branch B:
         $tamperedCategories = $this->service->getCategoryRankings(null, null, $this->branchB->id);
         $tamperedNames = array_column($tamperedCategories, 'category_name');
+        $this->assertNotContains(
+            'Beverages & Desserts',
+            $tamperedNames,
+            'Branch A Manager querying with Branch B branchId must not receive Branch B categories.'
+        );
         
-        // Because line 638 filters by raw $branchId ($branchB->id), it fetches Branch B's categories!
-        // 3. Direct service call vulnerability test for getPeriodicReport():
-        // In getPeriodicReport(), line 741 directly passes raw $branchId to buildFilteredOrdersQuery()
-        // without calling resolveBranchScope().
+        // 3. Direct service call guardrail test for getPeriodicReport():
+        // When Manager A attempts to query Branch B periodic report, resolveBranchScope() scopes to Branch A (350.00).
         $periodicB = $this->service->getPeriodicReport('day', null, null, $this->branchB->id);
         $this->assertEquals(
-            120.00,
+            350.00,
             $periodicB['totals']['net_sales'],
-            'CONFIRMED VULNERABILITY: getPeriodicReport() does not call resolveBranchScope(), allowing Branch A Manager to view Branch B periodic totals!'
+            'Branch A Manager querying with Branch B ID must be scoped to Branch A totals.'
         );
     }
 

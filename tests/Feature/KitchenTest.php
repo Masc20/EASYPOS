@@ -239,4 +239,48 @@ class KitchenTest extends TestCase
             ->test(KitchenDisplay::class)
             ->assertDontSee('Table 88');
     }
+
+    public function test_historical_tickets_served_before_today_are_excluded_from_signature(): void
+    {
+        $branchId = $this->cook->branch_id ?? 1;
+        $component = new KitchenDisplay();
+        $initialSig = $component->getTicketSignatureVersion($branchId);
+
+        // Ticket served yesterday should not affect signature
+        $yesterdayTicket = $this->createPaidOrderWithKitchenTicket();
+        $yesterdayTicket->update([
+            'status' => 'served',
+            'served_at' => now()->subDay(),
+            'updated_at' => now()->subDay(),
+        ]);
+
+        $sigWithYesterday = $component->getTicketSignatureVersion($branchId);
+        $this->assertEquals($initialSig, $sigWithYesterday);
+
+        // Ticket served today MUST affect signature
+        $todayServedTicket = $this->createPaidOrderWithKitchenTicket();
+        $todayServedTicket->update([
+            'status' => 'served',
+            'served_at' => now(),
+        ]);
+
+        $sigWithToday = $component->getTicketSignatureVersion($branchId);
+        $this->assertNotEquals($initialSig, $sigWithToday);
+    }
+
+    public function test_toggling_item_status_touches_parent_ticket_via_model_touches(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket();
+        $item = $ticket->items->first();
+
+        // Roll back updated_at to 1 hour ago
+        $ticket->update(['updated_at' => now()->subHour()]);
+        $oldUpdatedAt = $ticket->fresh()->updated_at;
+
+        $action = app(\App\Domains\Kitchen\Actions\ToggleKitchenItemStatusAction::class);
+        $this->actingAs($this->cook);
+        $action->execute($item);
+
+        $this->assertTrue($ticket->fresh()->updated_at->gt($oldUpdatedAt));
+    }
 }

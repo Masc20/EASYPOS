@@ -100,6 +100,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                \App\Http\Middleware\PreloadAuthenticatedUserPermissions::class,
             ]);
 
         // Discover components across modular domains

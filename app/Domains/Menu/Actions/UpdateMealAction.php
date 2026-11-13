@@ -2,8 +2,10 @@
 
 namespace App\Domains\Menu\Actions;
 
+use App\Domains\Branches\Models\Branch;
 use App\Domains\Menu\Events\MealUpdated;
 use App\Domains\Menu\Models\Meal;
+use Illuminate\Support\Facades\Cache;
 
 class UpdateMealAction
 {
@@ -67,6 +69,22 @@ class UpdateMealAction
         }
 
         $instance->update($payload);
+
+        $timestamp = now()->timestamp;
+        Cache::forever('menu_version', $timestamp);
+        if ($instance->branch_id !== null) {
+            Cache::forever("branch_{$instance->branch_id}_menu_version", $timestamp);
+        } else {
+            Cache::forever('branch_global_menu_version', $timestamp);
+            try {
+                $branches = Branch::pluck('id');
+                foreach ($branches as $bId) {
+                    Cache::forever("branch_{$bId}_menu_version", $timestamp);
+                }
+            } catch (\Throwable $e) {
+                // Fallback if Branch table is not seeded
+            }
+        }
 
         event(new MealUpdated($instance));
 

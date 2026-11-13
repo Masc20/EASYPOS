@@ -341,4 +341,32 @@ class CodeGenerationPerformanceTest extends TestCase
 
         $this->assertEquals('K-002', $result2['kitchen_ticket']->ticket_number);
     }
+
+    public function test_code_generator_collision_avoidance_loops_skip_existing_records(): void
+    {
+        // 1. Employee ID collision avoidance
+        User::create([
+            'name' => 'Pre-existing Cashier 2',
+            'emp_id' => 'B01-CSH-002',
+            'branch_id' => $this->branch->id,
+            'pin_code' => Hash::make('1234'),
+            'is_active' => true,
+        ]);
+
+        $generatedEmpId = CodeGeneratorService::generateEmpId($this->branch->id, StaffRole::CASHIER->value);
+        $this->assertEquals('B01-CSH-003', $generatedEmpId, 'Collision avoidance loop must advance past existing emp_id.');
+
+        // 2. Menu Code collision avoidance (including soft-deleted records)
+        Meal::create([
+            'category_id' => $this->burgerCategory->id,
+            'branch_id' => $this->branch->id,
+            'name' => 'Pre-existing Burger 2',
+            'menu_code' => 'B-002',
+            'price' => 180.00,
+            'is_available' => true,
+        ]);
+
+        $generatedMenuCode = CodeGeneratorService::generateMenuCode($this->burgerCategory->id);
+        $this->assertEquals('B-003', $generatedMenuCode, 'Collision avoidance loop must advance past existing menu_code.');
+    }
 }

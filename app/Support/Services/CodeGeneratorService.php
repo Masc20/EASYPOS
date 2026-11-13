@@ -49,10 +49,15 @@ class CodeGeneratorService
                 ->max();
         }
 
-        $maxSequence = (int) ($maxSequence ?? 0);
-        $nextNumber = str_pad((string) ($maxSequence + 1), 3, '0', STR_PAD_LEFT);
+        $seq = (int) ($maxSequence ?? 0) + 1;
+        $candidate = "{$prefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
-        return "{$prefix}{$nextNumber}";
+        while (User::where('emp_id', $candidate)->exists()) {
+            $seq++;
+            $candidate = "{$prefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 
     /**
@@ -140,10 +145,15 @@ class CodeGeneratorService
                 ->max();
         }
 
-        $maxSequence = (int) ($maxSequence ?? 0);
-        $nextNumber = str_pad((string) ($maxSequence + 1), 3, '0', STR_PAD_LEFT);
+        $seq = (int) ($maxSequence ?? 0) + 1;
+        $candidate = "{$codePrefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
 
-        return "{$codePrefix}{$nextNumber}";
+        while (Meal::withTrashed()->where('menu_code', $candidate)->exists()) {
+            $seq++;
+            $candidate = "{$codePrefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
+        }
+
+        return $candidate;
     }
 
     /**

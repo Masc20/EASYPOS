@@ -2,7 +2,7 @@
 
 namespace App\Domains\Menu\Actions;
 
-use App\Domains\Identity\Models\Branch;
+use App\Domains\Branches\Models\Branch;
 use App\Domains\Menu\Events\MealAvailabilityToggled;
 use App\Domains\Menu\Models\Meal;
 use Illuminate\Support\Facades\Cache;
@@ -26,6 +26,7 @@ class ToggleMealAvailabilityAction
         $instance->save();
 
         $timestamp = now()->timestamp;
+        Cache::forever('menu_version', $timestamp);
         if ($instance->branch_id !== null) {
             Cache::forever("branch_{$instance->branch_id}_menu_version", $timestamp);
         } else {

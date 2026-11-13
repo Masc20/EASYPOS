@@ -32,7 +32,7 @@
             @csrf
             <button type="submit"
                 class="rounded-md border border-brand-border bg-brand-card px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-error hover:text-brand-error transition shadow-2xs cursor-pointer">
-                {{ $user->canAccessPanel(filament()->getPanel('admin')) && !$user->isStrictFloorStaff() ? 'Sign Out' : 'Clock Out' }}
+                {{ $user->canAccessAdmin() && !$user->isStrictFloorStaff() ? 'Sign Out' : 'Clock Out' }}
             </button>
         </form>
     @else

@@ -35,7 +35,7 @@ class UserForm
                         ->placeholder('Global / HQ (All Branches)')
                         ->preload()
                         ->default(null)
-                        ->live()
+                        ->live(debounce: 300)
                         ->afterStateUpdated(function ($state, callable $set, callable $get, $record) {
                             $branchId = filled($state) ? (int) $state : null;
                             $roleIds = (array) ($get('roles') ?? []);
@@ -63,7 +63,7 @@ class UserForm
                     ->multiple()
                     ->preload()
                     ->required()
-                    ->live()
+                    ->live(debounce: 300)
                     ->afterStateUpdated(function ($state, callable $set, callable $get, $record) use ($isBranchScoped, $user) {
                         $branchValue = $isBranchScoped ? $user->branch_id : $get('branch_id');
                         $branchId = filled($branchValue) ? (int) $branchValue : null;

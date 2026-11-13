@@ -83,7 +83,7 @@
             @endif
         @endif
 
-        @if ($user->canAccessPanel(filament()->getPanel('admin')))
+        @if ($user->canAccessAdmin())
             <a href="{{ url('/admin') }}"
                 class="inline-flex items-center gap-1 rounded-md bg-brand-primary/10 dark:bg-brand-primary/30 px-2.5 py-1 text-xs font-semibold text-brand-primary dark:text-brand-secondary hover:bg-brand-primary/20 border border-brand-border transition">
                 Admin Back-Office &rarr;

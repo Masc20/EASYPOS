@@ -4,7 +4,6 @@ namespace App\Filament\Pages;
 
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
-use App\Domains\Menu\Models\MealCategory;
 use App\Domains\PointOfSale\Services\SalesAggregationService;
 use BackedEnum;
 use Carbon\Carbon;
@@ -172,27 +171,32 @@ class SalesRecords extends Page
         $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
         $cashierId = $this->cashierId;
 
-        if ($user && $user->isBranchScoped() && $cashierId) {
+        if ($cashierId && $effectiveBranchId) {
             $cashierBelongs = User::where('id', $cashierId)->where('branch_id', $effectiveBranchId)->exists();
             if (! $cashierBelongs) {
                 $cashierId = null;
             }
         }
 
-        $csvData = $service->exportPeriodicCsv(
-            $this->periodicInterval,
-            $this->startDate,
-            $this->endDate,
-            $effectiveBranchId,
-            $cashierId
-        );
+        $interval = in_array(strtolower($this->periodicInterval), ['day', 'week', 'month', 'year'])
+            ? strtolower($this->periodicInterval)
+            : 'day';
+        $filename = 'periodic-sales-' . $interval . '-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
 
-        $filename = 'periodic-sales-' . $this->periodicInterval . '-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
-
-        return response()->streamDownload(function () use ($csvData) {
-            echo $csvData;
+        return response()->streamDownload(function () use ($service, $interval, $effectiveBranchId, $cashierId) {
+            $output = fopen('php://output', 'w');
+            $service->streamPeriodicCsv(
+                $output,
+                $interval,
+                $this->startDate,
+                $this->endDate,
+                $effectiveBranchId,
+                $cashierId
+            );
+            fclose($output);
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
+            'X-Accel-Buffering' => 'no',
         ]);
     }
 
@@ -215,28 +219,6 @@ class SalesRecords extends Page
             $this->endDate,
             $effectiveBranchId,
             $this->cashierId
-        );
-
-        $netSales = (float) ($summary['net_sales'] ?? 0.0);
-
-        $bestSellingRankings = $service->getBestSellingRankings(
-            $this->startDate,
-            $this->endDate,
-            $effectiveBranchId,
-            $this->cashierId,
-            $this->bestSellerCategoryId,
-            $this->bestSellerLimit,
-            $this->bestSellerSortBy,
-            true,
-            $netSales
-        );
-
-        $categoryRankings = $service->getCategoryRankings(
-            $this->startDate,
-            $this->endDate,
-            $effectiveBranchId,
-            $this->cashierId,
-            $netSales
         );
 
         $periodicReport = $service->getPeriodicReport(
@@ -263,13 +245,6 @@ class SalesRecords extends Page
             });
         }
 
-        $hourlyDistribution = $service->getHourlySalesDistribution(
-            $this->startDate,
-            $this->endDate,
-            $effectiveBranchId,
-            $this->cashierId
-        );
-
         $branches = ($user && $user->isBranchScoped())
             ? Branch::where('id', $user->branch_id)->get()
             : Branch::query()->orderBy('name')->get();
@@ -283,17 +258,12 @@ class SalesRecords extends Page
         }
 
         $cashiers = $cashiersQuery->get();
-        $categories = MealCategory::query()->where('is_active', true)->orderBy('name')->get();
 
         return [
             'summary' => $summary,
-            'bestSellingRankings' => $bestSellingRankings,
-            'categoryRankings' => $categoryRankings,
             'periodicReport' => $periodicReport,
-            'hourlyDistribution' => $hourlyDistribution,
             'branches' => $branches,
             'cashiers' => $cashiers,
-            'categories' => $categories,
             'isBranchScoped' => $user?->isBranchScoped() ?? false,
         ];
     }

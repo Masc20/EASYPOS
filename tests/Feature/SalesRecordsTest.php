@@ -205,4 +205,48 @@ class SalesRecordsTest extends TestCase
             ->test(PaymentMethodsDistributionChart::class)
             ->assertSuccessful();
     }
+
+    public function test_sales_records_export_periodic_csv_streams_properly(): void
+    {
+        Order::create([
+            'order_number' => 'ORD-PER-STREAM-001',
+            'branch_id' => 1,
+            'cashier_id' => $this->cashier->id,
+            'order_type' => 'dine_in',
+            'subtotal' => 1120.00,
+            'discount_amount' => 0.00,
+            'tax_amount' => 120.00,
+            'total_amount' => 1120.00,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'completed_at' => now(),
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($this->admin);
+
+        $component = new SalesRecords();
+        $component->periodicInterval = 'day';
+        $component->branchId = 1;
+
+        $service = app(SalesAggregationService::class);
+        $streamedResponse = $component->exportPeriodicCsv($service);
+
+        $this->assertInstanceOf(\Symfony\Component\HttpFoundation\StreamedResponse::class, $streamedResponse);
+        $this->assertEquals('text/csv; charset=UTF-8', $streamedResponse->headers->get('Content-Type'));
+        $this->assertEquals('no', $streamedResponse->headers->get('X-Accel-Buffering'));
+        $this->assertStringContainsString('periodic-sales-day-', (string) $streamedResponse->headers->get('Content-Disposition'));
+
+        ob_start();
+        $streamedResponse->sendContent();
+        $output = ob_get_clean();
+
+        // Check BOM
+        $this->assertStringStartsWith("\xEF\xBB\xBF", $output);
+        $this->assertStringContainsString('Period (Day)', $output);
+        $this->assertStringContainsString('Gross Sales (PHP)', $output);
+        $this->assertStringContainsString('Net Sales (PHP)', $output);
+        $this->assertStringContainsString('TOTAL / SUMMARY', $output);
+        $this->assertStringContainsString('1120.00', $output);
+    }
 }

@@ -110,7 +110,10 @@ class Dashboard extends BaseDashboard
         $summary = $service->getSummary(
             $this->startDate,
             $this->endDate,
-            $effectiveBranchId
+            $effectiveBranchId,
+            null,
+            true,
+            false // Prune Query 3 (best sellers) and Query 4 (cashier performance)
         );
 
         $hourlyDistribution = $service->getHourlySalesDistribution(

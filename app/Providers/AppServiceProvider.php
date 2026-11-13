@@ -10,7 +10,7 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Domains\PointOfSale\Services\SalesAggregationService::class);
     }
 
     public function boot(): void

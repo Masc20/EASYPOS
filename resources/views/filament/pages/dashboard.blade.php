@@ -225,8 +225,7 @@
                     <x-filament::icon icon="heroicon-m-fire" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Peak Sales
-                        Rush</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Peak Sales Rush</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white">{{ $hourlyDistribution['peak_hour_label'] }}</span>
                     <span
@@ -240,8 +239,7 @@
                     <x-filament::icon icon="heroicon-m-sun" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Lunch Rush (11 AM
-                        - 2 PM)</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Lunch Rush (11 AM - 2 PM)</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white font-mono">₱{{ number_format($hourlyDistribution['lunch_rush']['revenue'], 2) }}</span>
                     <span
@@ -255,8 +253,7 @@
                     <x-filament::icon icon="heroicon-m-moon" class="w-4 h-4" />
                 </div>
                 <div>
-                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Dinner Rush (5 PM
-                        - 9 PM)</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 block tracking-wider">Dinner Rush (5 PM - 9 PM)</span>
                     <span
                         class="font-bold text-gray-900 dark:text-white font-mono">₱{{ number_format($hourlyDistribution['dinner_rush']['revenue'], 2) }}</span>
                     <span

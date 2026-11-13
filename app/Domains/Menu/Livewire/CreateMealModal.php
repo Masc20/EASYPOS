@@ -121,6 +121,10 @@ class CreateMealModal extends Component
             abort(403, 'Unauthorized.');
         }
 
+        if (blank($this->menu_code) && $this->category_id) {
+            $this->menu_code = CodeGeneratorService::generateMenuCode((int) $this->category_id);
+        }
+
         $this->validate();
 
         $action->handle([
@@ -168,6 +172,7 @@ class CreateMealModal extends Component
 
         return view('livewire.menu.create-meal-modal', [
             'categories' => $categories,
+            'categoryCodeMap' => $this->isOpen ? CodeGeneratorService::getCategoryMenuCodeMap() : [],
             'currencySymbol' => config('pos.currency.symbol', '₱'),
         ]);
     }

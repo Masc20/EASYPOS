@@ -25,9 +25,20 @@ class BranchDailySequence extends Model
     ];
 
     protected $casts = [
-        'sequence_date' => 'date',
         'current_value' => 'integer',
     ];
+
+    public function getSequenceDateAttribute($value): ?Carbon
+    {
+        return $value ? Carbon::parse($value) : null;
+    }
+
+    public function setSequenceDateAttribute($value): void
+    {
+        $this->attributes['sequence_date'] = $value instanceof \DateTimeInterface
+            ? $value->format('Y-m-d')
+            : (is_string($value) ? substr($value, 0, 10) : $value);
+    }
 
     /**
      * Branch this sequence belongs to.
@@ -53,7 +64,7 @@ class BranchDailySequence extends Model
 
         $allocate = function () use ($branchId, $type, $date) {
             $sequence = static::where('branch_id', $branchId)
-                ->whereDate('sequence_date', $date)
+                ->where('sequence_date', $date)
                 ->where('sequence_type', $type)
                 ->lockForUpdate()
                 ->first();
@@ -76,7 +87,7 @@ class BranchDailySequence extends Model
                 } catch (QueryException $e) {
                     // Handled race condition: another concurrent process created the row first
                     $sequence = static::where('branch_id', $branchId)
-                        ->whereDate('sequence_date', $date)
+                        ->where('sequence_date', $date)
                         ->where('sequence_type', $type)
                         ->lockForUpdate()
                         ->firstOrFail();
@@ -85,7 +96,7 @@ class BranchDailySequence extends Model
 
             $sequence->increment('current_value');
 
-            return (int) $sequence->fresh()->current_value;
+            return (int) $sequence->current_value;
         };
 
         if (DB::transactionLevel() > 0) {

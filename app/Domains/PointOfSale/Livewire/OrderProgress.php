@@ -8,6 +8,7 @@ use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -36,6 +37,9 @@ class OrderProgress extends Component
     public function open(): void
     {
         $this->isOpen = true;
+        $branchId = Auth::user()?->branch_id ?? 1;
+        $this->counts = $this->loadBadgeCounts($branchId);
+        $this->readyCount = $this->counts['ready'] ?? 0;
     }
 
     public function close(): void
@@ -58,11 +62,19 @@ class OrderProgress extends Component
     #[On('order-voided')]
     public function refreshTickets(): void
     {
-        // Re-render component on real-time kitchen lifecycle events
+        $branchId = Auth::user()?->branch_id ?? 1;
+        Cache::forget("branch_{$branchId}_order_progress_counts");
+
+        if (! $this->isOpen) {
+            $this->counts = $this->loadBadgeCounts($branchId);
+            $this->readyCount = $this->counts['ready'] ?? 0;
+            $this->skipRender();
+        }
     }
 
     /**
      * Count the same active and today's served tickets included by the list query.
+     * Cached with short TTL to minimize redundant aggregations.
      *
      * @param int|null $branchId
      * @return array<string, int>
@@ -71,22 +83,24 @@ class OrderProgress extends Component
     {
         $branchId = $branchId ?? Auth::user()?->branch_id ?? 1;
 
-        $groupedCounts = $this->baseTicketQuery($branchId)
-            ->selectRaw('status, COUNT(*) as count')
-            ->groupBy('status')
-            ->pluck('count', 'status');
+        return Cache::remember("branch_{$branchId}_order_progress_counts", 10, function () use ($branchId) {
+            $groupedCounts = $this->baseTicketQuery($branchId)
+                ->selectRaw('status, COUNT(*) as count')
+                ->groupBy('status')
+                ->pluck('count', 'status');
 
-        $counts = [
-            'new' => (int) ($groupedCounts[KitchenTicketStatus::NEW->value] ?? 0),
-            'in_prep' => (int) ($groupedCounts[KitchenTicketStatus::IN_PREP->value] ?? 0),
-            'ready' => (int) ($groupedCounts[KitchenTicketStatus::READY->value] ?? 0),
-            'served' => (int) ($groupedCounts[KitchenTicketStatus::SERVED->value] ?? 0),
-        ];
+            $counts = [
+                'new' => (int) ($groupedCounts[KitchenTicketStatus::NEW->value] ?? 0),
+                'in_prep' => (int) ($groupedCounts[KitchenTicketStatus::IN_PREP->value] ?? 0),
+                'ready' => (int) ($groupedCounts[KitchenTicketStatus::READY->value] ?? 0),
+                'served' => (int) ($groupedCounts[KitchenTicketStatus::SERVED->value] ?? 0),
+            ];
 
-        // The All tab also includes today's served tickets.
-        $counts['all'] = $counts['new'] + $counts['in_prep'] + $counts['ready'] + $counts['served'];
+            // The All tab also includes today's served tickets.
+            $counts['all'] = $counts['new'] + $counts['in_prep'] + $counts['ready'] + $counts['served'];
 
-        return $counts;
+            return $counts;
+        });
     }
 
     /**

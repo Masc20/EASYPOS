@@ -9,6 +9,7 @@ use App\Domains\Kitchen\Actions\ToggleKitchenTicketPriorityAction;
 use App\Domains\Kitchen\Actions\UpdateKitchenTicketStatusAction;
 use App\Domains\Kitchen\Models\KitchenTicket;
 use App\Domains\Kitchen\Models\KitchenTicketItem;
+use App\Support\Enums\KitchenTicketStatus;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
@@ -32,11 +33,13 @@ class KitchenDisplay extends Component
 
     public function getTicketSignatureVersion(int $branchId): string
     {
+        $todayStart = now()->startOfDay();
+
         $signature = KitchenTicket::forBranch($branchId)
-            ->where(function ($q) {
-                $q->active()->orWhere(function ($sq) {
-                    $sq->whereDate('created_at', today())->orWhereNotNull('served_at');
-                });
+            ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
+            ->where(function ($q) use ($todayStart) {
+                $q->whereNull('served_at')
+                    ->orWhere('served_at', '>=', $todayStart);
             })
             ->selectRaw('COUNT(*) as total, MAX(updated_at) as last_updated, MAX(id) as max_id')
             ->first();

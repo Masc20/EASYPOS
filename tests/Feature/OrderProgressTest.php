@@ -264,4 +264,31 @@ class OrderProgressTest extends TestCase
             $this->assertStringContainsString('Unauthorized', $e->getMessage());
         }
     }
+
+    public function test_voiding_order_removes_ticket_from_active_counts_and_ticket_queries(): void
+    {
+        $ticket = $this->createPaidTicket($this->cashier, '12', 'Bob Smith');
+        $manager = User::where('emp_id', 'B01-MGR-001')->firstOrFail();
+
+        $component = Livewire::actingAs($this->cashier)
+            ->test(OrderProgress::class)
+            ->call('open');
+
+        $this->assertEquals(1, $component->get('counts')['all']);
+        $this->assertCount(1, $component->viewData('tickets'));
+
+        // Void the order
+        app(\App\Domains\PointOfSale\Actions\VoidOrderAction::class)->execute([
+            'order_id' => $ticket->order_id,
+            'manager_id' => $manager->emp_id,
+            'manager_pin' => '9999',
+            'reason' => 'Customer cancelled meal',
+        ]);
+
+        // Component receives 'order-voided' event via Livewire event listener
+        $component->dispatch('order-voided');
+
+        $this->assertEquals(0, $component->get('counts')['all'], 'Active count must be 0 after order void.');
+        $this->assertCount(0, $component->viewData('tickets'), 'Ticket list must be empty after order void.');
+    }
 }

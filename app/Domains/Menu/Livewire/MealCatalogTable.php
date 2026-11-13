@@ -2,16 +2,37 @@
 
 namespace App\Domains\Menu\Livewire;
 
+use App\Domains\Menu\Actions\DeleteMealAction;
+use App\Domains\Menu\Actions\ToggleMealAvailabilityAction;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use Livewire\Attributes\On;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 class MealCatalogTable extends Component
 {
+    use WithPagination;
+
     public ?string $selectedCategory = null;
     public string $search = '';
     public string $statusFilter = 'all'; // all, in_stock, sold_out
+    public int $perPage = 24;
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSelectedCategory(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
 
     /**
      * Filter catalog by category slug.
@@ -19,6 +40,7 @@ class MealCatalogTable extends Component
     public function filterByCategory(?string $slug = null): void
     {
         $this->selectedCategory = $slug;
+        $this->resetPage();
     }
 
     /**
@@ -27,6 +49,7 @@ class MealCatalogTable extends Component
     public function filterByStatus(string $status): void
     {
         $this->statusFilter = $status;
+        $this->resetPage();
     }
 
     /**
@@ -49,7 +72,7 @@ class MealCatalogTable extends Component
     /**
      * Instant 86'd / Sold Out toggle for kitchen & chef.
      */
-    public function toggleAvailability(int $mealId, \App\Domains\Menu\Actions\ToggleMealAvailabilityAction $action): void
+    public function toggleAvailability(int $mealId, ToggleMealAvailabilityAction $action): void
     {
         $user = auth()->user();
         if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
@@ -63,7 +86,7 @@ class MealCatalogTable extends Component
     /**
      * Soft delete / archive a meal dish.
      */
-    public function deleteMeal(int $mealId, \App\Domains\Menu\Actions\DeleteMealAction $action): void
+    public function deleteMeal(int $mealId, DeleteMealAction $action): void
     {
         $user = auth()->user();
         if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
@@ -85,7 +108,9 @@ class MealCatalogTable extends Component
             ->orderBy('display_order')
             ->get();
 
-        $meals = Meal::with('category')
+        $totalDishesCount = (int) $categories->sum('meals_count');
+
+        $query = Meal::with('category')
             ->forBranch($branchId)
             ->when($this->selectedCategory, function ($query) {
                 $query->whereHas('category', fn ($q) => $q->where('slug', $this->selectedCategory));
@@ -103,12 +128,9 @@ class MealCatalogTable extends Component
                         ->orWhere('menu_code', 'like', $term);
                 });
             })
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        $totalDishesCount = (! $this->selectedCategory && $this->statusFilter === 'all' && empty(trim($this->search)))
-            ? $meals->count()
-            : Meal::forBranch($branchId)->count();
+        $meals = $query->simplePaginate($this->perPage);
 
         return view('livewire.menu.meal-catalog-table', [
             'categories' => $categories,

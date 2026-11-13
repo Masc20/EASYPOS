@@ -1,65 +1,23 @@
 <section x-data="{
-    activeCategory: 'all',
-    activeStatus: 'all',
-    searchQuery: '',
-    totalVisible: {{ count($meals) }},
     deleteMealId: null,
     deleteMealName: '',
-    matches(categorySlug, isAvailable, name, code) {
-        if (this.activeCategory !== 'all' && this.activeCategory !== categorySlug) {
-            return false;
-        }
-        if (this.activeStatus === 'in_stock' && !isAvailable) {
-            return false;
-        }
-        if (this.activeStatus === 'sold_out' && isAvailable) {
-            return false;
-        }
-        if (this.searchQuery.trim() !== '') {
-            const q = this.searchQuery.toLowerCase().trim();
-            const n = (name || '').toLowerCase();
-            const c = (code || '').toLowerCase();
-            return n.includes(q) || c.includes(q);
-        }
-        return true;
-    },
     openDelete(id, name) {
         this.deleteMealId = id;
         this.deleteMealName = name;
         $dispatch('open-modal', 'delete-meal-modal');
-    },
-    updateVisibleCount() {
-        this.$nextTick(() => {
-            const rows = this.$el.querySelectorAll('tbody tr[data-meal-row]');
-            let count = 0;
-            rows.forEach(row => {
-                if (row.style.display !== 'none') count++;
-            });
-            this.totalVisible = count;
-        });
     }
-}"
-    x-effect="
-    const _c = activeCategory;
-    const _s = activeStatus;
-    const _q = searchQuery;
-    updateVisibleCount();
-">
-    <!-- Filter Toolbar: Categories on Left, Search & Status on Right (Instant 0ms Alpine Filtering) -->
+}">
+    <!-- Filter Toolbar: Categories on Left, Search & Status on Right (Livewire Server-Side Filtering) -->
     <div class="mb-4 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <!-- Category Filter Tabs with Counts -->
         <div class="flex flex-wrap items-center gap-1.5">
-            <button type="button" x-on:click="activeCategory = 'all'"
-                :class="activeCategory === 'all' ? 'bg-brand-primary text-white shadow-2xs font-semibold' :
-                    'bg-brand-bg text-brand-text-muted hover:text-brand-text border border-brand-border'"
-                class="rounded-md px-3 py-1.5 text-xs font-semibold transition cursor-pointer">
+            <button type="button" wire:click="filterByCategory(null)"
+                class="rounded-md px-3 py-1.5 text-xs font-semibold transition cursor-pointer {{ is_null($selectedCategory) ? 'bg-brand-primary text-white shadow-2xs font-semibold' : 'bg-brand-bg text-brand-text-muted hover:text-brand-text border border-brand-border' }}">
                 All ({{ $totalDishesCount }})
             </button>
             @foreach ($categories as $cat)
-                <button type="button" x-on:click="activeCategory = '{{ $cat->slug }}'"
-                    :class="activeCategory === '{{ $cat->slug }}' ? 'bg-brand-primary text-white shadow-2xs font-semibold' :
-                        'bg-brand-bg text-brand-text-muted hover:text-brand-text border border-brand-border'"
-                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition cursor-pointer">
+                <button type="button" wire:click="filterByCategory('{{ $cat->slug }}')"
+                    class="rounded-md px-3 py-1.5 text-xs font-semibold transition cursor-pointer {{ $selectedCategory === $cat->slug ? 'bg-brand-primary text-white shadow-2xs font-semibold' : 'bg-brand-bg text-brand-text-muted hover:text-brand-text border border-brand-border' }}">
                     {{ $cat->name }} ({{ $cat->meals_count }})
                 </button>
             @endforeach
@@ -67,42 +25,38 @@
 
         <!-- Search & Status Filters -->
         <div class="flex flex-wrap items-center gap-2">
-            <!-- Search Input with Instant Alpine Filter -->
+            <!-- Search Input with Livewire Debounced Filter -->
             <div class="relative w-full sm:w-56">
-                <input type="search" x-model="searchQuery" placeholder="Search dishes or codes..."
+                <input type="search" wire:model.live.debounce.300ms="search" placeholder="Search dishes or codes..."
                     class="w-full rounded-md border border-brand-border bg-brand-bg px-3.5 py-1.5 pl-8 pr-7 text-xs text-brand-text placeholder:text-brand-text-muted/60 focus:border-brand-primary dark:focus:border-brand-secondary focus:bg-brand-card focus:outline-none focus:ring-1 focus:ring-brand-primary/20 transition">
                 <svg class="pointer-events-none absolute left-2.5 top-2 h-3.5 w-3.5 text-brand-text-muted"
                     fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
-                <button type="button" x-show="searchQuery" x-on:click="searchQuery = ''" x-cloak
-                    class="absolute right-2 top-2 text-brand-text-muted hover:text-brand-text cursor-pointer">
-                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                @if ($search)
+                    <button type="button" wire:click="$set('search', '')"
+                        class="absolute right-2 top-2 text-brand-text-muted hover:text-brand-text cursor-pointer">
+                        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                @endif
             </div>
 
-            <!-- Status Segments (Instant 0ms Alpine Filter) -->
+            <!-- Status Segments (Livewire Server Filter) -->
             <div class="inline-flex rounded-md border border-brand-border bg-brand-bg p-0.5 text-xs font-medium">
-                <button type="button" x-on:click="activeStatus = 'all'"
-                    :class="activeStatus === 'all' ? 'bg-brand-card text-brand-text shadow-2xs font-semibold' :
-                        'text-brand-text-muted hover:text-brand-text'"
-                    class="rounded-sm px-2.5 py-1 transition cursor-pointer">
+                <button type="button" wire:click="filterByStatus('all')"
+                    class="rounded-sm px-2.5 py-1 transition cursor-pointer {{ $statusFilter === 'all' ? 'bg-brand-card text-brand-text shadow-2xs font-semibold' : 'text-brand-text-muted hover:text-brand-text' }}">
                     All
                 </button>
-                <button type="button" x-on:click="activeStatus = 'in_stock'"
-                    :class="activeStatus === 'in_stock' ? 'bg-brand-card text-brand-success shadow-2xs font-semibold' :
-                        'text-brand-text-muted hover:text-brand-text'"
-                    class="rounded-sm px-2.5 py-1 transition cursor-pointer">
+                <button type="button" wire:click="filterByStatus('in_stock')"
+                    class="rounded-sm px-2.5 py-1 transition cursor-pointer {{ $statusFilter === 'in_stock' ? 'bg-brand-card text-brand-success shadow-2xs font-semibold' : 'text-brand-text-muted hover:text-brand-text' }}">
                     In Stock
                 </button>
-                <button type="button" x-on:click="activeStatus = 'sold_out'"
-                    :class="activeStatus === 'sold_out' ? 'bg-brand-card text-brand-error shadow-2xs font-semibold' :
-                        'text-brand-text-muted hover:text-brand-text'"
-                    class="rounded-sm px-2.5 py-1 transition cursor-pointer">
+                <button type="button" wire:click="filterByStatus('sold_out')"
+                    class="rounded-sm px-2.5 py-1 transition cursor-pointer {{ $statusFilter === 'sold_out' ? 'bg-brand-card text-brand-error shadow-2xs font-semibold' : 'text-brand-text-muted hover:text-brand-text' }}">
                     86'd
                 </button>
             </div>
@@ -124,9 +78,8 @@
             </thead>
             <tbody class="divide-y divide-brand-border text-brand-text">
                 @forelse ($meals as $meal)
-                    <tr wire:key="meal-row-{{ $meal->id }}" data-meal-row x-data="{ isAvail: {{ $meal->is_available ? 'true' : 'false' }} }"
-                        x-show="matches('{{ $meal->category?->slug }}', isAvail, '{{ addslashes($meal->name) }}', '{{ addslashes($meal->menu_code ?? '') }}')"
-                        :class="{ 'opacity-65 bg-brand-bg/25': !isAvail }" class="transition hover:bg-brand-bg/40">
+                    <tr wire:key="meal-row-{{ $meal->id }}"
+                        class="transition hover:bg-brand-bg/40 {{ !$meal->is_available ? 'opacity-65 bg-brand-bg/25' : '' }}">
 
                         <!-- Meal Name & Notes -->
                         <td class="px-4 py-3 max-w-sm">
@@ -164,18 +117,14 @@
                             </span>
                         </td>
 
-                        <!-- Status Toggle (86'd / In Stock - 0ms Optimistic UI) -->
+                        <!-- Status Toggle (86'd / In Stock) -->
                         <td class="px-3 py-3 text-center">
                             <button type="button"
-                                x-on:click="isAvail = !isAvail; $wire.toggleAvailability({{ $meal->id }})"
+                                wire:click="toggleAvailability({{ $meal->id }})"
                                 title="Click to toggle availability"
-                                :class="isAvail ?
-                                    'bg-brand-success/15 text-brand-success border-brand-success/30 hover:bg-brand-success/25' :
-                                    'bg-brand-error/15 text-brand-error border-brand-error/30 hover:bg-brand-error/25'"
-                                class="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-0.5 text-xs font-semibold transition cursor-pointer border shadow-2xs">
-                                <span class="h-1.5 w-1.5 rounded-full"
-                                    :class="isAvail ? 'bg-brand-success' : 'bg-brand-error'"></span>
-                                <span x-text="isAvail ? 'In Stock' : '86\'d (Sold Out)'"></span>
+                                class="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-0.5 text-xs font-semibold transition cursor-pointer border shadow-2xs {{ $meal->is_available ? 'bg-brand-success/15 text-brand-success border-brand-success/30 hover:bg-brand-success/25' : 'bg-brand-error/15 text-brand-error border-brand-error/30 hover:bg-brand-error/25' }}">
+                                <span class="h-1.5 w-1.5 rounded-full {{ $meal->is_available ? 'bg-brand-success' : 'bg-brand-error' }}"></span>
+                                <span>{{ $meal->is_available ? 'In Stock' : '86\'d (Sold Out)' }}</span>
                             </button>
                         </td>
 
@@ -223,16 +172,16 @@
                         </td>
                     </tr>
                 @endforelse
-
-                <!-- Alpine Client-Side Filter Empty State -->
-                <tr x-show="totalVisible === 0" x-cloak style="display: none;">
-                    <td colspan="6" class="px-4 py-8 text-center text-sm text-brand-text-muted">
-                        No dishes found matching your current filter.
-                    </td>
-                </tr>
             </tbody>
         </table>
     </div>
+
+    <!-- Pagination Links -->
+    @if ($meals->hasPages())
+        <div class="mt-4 px-2">
+            {{ $meals->links() }}
+        </div>
+    @endif
 
     <!-- Centralized Confirmation Modal for Removing/Archiving Dish -->
     <x-ui.confirm-modal name="delete-meal-modal" title="Remove Dish from Menu" maxWidth="md">

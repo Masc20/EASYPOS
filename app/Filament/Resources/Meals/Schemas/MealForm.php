@@ -26,7 +26,7 @@ class MealForm
                     ->relationship('category', 'name')
                     ->required()
                     ->preload()
-                    ->live()
+                    ->live(debounce: 300)
                     ->afterStateUpdated(function ($state, callable $set, $record) {
                         if (! $state) {
                             return;

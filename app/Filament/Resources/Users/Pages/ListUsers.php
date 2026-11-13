@@ -53,7 +53,7 @@ class ListUsers extends ListRecords
                                 ->options($branches)
                                 ->default($defaultBranchId)
                                 ->required()
-                                ->live()
+                                ->live(debounce: 300)
                                 ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                     $role = $get('role') ?: StaffRole::CASHIER->value;
                                     $set('emp_id', CodeGeneratorService::generateEmpId($state ? (int) $state : null, $role));
@@ -64,7 +64,7 @@ class ListUsers extends ListRecords
                             ->options(StaffRole::floorOptions())
                             ->default(StaffRole::CASHIER->value)
                             ->required()
-                            ->live()
+                            ->live(debounce: 300)
                             ->afterStateUpdated(function ($state, callable $set, callable $get) use ($isBranchScoped, $currentUser) {
                                 $branchId = $isBranchScoped ? $currentUser->branch_id : $get('branch_id');
                                 $role = $state ?: StaffRole::CASHIER->value;
@@ -158,7 +158,7 @@ class ListUsers extends ListRecords
                             ->label('Assigned Branch')
                             ->options($branches)
                             ->placeholder('Global / HQ (All Branches)')
-                            ->live()
+                            ->live(debounce: 300)
                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                 $role = $get('role') ?: StaffRole::BRANCH_MANAGER->value;
                                 $set('emp_id', CodeGeneratorService::generateEmpId(filled($state) ? (int) $state : null, $role));
@@ -169,7 +169,7 @@ class ListUsers extends ListRecords
                             ->options(StaffRole::managementOptions())
                             ->default(StaffRole::BRANCH_MANAGER->value)
                             ->required()
-                            ->live()
+                            ->live(debounce: 300)
                             ->afterStateUpdated(function ($state, callable $set, callable $get) {
                                 $branchId = $get('branch_id');
                                 $role = $state ?: StaffRole::BRANCH_MANAGER->value;
