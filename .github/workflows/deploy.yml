@@ -1,0 +1,271 @@
+name: EASYPOS CI and AWS deployment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easypos-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Verify application
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, curl, zip, mysql, pdo_sqlite, bcmath
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer downloads
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache/files
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install PHP dependencies
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
+      - name: Check PHP syntax
+        shell: bash
+        run: find app config database routes -type f -name '*.php' -print0 | xargs -0 -r -n1 php -l
+
+      - name: Build frontend assets
+        run: npm run build
+
+      - name: Run test suite
+        run: php artisan test
+
+      - name: Audit Composer dependencies
+        run: composer audit --no-interaction
+
+  package:
+    name: Build release artifact
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: mbstring, xml, curl, zip, mysql, pdo_sqlite, bcmath
+          coverage: none
+          tools: composer:v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+
+      - name: Install production PHP dependencies
+        run: composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction --no-progress
+
+      - name: Install frontend dependencies and build assets
+        run: |
+          npm ci
+          npm run build
+
+      - name: Create release archive
+        run: |
+          tar -czf "$RUNNER_TEMP/easypos-${GITHUB_SHA}.tar.gz" \
+            --exclude='./.git' \
+            --exclude='./.github' \
+            --exclude='./.env' \
+            --exclude='./.env.*' \
+            --exclude='./tests' \
+            --exclude='./node_modules' \
+            --exclude='./storage' \
+            --exclude='./public/storage' \
+            --exclude='./public/hot' \
+            --exclude='./bootstrap/cache/*' \
+            .
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: easypos-${{ github.sha }}
+          path: ${{ runner.temp }}/easypos-${{ github.sha }}.tar.gz
+          if-no-files-found: error
+          retention-days: 14
+
+  deploy:
+    name: Deploy to AWS with SSM
+    needs: package
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: production
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      S3_BUCKET: ${{ vars.DEPLOY_BUCKET }}
+      SSM_INSTANCE_ID: ${{ vars.SSM_INSTANCE_ID }}
+      APP_URL: ${{ vars.APP_URL }}
+      APP_ENV_SECRET_ARN: ${{ vars.APP_ENV_SECRET_ARN }}
+    steps:
+      - name: Validate deployment settings
+        shell: bash
+        env:
+          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+        run: |
+          set -euo pipefail
+          for name in AWS_REGION S3_BUCKET SSM_INSTANCE_ID APP_URL APP_ENV_SECRET_ARN AWS_ROLE_ARN; do
+            if [[ -z "${!name}" ]]; then
+              echo "Required production environment value is missing: $name" >&2
+              exit 1
+            fi
+          done
+          if [[ "$APP_URL" != https://* ]]; then
+            echo "APP_URL must use HTTPS" >&2
+            exit 1
+          fi
+
+      - name: Download release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: easypos-${{ github.sha }}
+          path: release
+
+      - name: Configure AWS credentials using GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Upload immutable release to S3
+        run: |
+          aws s3 cp "release/easypos-${GITHUB_SHA}.tar.gz" \
+            "s3://${S3_BUCKET}/deploy/${GITHUB_SHA}.tar.gz" \
+            --only-show-errors
+
+      - name: Deploy release through Systems Manager
+        id: ssm
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/deploy-release.sh" <<'REMOTE_SCRIPT'
+          set -Eeuo pipefail
+
+          APP_ROOT=/var/www/easypos
+          SHARED="$APP_ROOT/shared"
+          RELEASES="$APP_ROOT/releases"
+          RELEASE="$RELEASES/$RELEASE_ID"
+          ARCHIVE="/tmp/easypos-$RELEASE_ID.tar.gz"
+          ENV_TMP="$SHARED/.env.$RELEASE_ID.tmp"
+
+          umask 077
+          trap 'rm -f "$ENV_TMP"' EXIT
+          mkdir -p "$RELEASES" "$SHARED/storage/app/public" "$SHARED/storage/framework/cache/data" \
+            "$SHARED/storage/framework/sessions" "$SHARED/storage/framework/views" "$SHARED/storage/logs"
+          aws secretsmanager get-secret-value --secret-id "$APP_ENV_SECRET_ARN" \
+            --query SecretString --output text > "$ENV_TMP"
+          grep -Eq '^APP_ENV=production$' "$ENV_TMP"
+          grep -Eq '^APP_DEBUG=false$' "$ENV_TMP"
+          grep -Eq '^APP_KEY=base64:.+' "$ENV_TMP"
+          grep -Eq '^DB_CONNECTION=mysql$' "$ENV_TMP"
+          chown root:apache "$ENV_TMP"
+          chmod 640 "$ENV_TMP"
+          mv -f "$ENV_TMP" "$SHARED/.env"
+          aws s3 cp "s3://$DEPLOY_BUCKET/deploy/$RELEASE_ID.tar.gz" "$ARCHIVE" --only-show-errors
+          mkdir -p "$RELEASE"
+          tar -xzf "$ARCHIVE" -C "$RELEASE"
+          test -f "$RELEASE/artisan"
+          test -f "$RELEASE/public/build/manifest.json"
+          ln -sfn "$SHARED/.env" "$RELEASE/.env"
+          rm -rf "$RELEASE/storage"
+          ln -s "$SHARED/storage" "$RELEASE/storage"
+
+          chown root:apache "$SHARED/.env"
+          chmod 640 "$SHARED/.env"
+          chown -R root:apache "$RELEASE"
+          chmod -R 750 "$RELEASE"
+          chown -R apache:apache "$RELEASE/bootstrap/cache" "$SHARED/storage"
+          chmod -R 770 "$RELEASE/bootstrap/cache" "$SHARED/storage"
+          sudo -u apache php "$RELEASE/artisan" migrate --force --no-interaction
+          sudo -u apache php "$RELEASE/artisan" config:cache
+          sudo -u apache php "$RELEASE/artisan" route:cache
+          sudo -u apache php "$RELEASE/artisan" view:cache
+
+          ln -s "$RELEASE" "$APP_ROOT/current.next"
+          mv -Tf "$APP_ROOT/current.next" "$APP_ROOT/current"
+          sudo systemctl reload httpd
+
+          find "$RELEASES" -mindepth 1 -maxdepth 1 -type d -printf '%T@ %p\n' \
+            | sort -nr | tail -n +6 | cut -d' ' -f2- | xargs -r rm -rf
+          rm -f "$ARCHIVE"
+          REMOTE_SCRIPT
+
+          {
+            printf 'set -euo pipefail\nexport RELEASE_ID=%q\nexport DEPLOY_BUCKET=%q\nexport APP_ENV_SECRET_ARN=%q\n' \
+              "$GITHUB_SHA" "$S3_BUCKET" "$APP_ENV_SECRET_ARN"
+            cat "$RUNNER_TEMP/deploy-release.sh"
+          } > "$RUNNER_TEMP/ssm-command.sh"
+          COMMAND_B64=$(base64 -w0 "$RUNNER_TEMP/ssm-command.sh")
+          REMOTE_COMMAND="echo '$COMMAND_B64' | base64 -d | bash"
+          jq -n --arg command "$REMOTE_COMMAND" '{commands: [$command]}' > "$RUNNER_TEMP/ssm-parameters.json"
+
+          COMMAND_ID=$(aws ssm send-command \
+            --instance-ids "$SSM_INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --parameters "file://$RUNNER_TEMP/ssm-parameters.json" \
+            --timeout-seconds 900 \
+            --comment "EASYPOS release $GITHUB_SHA" \
+            --query 'Command.CommandId' --output text)
+          echo "command_id=$COMMAND_ID" >> "$GITHUB_OUTPUT"
+
+          for attempt in $(seq 1 90); do
+            STATUS=$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" --instance-id "$SSM_INSTANCE_ID" \
+              --query Status --output text 2>/dev/null || true)
+            case "$STATUS" in
+              Success) break ;;
+              Failed|Cancelled|TimedOut)
+                aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+                  --instance-id "$SSM_INSTANCE_ID" \
+                  --query '{Status:Status,Details:StatusDetails,Error:StandardErrorContent,Output:StandardOutputContent}' \
+                  --output json || true
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          if [[ "${STATUS:-}" != Success ]]; then
+            echo "SSM deployment did not finish successfully (last status: ${STATUS:-unknown})" >&2
+            exit 1
+          fi
+          aws ssm get-command-invocation --command-id "$COMMAND_ID" \
+            --instance-id "$SSM_INSTANCE_ID" \
+            --query '{Status:Status,Output:StandardOutputContent}' --output json
+
+      - name: Check public health endpoints
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 12 --retry-delay 5 --retry-all-errors "$APP_URL/up"
+          curl --fail --silent --show-error "$APP_URL/login" > /dev/null
