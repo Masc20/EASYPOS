@@ -54,6 +54,14 @@ jobs:
       - name: Build frontend assets
         run: npm run build
 
+      - name: Generate test-only Laravel encryption key
+        shell: bash
+        run: |
+          TEST_APP_KEY="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          echo "::add-mask::$TEST_APP_KEY"
+          printf 'APP_KEY=%s\n' "$TEST_APP_KEY" >> "$GITHUB_ENV"
+          unset TEST_APP_KEY
+
       - name: Run test suite
         run: php artisan test
 

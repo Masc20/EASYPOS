@@ -340,7 +340,8 @@ class AdversarialM4TenancyAndConcurrencyChallengerTest extends TestCase
      */
     public function test_high_volume_interleaved_daily_sequence_isolation(): void
     {
-        $date = '2026-11-14';
+        // Keep this isolated sequence date separate from orders created in setUp() today.
+        $date = today()->addYears(1)->toDateString();
         $branches = [$this->branchA->id, $this->branchB->id, $this->branchC->id];
         $types = ['order', 'kitchen_ticket'];
 
