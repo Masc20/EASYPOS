@@ -182,6 +182,7 @@ jobs:
           set -euo pipefail
           cat > "$RUNNER_TEMP/deploy-release.sh" <<'REMOTE_SCRIPT'
           set -Eeuo pipefail
+          trap 'status=$?; printf "Deployment script failed near line %s (exit %s)\n" "$LINENO" "$status" >&2; exit "$status"' ERR
 
           APP_ROOT=/var/www/easypos
           SHARED="$APP_ROOT/shared"
