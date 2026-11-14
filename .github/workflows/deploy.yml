@@ -197,10 +197,10 @@ jobs:
             "$SHARED/storage/framework/sessions" "$SHARED/storage/framework/views" "$SHARED/storage/logs"
           aws secretsmanager get-secret-value --secret-id "$APP_ENV_SECRET_ARN" \
             --query SecretString --output text > "$ENV_TMP"
-          grep -Eq '^APP_ENV=production$' "$ENV_TMP"
-          grep -Eq '^APP_DEBUG=false$' "$ENV_TMP"
-          grep -Eq '^APP_KEY=base64:.+' "$ENV_TMP"
-          grep -Eq '^DB_CONNECTION=mysql$' "$ENV_TMP"
+          grep -Eq '^APP_ENV=production$' "$ENV_TMP" || { echo "Secrets Manager app environment must contain APP_ENV=production" >&2; exit 1; }
+          grep -Eq '^APP_DEBUG=false$' "$ENV_TMP" || { echo "Secrets Manager app environment must contain APP_DEBUG=false" >&2; exit 1; }
+          grep -Eq '^APP_KEY=base64:.+' "$ENV_TMP" || { echo "Secrets Manager app environment must contain a base64 APP_KEY" >&2; exit 1; }
+          grep -Eq '^DB_CONNECTION=mysql$' "$ENV_TMP" || { echo "Secrets Manager app environment must contain DB_CONNECTION=mysql" >&2; exit 1; }
           chown root:apache "$ENV_TMP"
           chmod 640 "$ENV_TMP"
           mv -f "$ENV_TMP" "$SHARED/.env"
