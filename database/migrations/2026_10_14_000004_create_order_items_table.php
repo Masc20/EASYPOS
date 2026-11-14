@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('quantity')->default(1);
             $table->decimal('subtotal', 10, 2);
             $table->text('special_instructions')->nullable();
-            $table->json('selected_options')->default('{}');
+            $table->json('selected_options');
             $table->timestamps();
 
             $table->index('order_id', 'idx_order_items_order_id');

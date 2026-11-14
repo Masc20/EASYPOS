@@ -25,7 +25,7 @@ return new class extends Migration
             $table->boolean('is_available')->default(true);
             $table->boolean('track_stock')->default(false);
             $table->integer('stock_quantity')->nullable();
-            $table->json('kitchen_tags')->default('[]');
+            $table->json('kitchen_tags');
             $table->boolean('is_active')->default(true);
             $table->timestamps();
             $table->softDeletes();

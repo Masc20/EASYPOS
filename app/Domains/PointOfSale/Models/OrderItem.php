@@ -15,6 +15,10 @@ class OrderItem extends Model
 
     protected $guarded = [];
 
+    protected $attributes = [
+        'selected_options' => '{}',
+    ];
+
     protected $casts = [
         'unit_price' => 'decimal:2',
         'subtotal' => 'decimal:2',

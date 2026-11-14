@@ -16,6 +16,10 @@ class Meal extends Model
 
     protected $guarded = [];
 
+    protected $attributes = [
+        'kitchen_tags' => '[]',
+    ];
+
     protected $casts = [
         'price' => 'decimal:2',
         'cost_price' => 'decimal:2',
