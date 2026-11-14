@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
 
@@ -15,6 +16,10 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         // Domain: PointOfSale
         Livewire::component('pos.checkout.checkout-cart', \App\Domains\PointOfSale\Livewire\Checkout\CheckoutCart::class);
         Livewire::component('pos.checkout.checkout-modal', \App\Domains\PointOfSale\Livewire\Checkout\CheckoutModal::class);
