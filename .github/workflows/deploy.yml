@@ -63,6 +63,8 @@ jobs:
           unset TEST_APP_KEY
 
       - name: Run test suite
+        env:
+          APP_NAME: EASYPOS
         run: php artisan test
 
       - name: Audit Composer dependencies
