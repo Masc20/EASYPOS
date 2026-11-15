@@ -6,9 +6,7 @@ use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 class RolesAndPermissionsSeeder extends Seeder
 {
@@ -17,88 +15,14 @@ class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Reset cached roles and permissions
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
+        $this->call(AccessControlSeeder::class);
 
-        // 1. Define permissions
-        $permissions = [
-            'admin.access',
-            'pos.access',
-            'pos.checkout',
-            'pos.refund',
-            'kitchen.view',
-            'kitchen.prepare',
-            'menu.view',
-            'menu.manage',
-            'branch.manage',
-            'users.manage',
-            'reports.view',
-            'financial.control',
-        ];
-
-        foreach ($permissions as $permission) {
-            Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
-        }
-
-        // 2. Define roles and assign explicit canonical permissions (no wildcard Permission::all())
-        $ownerRole = Role::firstOrCreate(['name' => 'owner', 'guard_name' => 'web']);
-        $ownerRole->syncPermissions([
-            'admin.access',
-            'pos.access',
-            'pos.checkout',
-            'pos.refund',
-            'menu.view',
-            'menu.manage',
-            'branch.manage',
-            'users.manage',
-            'reports.view',
-            'financial.control',
-        ]);
-
-        $superAdminRole = Role::firstOrCreate(['name' => 'super-admin', 'guard_name' => 'web']);
-        $superAdminRole->syncPermissions([
-            'admin.access',
-            'pos.refund',
-            'menu.manage',
-            'branch.manage',
-            'users.manage',
-            'reports.view',
-            'financial.control',
-        ]);
-
-        $branchManagerRole = Role::firstOrCreate(['name' => 'branch-manager', 'guard_name' => 'web']);
-        $branchManagerRole->syncPermissions([
-            'admin.access',
-            'pos.access',
-            'pos.checkout',
-            'pos.refund',
-            'kitchen.view',
-            'kitchen.prepare',
-            'menu.view',
-            'menu.manage',
-            'users.manage',
-            'reports.view',
-        ]);
-
-        $cashierRole = Role::firstOrCreate(['name' => 'cashier', 'guard_name' => 'web']);
-        $cashierRole->syncPermissions([
-            'pos.access',
-            'pos.checkout',
-        ]);
-
-        $cookRole = Role::firstOrCreate(['name' => 'cook', 'guard_name' => 'web']);
-        $cookRole->syncPermissions([
-            'kitchen.view',
-            'kitchen.prepare',
-        ]);
-
-        $chefRole = Role::firstOrCreate(['name' => 'chef', 'guard_name' => 'web']);
-        $chefRole->syncPermissions([
-            'kitchen.view',
-            'kitchen.prepare',
-            'menu.view',
-            'menu.manage',
-        ]);
+        $ownerRole = Role::findByName('owner', 'web');
+        $superAdminRole = Role::findByName('super-admin', 'web');
+        $branchManagerRole = Role::findByName('branch-manager', 'web');
+        $cashierRole = Role::findByName('cashier', 'web');
+        $cookRole = Role::findByName('cook', 'web');
+        $chefRole = Role::findByName('chef', 'web');
 
         // 3. Seed Branches
         $branchManila = Branch::firstOrCreate(
