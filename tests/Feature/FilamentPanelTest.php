@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domains\Identity\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class FilamentPanelTest extends TestCase
@@ -78,5 +79,87 @@ class FilamentPanelTest extends TestCase
             ->get('/admin');
 
         $response->assertStatus(403);
+    }
+
+    public function test_filament_login_page_renders_all_required_visual_elements(): void
+    {
+        $response = $this->get('/admin/login');
+
+        $response->assertStatus(200);
+        $response->assertSee('EASYPOS Admin');
+        $response->assertSee('Sign in');
+        $response->assertSee('Email address');
+        $response->assertSee('Password');
+        $response->assertSee('Remember me');
+        $response->assertSee('glow.svg');
+        $response->assertSee('bg.svg');
+        $response->assertSee('Floor Staff Terminal');
+    }
+
+    public function test_admin_user_can_authenticate_via_filament_login_page(): void
+    {
+        Livewire::test(\App\Filament\Pages\Auth\Login::class)
+            ->set('data.email', 'admin@easypos.com')
+            ->set('data.password', 'password')
+            ->call('authenticate')
+            ->assertHasNoErrors()
+            ->assertRedirect('/admin');
+
+        $this->assertAuthenticated();
+        $this->assertEquals('admin@easypos.com', auth()->user()->email);
+    }
+
+    public function test_admin_authentication_supports_remember_me(): void
+    {
+        Livewire::test(\App\Filament\Pages\Auth\Login::class)
+            ->set('data.email', 'admin@easypos.com')
+            ->set('data.password', 'password')
+            ->set('data.remember', true)
+            ->call('authenticate')
+            ->assertHasNoErrors()
+            ->assertRedirect('/admin');
+
+        $this->assertAuthenticated();
+    }
+
+    public function test_admin_authentication_fails_with_invalid_credentials(): void
+    {
+        Livewire::test(\App\Filament\Pages\Auth\Login::class)
+            ->set('data.email', 'admin@easypos.com')
+            ->set('data.password', 'wrongpassword')
+            ->call('authenticate')
+            ->assertHasErrors(['data.email']);
+
+        $this->assertGuest();
+    }
+
+    public function test_admin_authentication_validates_required_fields(): void
+    {
+        Livewire::test(\App\Filament\Pages\Auth\Login::class)
+            ->set('data.email', '')
+            ->set('data.password', '')
+            ->call('authenticate')
+            ->assertHasErrors(['data.email', 'data.password']);
+
+        $this->assertGuest();
+    }
+
+    public function test_admin_authentication_rate_limits_after_too_many_attempts(): void
+    {
+        for ($i = 0; $i < 5; $i++) {
+            Livewire::test(\App\Filament\Pages\Auth\Login::class)
+                ->set('data.email', 'admin@easypos.com')
+                ->set('data.password', 'wrongpassword')
+                ->call('authenticate')
+                ->assertHasErrors(['data.email']);
+        }
+
+        Livewire::test(\App\Filament\Pages\Auth\Login::class)
+            ->set('data.email', 'admin@easypos.com')
+            ->set('data.password', 'wrongpassword')
+            ->call('authenticate')
+            ->assertNotDispatched('redirect');
+
+        $this->assertGuest();
     }
 }

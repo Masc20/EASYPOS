@@ -28,6 +28,24 @@ class AuthTest extends TestCase
         $response->assertSee('Employee ID');
     }
 
+    public function test_floor_staff_login_page_renders_all_required_visual_elements(): void
+    {
+        $response = $this->get('/login');
+
+        $response->assertStatus(200);
+        $response->assertSee('Floor Staff Terminal');
+        $response->assertSee('Terminal Online');
+        $response->assertSee('Back-Office Portal');
+        $response->assertSee('Floor Staff Login');
+        $response->assertSee('Enter your employee ID and 4-digit PIN');
+        $response->assertSee('Employee ID');
+        $response->assertSee('4-Digit PIN');
+        $response->assertSee('Clock In / Enter Terminal');
+        $response->assertSee('glow.svg');
+        $response->assertSee('bg.svg');
+        $response->assertSee('Secure Multi-Branch POS System');
+    }
+
     public function test_cashier_can_authenticate_using_emp_id_and_pin(): void
     {
         Livewire::test(Login::class)

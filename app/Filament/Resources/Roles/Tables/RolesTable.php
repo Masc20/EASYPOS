@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Roles\Tables;
 
+use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Support\Enums\PermissionEnum;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -9,6 +10,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Spatie\Permission\Models\Role;
 
 class RolesTable
 {
@@ -46,7 +48,15 @@ class RolesTable
             ->recordActions([
                 EditAction::make()
                     ->modal()
-                    ->modalWidth('lg'),
+                    ->modalWidth('4xl')
+                    ->mutateRecordDataUsing(fn (array $data, Role $record): array => RoleForm::fillPermissionTabs($data, $record))
+                    ->using(function (Role $record, array $data): Role {
+                        [$cleanData, $permissions] = RoleForm::extractPermissions($data);
+                        $record->update($cleanData);
+                        $record->syncPermissions($permissions);
+
+                        return $record;
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
