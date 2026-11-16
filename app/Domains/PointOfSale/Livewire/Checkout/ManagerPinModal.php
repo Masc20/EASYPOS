@@ -45,18 +45,25 @@ class ManagerPinModal extends Component
         if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
             $seconds = RateLimiter::availableIn($throttleKey);
             $this->errorMessage = "Too many failed approval attempts. Terminal locked for void approvals. Please try again in {$seconds} seconds.";
-            Log::warning('MANAGER_PIN_VOID_LOCKED_OUT', [
+
+            $lockoutContext = [
+                'event' => 'MANAGER_PIN_VOID_LOCKED_OUT',
                 'action' => 'void_order_pin_lockout',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
-                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
-                'branch_id' => Auth::user()?->branch_id,
+                'ip' => request()->ip(),
+                'client_ip' => request()->ip(),
                 'order_id' => $this->orderId,
                 'manager_id' => $data['manager_id'] ?? null,
-                'client_ip' => request()->ip(),
+                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
+                'branch_id' => Auth::user()?->branch_id,
                 'retry_after' => $seconds,
                 'timestamp' => now()->toIso8601String(),
-            ]);
+            ];
+
+            Log::warning('MANAGER_PIN_VOID_LOCKED_OUT', $lockoutContext);
+            Log::channel('security')?->warning('MANAGER_PIN_VOID_LOCKED_OUT', $lockoutContext);
+
             return false;
         }
 
@@ -74,18 +81,23 @@ class ManagerPinModal extends Component
 
             RateLimiter::clear($throttleKey);
 
-            Log::info('MANAGER_PIN_VOID_APPROVED', [
+            $approvalContext = [
+                'event' => 'MANAGER_PIN_VOID_APPROVED',
                 'action' => 'void_order_pin_approval',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
-                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
-                'branch_id' => Auth::user()?->branch_id,
+                'ip' => request()->ip(),
+                'client_ip' => request()->ip(),
                 'order_id' => $this->orderId,
                 'manager_id' => $data['manager_id'],
                 'reason' => $data['reason'],
-                'client_ip' => request()->ip(),
+                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
+                'branch_id' => Auth::user()?->branch_id,
                 'timestamp' => now()->toIso8601String(),
-            ]);
+            ];
+
+            Log::info('MANAGER_PIN_VOID_APPROVED', $approvalContext);
+            Log::channel('security')?->warning('MANAGER_PIN_VOID_APPROVED', $approvalContext);
 
             $this->dispatch('close-modal', 'manager-pin-modal');
             $this->dispatch('order-voided', orderId: $this->orderId);
@@ -99,19 +111,24 @@ class ManagerPinModal extends Component
         } catch (InvalidArgumentException $e) {
             RateLimiter::hit($throttleKey, 600);
 
-            Log::warning('MANAGER_PIN_VOID_ATTEMPT_FAILED', [
+            $failureContext = [
+                'event' => 'MANAGER_PIN_VOID_ATTEMPT_FAILED',
                 'action' => 'void_order_pin_failure',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
-                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
-                'branch_id' => Auth::user()?->branch_id,
+                'ip' => request()->ip(),
+                'client_ip' => request()->ip(),
                 'order_id' => $this->orderId,
                 'manager_id' => $data['manager_id'] ?? null,
                 'attempts' => RateLimiter::attempts($throttleKey),
-                'client_ip' => request()->ip(),
+                'branch' => Auth::user()?->branch?->name ?? (string) Auth::user()?->branch_id ?? 'unknown',
+                'branch_id' => Auth::user()?->branch_id,
                 'error' => $e->getMessage(),
                 'timestamp' => now()->toIso8601String(),
-            ]);
+            ];
+
+            Log::warning('MANAGER_PIN_VOID_ATTEMPT_FAILED', $failureContext);
+            Log::channel('security')?->warning('MANAGER_PIN_VOID_ATTEMPT_FAILED', $failureContext);
 
             $this->errorMessage = $e->getMessage();
             return false;

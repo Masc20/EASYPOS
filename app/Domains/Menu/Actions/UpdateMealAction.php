@@ -36,7 +36,7 @@ class UpdateMealAction
         $payload = [];
 
         if (array_key_exists('name', $data)) {
-            $payload['name'] = trim($data['name']);
+            $payload['name'] = $this->sanitize($data['name'] ?? '') ?? '';
         }
 
         if (array_key_exists('menu_code', $data)) {
@@ -56,7 +56,7 @@ class UpdateMealAction
         }
 
         if (array_key_exists('description', $data)) {
-            $payload['description'] = !empty($data['description']) ? trim($data['description']) : null;
+            $payload['description'] = $this->sanitize($data['description']);
         }
 
         if (array_key_exists('is_available', $data)) {
@@ -89,5 +89,21 @@ class UpdateMealAction
         event(new MealUpdated($instance));
 
         return $instance;
+    }
+
+    /**
+     * Sanitize text input by removing script/style/iframe container blocks and stripping HTML tags.
+     */
+    private function sanitize(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/<(script|style|iframe)\b[^>]*>(.*?)<\/\1>/is', '', (string) $value);
+        $cleaned = strip_tags($cleaned);
+        $cleaned = trim($cleaned);
+
+        return $cleaned !== '' ? $cleaned : null;
     }
 }

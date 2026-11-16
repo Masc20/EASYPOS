@@ -14,6 +14,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
+use Illuminate\Validation\Rules\Password;
 
 class ListUsers extends ListRecords
 {
@@ -27,7 +28,7 @@ class ListUsers extends ListRecords
                 ->label('Add Floor Staff (PIN)')
                 ->color('primary')
                 ->modalHeading('Add Floor Staff (Terminal PIN)')
-                ->modalWidth('lg')
+                ->modalWidth('md')
                 ->schema(function () {
                     $currentUser = auth()->user();
                     $isBranchScoped = $currentUser && $currentUser->isBranchScoped();
@@ -86,7 +87,15 @@ class ListUsers extends ListRecords
                             ->maxLength(4)
                             ->minLength(4)
                             ->rule('regex:/^[0-9]{4}$/')
-                            ->placeholder('e.g. 1234'),
+                            ->placeholder('4-Digit PIN')
+                            ->suffixAction(
+                                Action::make('generate_pin')
+                                    ->icon('heroicon-o-arrow-path')
+                                    ->tooltip('Generate random 4-digit PIN')
+                                    ->action(function (callable $set) use ($defaultBranchId) {
+                                        $set('pin_code', CodeGeneratorService::generatePin($defaultBranchId));
+                                    })
+                            ),
 
                         Toggle::make('is_active')
                             ->label('Active Account')
@@ -121,6 +130,14 @@ class ListUsers extends ListRecords
                         ->body("{$user->name} ({$user->emp_id}) has been added.")
                         ->success()
                         ->send();
+
+                    // Additional result notification with credentials
+                    Notification::make()
+                        ->title('Credentials Ready')
+                        ->body("Employee ID: {$user->emp_id}\nTerminal PIN: {$data['pin_code']}\nShare these securely with the staff member.")
+                        ->info()
+                        ->persistent()
+                        ->send();
                 }),
 
             // 2. Dedicated Modal for Back-Office Admin / Manager (Email & Password)
@@ -128,7 +145,7 @@ class ListUsers extends ListRecords
                 ->label('Add Admin / Manager')
                 ->color('gray')
                 ->modalHeading('Add Back-Office Admin / Manager')
-                ->modalWidth('lg')
+                ->modalWidth('md')
                 ->visible(fn (): bool => (bool) (auth()->user()?->isOwner() || auth()->user()?->hasRole(StaffRole::SUPER_ADMIN->value)))
                 ->schema(function () {
                     $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
@@ -152,7 +169,16 @@ class ListUsers extends ListRecords
                             ->password()
                             ->revealable()
                             ->required()
-                            ->minLength(8),
+                            ->rule(Password::min(12)->letters()->mixedCase()->numbers()->symbols()->uncompromised())
+                            ->placeholder('Password')
+                            ->suffixAction(
+                                Action::make('generate_password')
+                                    ->icon('heroicon-o-arrow-path')
+                                    ->tooltip('Generate secure password')
+                                    ->action(function (callable $set) {
+                                        $set('password', CodeGeneratorService::generatePassword());
+                                    })
+                            ),
 
                         Select::make('branch_id')
                             ->label('Assigned Branch')
@@ -190,7 +216,15 @@ class ListUsers extends ListRecords
                             ->maxLength(4)
                             ->minLength(4)
                             ->rule('regex:/^[0-9]{4}$/')
-                            ->placeholder('Optional 4-digit PIN for POS void approvals'),
+                            ->placeholder('4-Digit PIN')
+                            ->suffixAction(
+                                Action::make('generate_pin')
+                                    ->icon('heroicon-o-arrow-path')
+                                    ->tooltip('Generate random 4-digit PIN')
+                                    ->action(function (callable $set) use ($defaultBranchId) {
+                                        $set('pin_code', CodeGeneratorService::generatePin($defaultBranchId));
+                                    })
+                            ),
 
                         Toggle::make('is_active')
                             ->label('Active Account')
@@ -224,6 +258,14 @@ class ListUsers extends ListRecords
                         ->title('Admin / Manager Created')
                         ->body("{$user->name} ({$user->emp_id}) has been added.")
                         ->success()
+                        ->send();
+
+                    // Result notification with credentials
+                    Notification::make()
+                        ->title('Credentials Ready')
+                        ->body("Employee ID: {$user->emp_id}\nEmail: {$user->email}\nBack-Office Password: {$data['password']}\nApproval PIN: {$data['pin_code']}\n\nShare these securely with the new admin.")
+                        ->info()
+                        ->persistent()
                         ->send();
                 }),
         ];

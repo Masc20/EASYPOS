@@ -52,6 +52,7 @@
         ],
         "test": [
             "@php artisan config:clear --ansi",
+            "composer audit --no-dev",
             "@php artisan test"
         ],
         "post-autoload-dump": [

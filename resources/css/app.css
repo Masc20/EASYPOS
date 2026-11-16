@@ -79,3 +79,17 @@ html, body {
     color: var(--color-text);
     transition: background-color 0.15s ease, color 0.15s ease;
 }
+
+[x-cloak] {
+    display: none !important;
+}
+
+::selection {
+    background-color: color-mix(in srgb, var(--color-primary) 18%, transparent);
+    color: var(--color-text);
+}
+
+:focus-visible {
+    outline: 2px solid var(--color-secondary);
+    outline-offset: 2px;
+}

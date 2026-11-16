@@ -20,19 +20,19 @@ Route::get('/', function () {
     return view('pages.dashboard');
 })->name('dashboard');
 
-Route::middleware(['auth', 'permission:pos.access'])->group(function () {
+Route::middleware(['auth', 'permission:pos.access', 'throttle:pos'])->group(function () {
     Route::view('/pos', 'pages.pos')->name('pos');
 });
 
-Route::middleware(['auth', 'permission:menu.view'])->group(function () {
+Route::middleware(['auth', 'permission:menu.view', 'throttle:menu'])->group(function () {
     Route::view('/menu', 'pages.menu')->name('menu');
 });
 
-Route::middleware(['auth', 'permission:kitchen.view'])->group(function () {
+Route::middleware(['auth', 'permission:kitchen.view', 'throttle:pos'])->group(function () {
     Route::view('/kitchen', 'pages.kitchen')->name('kitchen');
 });
 
-Route::middleware(['auth', 'permission:reports.view'])->get('/admin/sales-records/audit-report', function (\Illuminate\Http\Request $request, \App\Domains\PointOfSale\Services\SalesAggregationService $service) {
+Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get('/admin/sales-records/audit-report', function (\Illuminate\Http\Request $request, \App\Domains\PointOfSale\Services\SalesAggregationService $service) {
     $user = auth()->user();
 
     if (session(\App\Support\Constants\SystemConstants::SESSION_AUTH_METHOD) === 'pin') {

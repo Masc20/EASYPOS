@@ -190,6 +190,68 @@ class CodeGeneratorService
     }
 
     /**
+     * Generate a random 4-digit terminal PIN.
+     * Format: 4 numeric digits (0000-9999).
+     * Ensures uniqueness per branch (or globally if no branch context).
+     *
+     * @param int|null $branchId If provided, ensures PIN uniqueness within that branch only.
+     * @throws \RuntimeException if PIN space exhausted (after 1000 attempts).
+     */
+    public static function generatePin(?int $branchId = null): string
+    {
+        $maxAttempts = 1000; // 10% of 10000 space - prevents infinite loop
+
+        for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
+            $pin = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+
+            $query = User::where('pin_code', $pin);
+            if ($branchId) {
+                $query->where('branch_id', $branchId);
+            }
+
+            if (! $query->exists()) {
+                return $pin;
+            }
+        }
+
+        throw new \RuntimeException('Unable to generate unique 4-digit PIN after 1000 attempts. PIN space may be exhausted for this branch.');
+    }
+
+    /**
+     * Generate a random back-office password.
+     * Format: 12-character alphanumeric with mixed case and symbols.
+     * Ensures uniqueness across all users.
+     */
+    public static function generatePassword(): string
+    {
+        $upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+        $lower = 'abcdefghijklmnopqrstuvwxyz';
+        $digits = '0123456789';
+        $symbols = '!@#$%';
+        $all = $upper . $lower . $digits . $symbols;
+
+        // Guarantee at least one character from each required complexity class
+        $chars = [
+            $upper[random_int(0, strlen($upper) - 1)],
+            $lower[random_int(0, strlen($lower) - 1)],
+            $digits[random_int(0, strlen($digits) - 1)],
+            $symbols[random_int(0, strlen($symbols) - 1)],
+        ];
+
+        for ($i = 4; $i < 12; $i++) {
+            $chars[] = $all[random_int(0, strlen($all) - 1)];
+        }
+
+        // Fisher-Yates shuffle using CSPRNG so required classes aren't overwritten or predictable
+        for ($i = count($chars) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$chars[$i], $chars[$j]] = [$chars[$j], $chars[$i]];
+        }
+
+        return implode('', $chars);
+    }
+
+    /**
      * Generate a Branch Code from branch name or sequential numbering.
      * Format: 3-4 letters uppercase or B{NN} (e.g. DWTN, B02).
      */

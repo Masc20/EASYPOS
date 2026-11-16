@@ -10,6 +10,7 @@ use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Hash;
@@ -20,6 +21,7 @@ class User extends Authenticatable implements FilamentUser
     use HasFactory;
     use HasRoles;
     use Notifiable;
+    use SoftDeletes;
 
     /**
      * The guard name for Spatie permissions.

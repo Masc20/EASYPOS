@@ -29,13 +29,13 @@ class CreateMealAction
         }
 
         $meal = Meal::create([
-            'name' => trim($data['name']),
+            'name' => $this->sanitize($data['name'] ?? '') ?? '',
             'menu_code' => !empty($data['menu_code']) ? strtoupper(trim($data['menu_code'])) : null,
             'category_id' => $data['category_id'],
             'branch_id' => $branchId,
             'price' => (float) $data['price'],
             'cost_price' => !empty($data['cost_price']) ? (float) $data['cost_price'] : null,
-            'description' => !empty($data['description']) ? trim($data['description']) : null,
+            'description' => array_key_exists('description', $data) ? $this->sanitize($data['description']) : null,
             'is_available' => (bool) ($data['is_available'] ?? true),
             'track_stock' => (bool) ($data['track_stock'] ?? false),
             'stock_quantity' => !empty($data['track_stock']) ? (int) ($data['stock_quantity'] ?? 0) : null,
@@ -61,5 +61,21 @@ class CreateMealAction
         event(new MealCreated($meal));
 
         return $meal;
+    }
+
+    /**
+     * Sanitize text input by removing script/style/iframe container blocks and stripping HTML tags.
+     */
+    private function sanitize(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/<(script|style|iframe)\b[^>]*>(.*?)<\/\1>/is', '', (string) $value);
+        $cleaned = strip_tags($cleaned);
+        $cleaned = trim($cleaned);
+
+        return $cleaned !== '' ? $cleaned : null;
     }
 }

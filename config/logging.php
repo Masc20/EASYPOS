@@ -73,6 +73,16 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'security' => [
+            'driver' => 'daily',
+            'path' => env('APP_ENV') === 'testing'
+                ? sys_get_temp_dir().DIRECTORY_SEPARATOR.'security.log'
+                : storage_path('logs/security.log'),
+            'level' => env('LOG_LEVEL', 'warning'),
+            'days' => 90,
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

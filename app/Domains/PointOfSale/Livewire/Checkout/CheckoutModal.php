@@ -225,7 +225,10 @@ class CheckoutModal extends Component
             $this->dispatch('show-receipt', orderId: $order->id);
 
         } catch (\Throwable $e) {
-            $this->errorMessage = $e->getMessage();
+            \Illuminate\Support\Facades\Log::error($e);
+            $this->errorMessage = app()->environment('production')
+                ? 'Payment processing failed. Please try again or consult a manager.'
+                : $e->getMessage();
         }
     }
 
