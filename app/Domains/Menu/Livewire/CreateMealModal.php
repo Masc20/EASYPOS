@@ -6,6 +6,7 @@ use App\Domains\Menu\Actions\CreateMealAction;
 use App\Domains\Menu\Models\MealCategory;
 use App\Support\Services\CodeGeneratorService;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -26,7 +27,12 @@ class CreateMealModal extends Component
     {
         return [
             'name' => 'required|string|max:150',
-            'menu_code' => 'nullable|string|max:20|unique:meals,menu_code',
+            'menu_code' => [
+                'nullable',
+                'string',
+                'max:20',
+                Rule::unique('meals', 'menu_code')->whereNull('deleted_at'),
+            ],
             'category_id' => 'required|exists:meal_categories,id',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:1000',
@@ -124,6 +130,10 @@ class CreateMealModal extends Component
         if (blank($this->menu_code) && $this->category_id) {
             $this->menu_code = CodeGeneratorService::generateMenuCode((int) $this->category_id);
         }
+
+        $this->menu_code = filled($this->menu_code)
+            ? strtoupper(trim((string) $this->menu_code))
+            : null;
 
         $this->validate();
 

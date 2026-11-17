@@ -99,6 +99,7 @@ class CreateOrderAction
 
                     // 3. Acquire pessimistic locks in deterministic ascending order
                     $meals = Meal::whereIn('id', $sortedMealIds)
+                        ->with(['branchAvailabilities' => fn ($q) => $q->where('branch_id', $branch->id)])
                         ->orderBy('id', 'asc')
                         ->lockForUpdate()
                         ->get()
@@ -115,14 +116,15 @@ class CreateOrderAction
                             throw new InvalidArgumentException("Meal '{$meal->name}' is not available for this branch.");
                         }
 
-                        if ($meal->isSoldOut()) {
+                        if ($meal->isSoldOutForBranch($branch->id)) {
                             throw new InvalidArgumentException("Meal '{$meal->name}' is marked as 86'd / Sold Out.");
                         }
 
-                        if ($meal->track_stock) {
+                        if ($meal->trackStockForBranch($branch->id)) {
+                            $availableQty = $meal->stockQuantityForBranch($branch->id) ?? 0;
                             $requiredQty = $consolidatedQuantities[$mealId];
-                            if ($meal->stock_quantity < $requiredQty) {
-                                throw new InvalidArgumentException("Insufficient portions left for '{$meal->name}'. Only {$meal->stock_quantity} available.");
+                            if ($availableQty < $requiredQty) {
+                                throw new InvalidArgumentException("Insufficient portions left for '{$meal->name}'. Only {$availableQty} available.");
                             }
                         }
                     }
@@ -130,13 +132,33 @@ class CreateOrderAction
                     // 5. Batch stock update per distinct tracked dish in a single consolidated operation
                     foreach ($sortedMealIds as $mealId) {
                         $meal = $meals->get($mealId);
-                        if ($meal && $meal->track_stock) {
+                        if ($meal && $meal->trackStockForBranch($branch->id)) {
                             $requiredQty = $consolidatedQuantities[$mealId];
-                            $newStock = $meal->stock_quantity - $requiredQty;
-                            $meal->update([
-                                'stock_quantity' => $newStock,
-                                'is_available' => $newStock > 0,
-                            ]);
+                            $override = $meal->branch_id === null
+                                ? DB::table('meal_branch_availabilities')
+                                    ->where('meal_id', $meal->id)
+                                    ->where('branch_id', $branch->id)
+                                    ->whereNotNull('track_stock')
+                                    ->lockForUpdate()
+                                    ->first()
+                                : null;
+
+                            if ($override) {
+                                $newStock = max(0, (int) $override->stock_quantity - $requiredQty);
+                                DB::table('meal_branch_availabilities')
+                                    ->where('id', $override->id)
+                                    ->update([
+                                        'stock_quantity' => $newStock,
+                                        'is_available' => $newStock > 0,
+                                        'updated_at' => now(),
+                                    ]);
+                            } else {
+                                $newStock = $meal->stock_quantity - $requiredQty;
+                                $meal->update([
+                                    'stock_quantity' => $newStock,
+                                    'is_available' => $newStock > 0,
+                                ]);
+                            }
                         }
                     }
 

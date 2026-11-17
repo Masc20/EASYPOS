@@ -177,10 +177,22 @@ class VoidOrderAction
             $items = DB::table('order_items')->where('order_id', $order->id)->get(['meal_id', 'quantity']);
             foreach ($items as $item) {
                 if ($item->meal_id) {
-                    DB::table('meals')
-                        ->where('id', $item->meal_id)
+                    $branchOverride = DB::table('meal_branch_availabilities')
+                        ->where('meal_id', $item->meal_id)
+                        ->where('branch_id', $order->branch_id)
                         ->where('track_stock', true)
-                        ->increment('stock_quantity', $item->quantity);
+                        ->first();
+
+                    if ($branchOverride) {
+                        DB::table('meal_branch_availabilities')
+                            ->where('id', $branchOverride->id)
+                            ->increment('stock_quantity', $item->quantity);
+                    } else {
+                        DB::table('meals')
+                            ->where('id', $item->meal_id)
+                            ->where('track_stock', true)
+                            ->increment('stock_quantity', $item->quantity);
+                    }
                 }
             }
 

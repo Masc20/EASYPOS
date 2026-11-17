@@ -28,7 +28,7 @@
                     <div
                         class="inline-flex items-center gap-1.5 rounded-sm border border-brand-border bg-brand-bg px-2.5 py-1 text-xs shadow-2xs">
                         <span class="font-medium text-brand-text">{{ $special->name }}</span>
-                        <span class="font-bold text-brand-secondary">({{ $special->stock_quantity }} left)</span>
+                        <span class="font-bold text-brand-secondary">({{ $special->stockQuantityForBranch($branchId) }} left)</span>
                     </div>
                 @endforeach
             </div>

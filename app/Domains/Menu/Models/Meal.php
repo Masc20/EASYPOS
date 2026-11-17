@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Meal extends Model
@@ -45,6 +46,126 @@ class Meal extends Model
     public function isSoldOut(): bool
     {
         return ! $this->is_available || ($this->track_stock && $this->stock_quantity <= 0);
+    }
+
+    /**
+     * Resolve the branch availability override record if applicable.
+     */
+    public function branchOverrideFor(?int $branchId): ?MealBranchAvailability
+    {
+        if ($this->branch_id !== null || $branchId === null) {
+            return null;
+        }
+
+        return $this->relationLoaded('branchAvailabilities')
+            ? $this->branchAvailabilities->firstWhere('branch_id', $branchId)
+            : $this->branchAvailabilities()->where('branch_id', $branchId)->first();
+    }
+
+    /**
+     * Determine effective availability for a given branch.
+     * For global/shared dishes (branch_id === null), checks branch-level 86'd overrides first.
+     */
+    public function isAvailableForBranch(?int $branchId): bool
+    {
+        $override = $this->branchOverrideFor($branchId);
+        if ($override !== null) {
+            return (bool) $override->is_available;
+        }
+
+        return (bool) $this->is_available;
+    }
+
+    /**
+     * Determine whether portion tracking is enabled for a given branch.
+     */
+    public function trackStockForBranch(?int $branchId): bool
+    {
+        $override = $this->branchOverrideFor($branchId);
+        if ($override !== null && $override->track_stock !== null) {
+            return (bool) $override->track_stock;
+        }
+
+        return (bool) $this->track_stock;
+    }
+
+    /**
+     * Determine effective remaining portion count for a given branch.
+     */
+    public function stockQuantityForBranch(?int $branchId): ?int
+    {
+        $override = $this->branchOverrideFor($branchId);
+        if ($override !== null && $override->track_stock !== null) {
+            return $override->track_stock ? (int) ($override->stock_quantity ?? 0) : null;
+        }
+
+        return $this->track_stock ? (int) ($this->stock_quantity ?? 0) : null;
+    }
+
+    /**
+     * Determine if the meal is sold-out (86'd) for a given branch.
+     */
+    public function isSoldOutForBranch(?int $branchId): bool
+    {
+        if (! $this->isAvailableForBranch($branchId)) {
+            return true;
+        }
+
+        return $this->trackStockForBranch($branchId) && (($this->stockQuantityForBranch($branchId) ?? 0) <= 0);
+    }
+
+    /**
+     * Scope query to dishes effectively marked In Stock (is_available = true) for the given branch.
+     */
+    public function scopeInStockForBranch(Builder $query, ?int $branchId): Builder
+    {
+        if ($branchId === null) {
+            return $query->where('is_available', true);
+        }
+
+        return $query->where(function (Builder $q) use ($branchId) {
+            $q->where(function (Builder $branchMeal) {
+                $branchMeal->whereNotNull('meals.branch_id')
+                    ->where('meals.is_available', true);
+            })->orWhere(function (Builder $globalMeal) use ($branchId) {
+                $globalMeal->whereNull('meals.branch_id')
+                    ->where(function (Builder $effective) use ($branchId) {
+                        $effective->whereHas('branchAvailabilities', function (Builder $ov) use ($branchId) {
+                            $ov->where('branch_id', $branchId)->where('is_available', true);
+                        })->orWhere(function (Builder $noOv) use ($branchId) {
+                            $noOv->where('meals.is_available', true)
+                                ->whereDoesntHave('branchAvailabilities', fn (Builder $ov) => $ov->where('branch_id', $branchId));
+                        });
+                    });
+            });
+        });
+    }
+
+    /**
+     * Scope query to dishes effectively marked 86'd / Sold Out (is_available = false) for the given branch.
+     */
+    public function scopeEightSixForBranch(Builder $query, ?int $branchId): Builder
+    {
+        if ($branchId === null) {
+            return $query->where('is_available', false);
+        }
+
+        return $query->where(function (Builder $q) use ($branchId) {
+            $q->where(function (Builder $branchMeal) {
+                $branchMeal->whereNotNull('meals.branch_id')
+                    ->where('meals.is_available', false);
+            })->orWhere(function (Builder $globalMeal) use ($branchId) {
+                $globalMeal->whereNull('meals.branch_id')
+                    ->where(function (Builder $effective) use ($branchId) {
+                        $effective->whereHas('branchAvailabilities', function (Builder $ov) use ($branchId) {
+                            $ov->where('branch_id', $branchId)->where('is_available', false);
+                        })->orWhere(function (Builder $noOv) use ($branchId) {
+                            $noOv->where('meals.is_available', false)
+                                ->whereDoesntHave('branchAvailabilities', fn (Builder $ov) => $ov->where('branch_id', $branchId));
+                        });
+                    });
+            });
+        });
     }
 
     /**
@@ -108,5 +229,13 @@ class Meal extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Per-branch availability overrides for global/shared meals.
+     */
+    public function branchAvailabilities(): HasMany
+    {
+        return $this->hasMany(MealBranchAvailability::class, 'meal_id');
     }
 }

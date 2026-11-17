@@ -6,6 +6,7 @@ use App\Domains\Menu\Actions\UpdateMealAction;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -24,9 +25,31 @@ class EditMealModal extends Component
 
     protected function rules(): array
     {
+        $normalizedCode = filled($this->menu_code)
+            ? strtoupper(trim((string) $this->menu_code))
+            : null;
+
+        $loadedMeal = $this->mealId !== null ? Meal::find($this->mealId) : null;
+        $existingNormalizedCode = ($loadedMeal && filled($loadedMeal->menu_code))
+            ? strtoupper(trim((string) $loadedMeal->menu_code))
+            : null;
+
+        // Allow saving an unmodified menu_code even if legacy duplicate rows exist in the table.
+        $isUnchangedExistingCode = $loadedMeal !== null
+            && $normalizedCode !== null
+            && $existingNormalizedCode !== null
+            && $normalizedCode === $existingNormalizedCode;
+
+        $menuCodeRules = ['nullable', 'string', 'max:20'];
+        if (! $isUnchangedExistingCode) {
+            $menuCodeRules[] = Rule::unique('meals', 'menu_code')
+                ->ignore($this->mealId)
+                ->whereNull('deleted_at');
+        }
+
         return [
             'name' => 'required|string|max:150',
-            'menu_code' => 'nullable|string|max:20|unique:meals,menu_code,' . ($this->mealId ?? 'NULL') . ',id',
+            'menu_code' => $menuCodeRules,
             'category_id' => 'required|exists:meal_categories,id',
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:1000',
@@ -55,7 +78,21 @@ class EditMealModal extends Component
     #[On('edit-meal')]
     public function loadMeal(int $id): void
     {
-        $meal = Meal::forBranch(auth()->user()?->branch_id)->findOrFail($id);
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $meal = Meal::findOrFail($id);
+
+        if ($user && $user->isBranchScoped()) {
+            if ($meal->branch_id === null) {
+                abort(403, 'Unauthorized. Global menu dishes can only be modified by system administrators.');
+            }
+            if ((int) $meal->branch_id !== (int) $user->branch_id) {
+                abort(403, 'Unauthorized. You cannot modify a dish belonging to another branch.');
+            }
+        }
 
         $this->mealId = $meal->id;
         $this->name = $meal->name;
@@ -76,12 +113,21 @@ class EditMealModal extends Component
     {
         $this->isOpen = false;
         $this->mealId = null;
+        $this->name = '';
+        $this->menu_code = null;
+        $this->category_id = null;
+        $this->price = '';
+        $this->description = null;
+        $this->is_available = true;
+        $this->track_stock = false;
+        $this->stock_quantity = null;
+        $this->resetValidation();
         $this->dispatch('close-modal', 'edit-meal-modal');
     }
 
     public function updatedCategoryId($value): void
     {
-        if ($value) {
+        if ($value && blank($this->menu_code)) {
             $this->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $value);
         }
     }
@@ -93,24 +139,30 @@ class EditMealModal extends Component
             abort(403, 'Unauthorized.');
         }
 
-        $this->validate();
+        if ($this->mealId === null) {
+            $this->closeModal();
 
-        if ($this->mealId) {
-            $action->handle($this->mealId, [
-                'name' => $this->name,
-                'menu_code' => $this->menu_code,
-                'category_id' => $this->category_id,
-                'price' => $this->price,
-                'description' => $this->description,
-                'is_available' => $this->is_available,
-                'track_stock' => $this->track_stock,
-                'stock_quantity' => $this->stock_quantity,
-            ]);
+            return;
         }
 
-        $this->isOpen = false;
-        $this->mealId = null;
-        $this->dispatch('close-modal', 'edit-meal-modal');
+        $this->menu_code = filled($this->menu_code)
+            ? strtoupper(trim((string) $this->menu_code))
+            : null;
+
+        $this->validate();
+
+        $action->handle($this->mealId, [
+            'name' => $this->name,
+            'menu_code' => $this->menu_code,
+            'category_id' => $this->category_id,
+            'price' => $this->price,
+            'description' => $this->description,
+            'is_available' => $this->is_available,
+            'track_stock' => $this->track_stock,
+            'stock_quantity' => $this->stock_quantity,
+        ]);
+
+        $this->closeModal();
         $this->dispatch('meal-saved');
     }
 

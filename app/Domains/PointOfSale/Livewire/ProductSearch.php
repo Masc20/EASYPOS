@@ -20,12 +20,14 @@ class ProductSearch extends Component
             return;
         }
 
-        $meal = Meal::forBranch(auth()->user()?->branch_id)
+        $branchId = auth()->user()?->branch_id;
+        $meal = Meal::forBranch($branchId)
+            ->with(['branchAvailabilities' => fn ($q) => $q->when($branchId !== null, fn ($sub) => $sub->where('branch_id', $branchId))])
             ->where('menu_code', strtoupper($code))
             ->where('is_active', true)
             ->first();
 
-        if ($meal && ! $meal->isSoldOut()) {
+        if ($meal && ! $meal->isSoldOutForBranch($branchId)) {
             $this->dispatch('add-to-cart-client', [
                 'id' => $meal->id,
                 'name' => $meal->name,
@@ -36,7 +38,7 @@ class ProductSearch extends Component
             $this->dispatch('add-to-cart', mealId: $meal->id);
             $this->query = '';
             $this->dispatch('catalog-search', query: '');
-        } elseif ($meal && $meal->isSoldOut()) {
+        } elseif ($meal && $meal->isSoldOutForBranch($branchId)) {
             $this->dispatch('pos-alert', [
                 'type' => 'warning',
                 'message' => "Item '{$meal->name}' ({$meal->menu_code}) is 86'd (Sold Out) and cannot be added to order.",

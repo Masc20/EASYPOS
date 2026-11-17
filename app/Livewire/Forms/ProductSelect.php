@@ -69,7 +69,7 @@ class ProductSelect extends Component
 
         if (strlen(trim($this->search)) >= 1) {
             $query = Meal::query()
-                ->where('is_available', true)
+                ->inStockForBranch($this->branchId)
                 ->where(function ($q) {
                     $term = '%' . trim($this->search) . '%';
                     $q->where('name', 'like', $term)

@@ -16,20 +16,31 @@ class DailySpecialsBoard extends Component
 
     public function render()
     {
-        $branchId = auth()->user()?->branch_id;
+        $user = auth()->user();
+        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
+        $branchId = $isBranchScoped ? (int) $user->branch_id : null;
 
-        $limitedSpecials = Meal::forBranch($branchId)
-            ->where('track_stock', true)
-            ->where('is_available', true)
-            ->orderBy('stock_quantity')
-            ->limit(15)
-            ->get();
+        $limitedSpecials = Meal::query()
+            ->when($isBranchScoped, fn ($q) => $q->forBranch($branchId))
+            ->when($isBranchScoped && $branchId !== null, fn ($q) => $q->with([
+                'branchAvailabilities' => fn ($rel) => $rel->where('branch_id', $branchId),
+            ]))
+            ->inStockForBranch($branchId)
+            ->get()
+            ->filter(fn (Meal $meal) => $meal->trackStockForBranch($branchId))
+            ->sortBy(fn (Meal $meal) => $meal->stockQuantityForBranch($branchId) ?? PHP_INT_MAX)
+            ->take(15)
+            ->values();
 
-        $soldOutCount = Meal::forBranch($branchId)->where('is_available', false)->count();
+        $soldOutCount = Meal::query()
+            ->when($isBranchScoped, fn ($q) => $q->forBranch($branchId))
+            ->eightSixForBranch($branchId)
+            ->count();
 
         return view('livewire.menu.daily-specials-board', [
             'limitedSpecials' => $limitedSpecials,
             'soldOutCount' => $soldOutCount,
+            'branchId' => $branchId,
             'currencySymbol' => config('pos.currency.symbol', '₱'),
         ]);
     }

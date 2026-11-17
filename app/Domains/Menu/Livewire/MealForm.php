@@ -5,6 +5,7 @@ namespace App\Domains\Menu\Livewire;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\Rule;
 use Livewire\Attributes\Computed;
 use Livewire\Attributes\On;
 use Livewire\Component;
@@ -26,9 +27,30 @@ class MealForm extends Component
 
     protected function rules(): array
     {
+        $normalizedCode = filled($this->menu_code)
+            ? strtoupper(trim((string) $this->menu_code))
+            : null;
+
+        $loadedMeal = $this->mealId !== null ? Meal::find($this->mealId) : null;
+        $existingNormalizedCode = ($loadedMeal && filled($loadedMeal->menu_code))
+            ? strtoupper(trim((string) $loadedMeal->menu_code))
+            : null;
+
+        $isUnchangedExistingCode = $loadedMeal !== null
+            && $normalizedCode !== null
+            && $existingNormalizedCode !== null
+            && $normalizedCode === $existingNormalizedCode;
+
+        $menuCodeRules = ['nullable', 'string', 'max:20'];
+        if (! $isUnchangedExistingCode) {
+            $menuCodeRules[] = Rule::unique('meals', 'menu_code')
+                ->ignore($this->mealId)
+                ->whereNull('deleted_at');
+        }
+
         return [
             'name' => 'required|string|max:150',
-            'menu_code' => 'nullable|string|max:20|unique:meals,menu_code,' . ($this->mealId ?? 'NULL') . ',id',
+            'menu_code' => $menuCodeRules,
             'category_id' => 'required|exists:meal_categories,id',
             'price' => 'required|numeric|min:0',
             'cost_price' => 'nullable|numeric|min:0',
@@ -75,7 +97,21 @@ class MealForm extends Component
     #[On('edit-meal')]
     public function loadMeal(int $id): void
     {
-        $meal = Meal::forBranch(auth()->user()?->branch_id)->findOrFail($id);
+        $user = auth()->user();
+        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $meal = Meal::findOrFail($id);
+
+        if ($user && $user->isBranchScoped()) {
+            if ($meal->branch_id === null) {
+                abort(403, 'Unauthorized. Global menu dishes can only be modified by system administrators.');
+            }
+            if ((int) $meal->branch_id !== (int) $user->branch_id) {
+                abort(403, 'Unauthorized. You cannot modify a dish belonging to another branch.');
+            }
+        }
 
         $this->mealId = $meal->id;
         $this->name = $meal->name;
@@ -124,6 +160,10 @@ class MealForm extends Component
         if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
             abort(403, 'Unauthorized.');
         }
+
+        $this->menu_code = filled($this->menu_code)
+            ? strtoupper(trim((string) $this->menu_code))
+            : null;
 
         $this->validate();
 

@@ -40,10 +40,12 @@ class CheckoutCart extends Component
     #[On('add-to-cart')]
     public function addItem(int $mealId): void
     {
-        $meal = Meal::forBranch(auth()->user()?->branch_id)
+        $branchId = auth()->user()?->branch_id;
+        $meal = Meal::forBranch($branchId)
+            ->with(['branchAvailabilities' => fn ($q) => $q->when($branchId !== null, fn ($sub) => $sub->where('branch_id', $branchId))])
             ->select(['id', 'branch_id', 'name', 'menu_code', 'price', 'is_available', 'track_stock', 'stock_quantity'])
             ->find($mealId);
-        if (! $meal || $meal->isSoldOut()) {
+        if (! $meal || $meal->isSoldOutForBranch($branchId)) {
             $this->dispatch('pos-alert', [
                 'type' => 'warning',
                 'message' => "Item '{$meal?->name}' is 86'd (Sold Out) and cannot be added to order.",
@@ -52,7 +54,7 @@ class CheckoutCart extends Component
             return;
         }
 
-        $maxQty = $meal->track_stock ? $meal->stock_quantity : null;
+        $maxQty = $meal->trackStockForBranch($branchId) ? $meal->stockQuantityForBranch($branchId) : null;
 
         // Check if item already exists in cart
         foreach ($this->items as $index => $item) {
@@ -184,21 +186,25 @@ class CheckoutCart extends Component
             return true;
         }
 
+        $branchId = auth()->user()?->branch_id;
         $mealIds = array_column($this->items, 'meal_id');
-        $meals = Meal::whereIn('id', $mealIds)->get()->keyBy('id');
+        $meals = Meal::whereIn('id', $mealIds)
+            ->with(['branchAvailabilities' => fn ($q) => $q->when($branchId !== null, fn ($sub) => $sub->where('branch_id', $branchId))])
+            ->get()
+            ->keyBy('id');
         $hasSoldOut = false;
         $soldOutNames = [];
 
         foreach ($this->items as &$item) {
             $meal = $meals->get($item['meal_id']);
-            if (! $meal || $meal->isSoldOut()) {
+            if (! $meal || $meal->isSoldOutForBranch($branchId)) {
                 $item['is_sold_out'] = true;
                 $hasSoldOut = true;
                 $soldOutNames[] = $item['name'];
             } else {
                 $item['is_sold_out'] = false;
-                if ($meal->track_stock) {
-                    $item['max_quantity'] = $meal->stock_quantity;
+                if ($meal->trackStockForBranch($branchId)) {
+                    $item['max_quantity'] = $meal->stockQuantityForBranch($branchId);
                 }
             }
         }

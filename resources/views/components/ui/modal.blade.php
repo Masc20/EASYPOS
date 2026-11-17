@@ -10,7 +10,17 @@
     };
 @endphp
 
-<div x-data="{ show: false, name: '{{ $name }}' }" x-show="show"
+<div x-data="{
+    show: false,
+    name: '{{ $name }}',
+    init() {
+        this.$watch('show', (value, oldValue) => {
+            if (oldValue && !value) {
+                this.$dispatch('modal-closed', this.name);
+            }
+        });
+    }
+}" x-show="show"
     x-on:open-modal.window="
         let d = $event.detail;
         let target = typeof d === 'string' ? d : (Array.isArray(d) ? d[0] : (d?.name || null));

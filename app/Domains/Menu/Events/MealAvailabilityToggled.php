@@ -13,7 +13,9 @@ class MealAvailabilityToggled implements ShouldBroadcast
     use Dispatchable, SerializesModels;
 
     public function __construct(
-        public Meal $meal
+        public Meal $meal,
+        public ?int $branchId = null,
+        public ?bool $effectiveAvailability = null,
     ) {}
 
     /**
@@ -21,7 +23,7 @@ class MealAvailabilityToggled implements ShouldBroadcast
      */
     public function broadcastOn(): array
     {
-        $target = $this->meal->branch_id ?? 'global';
+        $target = $this->branchId ?? $this->meal->branch_id ?? 'global';
 
         return [
             new PrivateChannel('branch.'.$target),
@@ -35,8 +37,8 @@ class MealAvailabilityToggled implements ShouldBroadcast
     {
         return [
             'meal_id' => $this->meal->id,
-            'is_available' => (bool) $this->meal->is_available,
-            'branch_id' => $this->meal->branch_id,
+            'is_available' => $this->effectiveAvailability ?? (bool) $this->meal->is_available,
+            'branch_id' => $this->branchId ?? $this->meal->branch_id,
             'name' => $this->meal->name,
         ];
     }

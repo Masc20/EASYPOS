@@ -60,7 +60,8 @@ class POSKitchenSyncTest extends TestCase
         $this->assertGreaterThanOrEqual($before, $version);
         $this->assertLessThanOrEqual($after, $version);
 
-        // Test global dish availability toggle (branch_id = null)
+        // Test branch-scoped Chef toggling a global dish (branch_id = null):
+        // must bump ONLY the Chef's branch version and leave branch_global_menu_version untouched.
         $globalMeal = Meal::create([
             'branch_id' => null,
             'category_id' => $meal->category_id,
@@ -69,6 +70,23 @@ class POSKitchenSyncTest extends TestCase
             'is_available' => true,
             'is_active' => true,
         ]);
+
+        Cache::forget("branch_{$this->chef->branch_id}_menu_version");
+        Cache::forget('branch_global_menu_version');
+
+        $beforeChefGlobal = now()->timestamp;
+        $action->handle($globalMeal);
+        $afterChefGlobal = now()->timestamp;
+
+        $chefBranchVersion = Cache::get("branch_{$this->chef->branch_id}_menu_version");
+        $this->assertNotNull($chefBranchVersion);
+        $this->assertGreaterThanOrEqual($beforeChefGlobal, $chefBranchVersion);
+        $this->assertLessThanOrEqual($afterChefGlobal, $chefBranchVersion);
+        $this->assertNull(Cache::get('branch_global_menu_version'));
+
+        // Test HQ Owner toggling a global dish (branch_id = null): bumps branch_global_menu_version
+        $owner = User::where('email', 'owner@easypos.com')->firstOrFail();
+        $this->actingAs($owner);
 
         $beforeGlobal = now()->timestamp;
         $action->handle($globalMeal);

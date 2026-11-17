@@ -11,6 +11,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\Rules\Unique;
 
 class MealForm
 {
@@ -57,7 +58,14 @@ class MealForm
                 TextInput::make('menu_code')
                     ->label('Menu Code (Auto-Generated)')
                     ->placeholder('Auto-generated from category')
-                    ->maxLength(50),
+                    ->maxLength(20)
+                    ->dehydrateStateUsing(fn (?string $state): ?string => filled($state) ? strtoupper(trim($state)) : null)
+                    ->unique(
+                        table: 'meals',
+                        column: 'menu_code',
+                        ignoreRecord: true,
+                        modifyRuleUsing: fn (Unique $rule) => $rule->whereNull('deleted_at'),
+                    ),
 
                 TextInput::make('price')
                     ->label('Selling Price')

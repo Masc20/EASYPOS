@@ -63,13 +63,15 @@ class MealCatalog extends Component
 
     public function render()
     {
+        $branchId = auth()->user()?->branch_id;
+
         $categories = MealCategory::query()
             ->where('is_active', true)
             ->orderBy('display_order')
             ->get();
 
         $meals = Meal::query()
-            ->forBranch(auth()->user()?->branch_id)
+            ->forBranch($branchId)
             ->select([
                 'id',
                 'branch_id',
@@ -83,18 +85,22 @@ class MealCatalog extends Component
                 'stock_quantity',
                 'is_active',
             ])
-            ->with(['category:id,name,slug'])
+            ->with([
+                'category:id,name,slug',
+                ...($branchId !== null ? ['branchAvailabilities' => fn ($q) => $q->where('branch_id', $branchId)] : []),
+            ])
             ->where('is_active', true)
             ->orderBy('category_id')
             ->orderBy('name')
             ->get();
 
-        $soldOutCount = $meals->filter(fn (Meal $m) => $m->isSoldOut())->count();
+        $soldOutCount = $meals->filter(fn (Meal $m) => $m->isSoldOutForBranch($branchId))->count();
 
         return view('livewire.point-of-sale.meal-catalog', [
             'categories' => $categories,
             'meals' => $meals,
             'soldOutCount' => $soldOutCount,
+            'branchId' => $branchId,
         ]);
     }
 }

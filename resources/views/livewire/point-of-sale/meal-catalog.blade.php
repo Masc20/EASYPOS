@@ -61,16 +61,19 @@
     <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
         @forelse ($meals as $meal)
             @php
-                $isSoldOut = $meal->isSoldOut();
+                $isSoldOut = $meal->isSoldOutForBranch($branchId ?? null);
+                $trackStock = $meal->trackStockForBranch($branchId ?? null);
+                $stockQuantity = $meal->stockQuantityForBranch($branchId ?? null);
                 $searchableText = addslashes(strtolower($meal->name . ' ' . ($meal->menu_code ?? '')));
             @endphp
-            <div x-show="matches({{ $meal->category_id }}, '{{ $searchableText }}', {{ $isSoldOut ? 'true' : 'false' }})"
+            <div wire:key="pos-meal-{{ $meal->id }}"
+                x-show="matches({{ $meal->category_id }}, '{{ $searchableText }}', {{ $isSoldOut ? 'true' : 'false' }})"
                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
-                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $meal->track_stock ? $meal->stock_quantity : 'null' }} })"
+                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? ($stockQuantity ?? 0) : 'null' }} })"
                     role="button"
                     tabindex="0"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $meal->track_stock ? $meal->stock_quantity : 'null' }} }); }"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? ($stockQuantity ?? 0) : 'null' }} }); }"
                 @else
                     x-on:click="$dispatch('pos-alert', { type: 'warning', message: 'Item \'{{ addslashes($meal->name) }}\' is 86\'d (Sold Out) and cannot be added.' })"
                     role="button"
@@ -103,10 +106,10 @@
                                 </svg>
                                 86'd / Sold Out
                             </span>
-                        @elseif ($meal->track_stock)
+                        @elseif ($trackStock)
                             <span
-                                class="inline-flex items-center rounded-sm {{ $meal->stock_quantity <= 5 ? 'bg-amber-500/15 border-amber-500/30 text-amber-500' : 'bg-brand-success/15 border-brand-success/30 text-brand-success' }} px-1.5 py-0.5 text-[10px] font-bold">
-                                {{ $meal->stock_quantity }} left
+                                class="inline-flex items-center rounded-sm {{ ($stockQuantity ?? 0) <= 5 ? 'bg-amber-500/15 border-amber-500/30 text-amber-500' : 'bg-brand-success/15 border-brand-success/30 text-brand-success' }} px-1.5 py-0.5 text-[10px] font-bold">
+                                {{ $stockQuantity ?? 0 }} left
                             </span>
                         @endif
                     </div>
