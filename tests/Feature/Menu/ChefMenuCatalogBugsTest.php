@@ -207,7 +207,7 @@ class ChefMenuCatalogBugsTest extends TestCase
         $table = Livewire::actingAs($this->chef1)
             ->test(MealCatalogTable::class)
             ->assertSee('Creamy Leche Flan')
-            ->assertSee('HQ / Shared')
+            ->assertSee('Global')
             ->assertDontSeeHtml("openDelete({$this->globalMeal->id},")
             ->assertDontSeeHtml("Livewire.dispatch('edit-meal', { id: {$this->globalMeal->id} })")
             ->assertSeeHtml("openDelete({$this->branch1Meal->id},")

@@ -40,7 +40,7 @@ class AuthTest extends TestCase
         $response->assertSee('Enter your employee ID and 4-digit PIN');
         $response->assertSee('Employee ID');
         $response->assertSee('4-Digit PIN');
-        $response->assertSee('Clock In / Enter Terminal');
+        $response->assertSee('Enter Terminal');
         $response->assertSee('glow.svg');
         $response->assertSee('bg.svg');
         $response->assertSee('Secure Multi-Branch POS System');

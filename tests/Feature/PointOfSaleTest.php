@@ -402,13 +402,14 @@ class PointOfSaleTest extends TestCase
         $action = new ToggleMealAvailabilityAction();
         $result = $action->handle($risotto);
 
-        $this->assertFalse($result->is_available);
-        $this->assertFalse($risotto->fresh()->is_available);
+        $this->assertFalse($result->isAvailableForBranch($chef->branch_id));
+        $this->assertFalse($risotto->fresh()->isAvailableForBranch($chef->branch_id));
+        $this->assertTrue($risotto->fresh()->is_available); // Global default remains untouched
         Event::assertDispatched(MealAvailabilityToggled::class);
 
         // Toggle back to available
         $result2 = $action->handle($risotto);
-        $this->assertTrue($result2->is_available);
-        $this->assertTrue($risotto->fresh()->is_available);
+        $this->assertTrue($result2->isAvailableForBranch($chef->branch_id));
+        $this->assertTrue($risotto->fresh()->isAvailableForBranch($chef->branch_id));
     }
 }
