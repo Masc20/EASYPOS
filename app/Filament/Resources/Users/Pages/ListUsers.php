@@ -92,8 +92,9 @@ class ListUsers extends ListRecords
                                 Action::make('generate_pin')
                                     ->icon('heroicon-o-arrow-path')
                                     ->tooltip('Generate random 4-digit PIN')
-                                    ->action(function (callable $set) use ($defaultBranchId) {
-                                        $set('pin_code', CodeGeneratorService::generatePin($defaultBranchId));
+                                    ->action(function (callable $set, callable $get) {
+                                        $branchId = filled($get('branch_id')) ? (int) $get('branch_id') : null;
+                                        $set('pin_code', CodeGeneratorService::generatePin($branchId));
                                     })
                             ),
 
@@ -221,8 +222,9 @@ class ListUsers extends ListRecords
                                 Action::make('generate_pin')
                                     ->icon('heroicon-o-arrow-path')
                                     ->tooltip('Generate random 4-digit PIN')
-                                    ->action(function (callable $set) use ($defaultBranchId) {
-                                        $set('pin_code', CodeGeneratorService::generatePin($defaultBranchId));
+                                    ->action(function (callable $set, callable $get) {
+                                        $branchId = filled($get('branch_id')) ? (int) $get('branch_id') : null;
+                                        $set('pin_code', CodeGeneratorService::generatePin($branchId));
                                     })
                             ),
 
