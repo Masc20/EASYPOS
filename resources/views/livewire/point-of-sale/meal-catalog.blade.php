@@ -70,10 +70,10 @@
                 x-show="matches({{ $meal->category_id }}, '{{ $searchableText }}', {{ $isSoldOut ? 'true' : 'false' }})"
                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
-                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? ($stockQuantity ?? 0) : 'null' }} })"
+                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} })"
                     role="button"
                     tabindex="0"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? ($stockQuantity ?? 0) : 'null' }} }); }"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} }); }"
                 @else
                     x-on:click="$dispatch('pos-alert', { type: 'warning', message: 'Item \'{{ addslashes($meal->name) }}\' is 86\'d (Sold Out) and cannot be added.' })"
                     role="button"
@@ -104,7 +104,7 @@
                                         d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
                                         clip-rule="evenodd" />
                                 </svg>
-                                86'd / Sold Out
+                                Sold Out
                             </span>
                         @elseif ($trackStock)
                             <span
@@ -139,7 +139,7 @@
                     @else
                         <span
                             class="text-[10px] font-semibold uppercase tracking-wider text-brand-error bg-brand-error/10 px-1.5 py-0.5 rounded border border-brand-error/20">
-                            Unavailable
+                            -
                         </span>
                     @endif
                 </div>
