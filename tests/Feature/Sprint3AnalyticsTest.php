@@ -87,6 +87,8 @@ class Sprint3AnalyticsTest extends TestCase
      */
     public function test_best_selling_rankings_math_tie_breaking_and_cutoffs(): void
     {
+        // Exercise the period when the Manila business date is ahead of UTC.
+        $this->travelTo(Carbon::parse('2026-11-20 00:30:00', 'Asia/Manila'));
         $service = app(SalesAggregationService::class);
 
         // Order 1 (Today at 12:00 PM): 5 Classic Cheeseburgers (5 * 200 = 1000)
@@ -101,7 +103,7 @@ class Sprint3AnalyticsTest extends TestCase
             'total_amount' => 1000.00,
             'status' => 'completed',
             'payment_status' => 'paid',
-            'created_at' => Carbon::now()->setTime(12, 0),
+            'created_at' => Carbon::now('Asia/Manila')->setTime(12, 0)->utc(),
         ]);
         OrderItem::create([
             'order_id' => $order1->id,
@@ -124,7 +126,7 @@ class Sprint3AnalyticsTest extends TestCase
             'total_amount' => 1250.00,
             'status' => 'completed',
             'payment_status' => 'paid',
-            'created_at' => Carbon::now()->setTime(12, 30),
+            'created_at' => Carbon::now('Asia/Manila')->setTime(12, 30)->utc(),
         ]);
         OrderItem::create([
             'order_id' => $order2->id,
@@ -147,7 +149,7 @@ class Sprint3AnalyticsTest extends TestCase
             'total_amount' => 500.00,
             'status' => 'completed',
             'payment_status' => 'paid',
-            'created_at' => Carbon::now()->setTime(13, 0),
+            'created_at' => Carbon::now('Asia/Manila')->setTime(13, 0)->utc(),
         ]);
         OrderItem::create([
             'order_id' => $order3->id,

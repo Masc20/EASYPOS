@@ -112,7 +112,7 @@ class Login extends Component
                 metadata: ['reason' => 'branch_inactive'],
             );
             throw ValidationException::withMessages([
-                'emp_id' => 'Your assigned branch is currently inactive.',
+                'emp_id' => 'Branch is currently inactive',
             ]);
         }
 
@@ -120,6 +120,7 @@ class Login extends Component
         RateLimiter::clear($this->globalThrottleKey());
 
         Auth::login($user);
+        $this->pin = '';
         session()->regenerate();
 
         session([SystemConstants::SESSION_AUTH_METHOD => 'pin']);

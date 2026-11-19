@@ -317,7 +317,8 @@ class AdversarialM4TenancyAndConcurrencyChallengerTest extends TestCase
      */
     public function test_branch_daily_sequence_unique_composite_constraint(): void
     {
-        $date = '2026-11-20';
+        // Use a separate date from the sequences allocated by the setup orders.
+        $date = today()->addYears(1)->toDateString();
         BranchDailySequence::create([
             'branch_id' => $this->branchA->id,
             'sequence_date' => $date,

@@ -13,15 +13,31 @@
                     Reset
                 </x-filament::button>
 
-                <x-filament::button tag="a" color="success" size="sm" icon="heroicon-m-arrow-down-tray"
-                    :href="route('sales-records.export-csv', array_filter([
+                @php
+                    $exportFilters = array_filter([
                         'startDate' => $startDate,
                         'endDate' => $endDate,
                         'branchId' => $branchId,
                         'cashierId' => $cashierId,
-                    ], fn ($v) => filled($v)))">
-                    Export CSV Summary
-                </x-filament::button>
+                    ], fn ($value) => filled($value));
+                @endphp
+                <x-filament::dropdown placement="bottom-end">
+                    <x-slot name="trigger">
+                        <x-filament::button color="success" size="sm" icon="heroicon-m-arrow-down-tray">
+                            Export
+                        </x-filament::button>
+                    </x-slot>
+                    <x-filament::dropdown.list>
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
+                            :href="route('sales-records.export-csv', $exportFilters)" x-on:click="close()">
+                            CSV
+                        </x-filament::dropdown.list.item>
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
+                            :href="route('sales-records.export-excel', $exportFilters)" x-on:click="close()">
+                            Excel
+                        </x-filament::dropdown.list.item>
+                    </x-filament::dropdown.list>
+                </x-filament::dropdown>
             </div>
         </div>
     </x-slot>

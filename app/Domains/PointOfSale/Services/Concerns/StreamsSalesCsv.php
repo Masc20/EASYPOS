@@ -7,6 +7,12 @@ use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use OpenSpout\Common\Entity\Cell;
+use OpenSpout\Common\Entity\Cell\StringCell;
+use OpenSpout\Common\Entity\Row;
+use OpenSpout\Common\Entity\Style\Style;
+use OpenSpout\Writer\XLSX\Options;
+use OpenSpout\Writer\XLSX\Writer;
 
 trait StreamsSalesCsv
 {
@@ -23,13 +29,55 @@ trait StreamsSalesCsv
         ?int $branchId = null,
         ?int $cashierId = null
     ): void {
-        $effectiveBranchId = $this->resolveBranchScope($branchId);
-
-        // Emit UTF-8 BOM for Microsoft Excel compatibility
         fwrite($output, "\xEF\xBB\xBF");
+        fputcsv($output, $this->orderExportHeaders());
+        $this->writeOrderExportRows(function (array $row) use ($output): void {
+            foreach ([0, 1, 2, 3, 4, 5, 9, 10] as $index) {
+                $row[$index] = $this->sanitizeCsvCell($row[$index]);
+            }
+            fputcsv($output, $row);
+            fflush($output);
+        }, $startDate, $endDate, $branchId, $cashierId);
+        fflush($output);
+    }
 
-        // Output CSV Headers
-        fputcsv($output, [
+    public function streamOrdersExcel(
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $branchId = null,
+        ?int $cashierId = null
+    ): void {
+        $options = new Options();
+        $options->DEFAULT_COLUMN_WIDTH = 22;
+        $options->setColumnWidth(28, 2, 3, 4);
+        $writer = new Writer($options);
+        $writer->openToFile('php://output');
+
+        try {
+            $writer->getCurrentSheet()->setName('Sales Records');
+            $headerStyle = (new Style())->setFontBold()->setFontColor('FFFFFF')->setBackgroundColor('166534');
+            $writer->addRow(Row::fromValues($this->orderExportHeaders(), $headerStyle));
+            $moneyStyle = (new Style())->setFormat('#,##0.00');
+            $dateStyle = (new Style())->setFormat('yyyy-mm-dd hh:mm:ss');
+            $this->writeOrderExportRows(function (array $values) use ($writer, $moneyStyle, $dateStyle): void {
+                // Explicit text cells preserve identifiers and prevent formula interpretation.
+                $cells = array_map(fn ($value) => new StringCell((string) $value, null), $values);
+                foreach ([6, 7, 8] as $index) {
+                    $cells[$index] = Cell::fromValue((float) $values[$index], $moneyStyle);
+                }
+                if ($values[1] !== '') {
+                    $cells[1] = Cell::fromValue(Carbon::parse($values[1], config('app.business_timezone')), $dateStyle);
+                }
+                $writer->addRow(new Row($cells));
+            }, $startDate, $endDate, $branchId, $cashierId);
+        } finally {
+            $writer->close();
+        }
+    }
+
+    private function orderExportHeaders(): array
+    {
+        return [
             'Order #',
             'Date & Time (PHT)',
             'Branch',
@@ -41,7 +89,17 @@ trait StreamsSalesCsv
             'Net Total (PHP)',
             'Payment Method',
             'Status',
-        ]);
+        ];
+    }
+
+    private function writeOrderExportRows(
+        callable $writeRow,
+        ?string $startDate,
+        ?string $endDate,
+        ?int $branchId,
+        ?int $cashierId
+    ): void {
+        $effectiveBranchId = $this->resolveBranchScope($branchId);
 
         $query = DB::table('orders')
             ->leftJoin('branches', 'orders.branch_id', '=', 'branches.id')
@@ -76,7 +134,7 @@ trait StreamsSalesCsv
         }
 
         // Stream orders in 1,000-row chunks with a single batched payment lookup per chunk
-        $query->chunkById(1000, function ($orders) use ($output): void {
+        $query->chunkById(1000, function ($orders) use ($writeRow): void {
             $orderIds = $orders->pluck('id')->all();
 
             $paymentsByOrder = DB::table('payments')
@@ -94,32 +152,21 @@ trait StreamsSalesCsv
                     ? Carbon::parse($order->created_at)->timezone(config('app.business_timezone'))->format('Y-m-d H:i:s')
                     : '';
 
-                fputcsv($output, [
-                    $this->sanitizeCsvCell((string) $order->order_number),
-                    $this->sanitizeCsvCell($createdAt),
-                    $this->sanitizeCsvCell((string) ($order->branch_name ?? 'Global')),
-                    $this->sanitizeCsvCell((string) ($order->cashier_name ?? 'Staff')),
-                    $this->sanitizeCsvCell(strtoupper(str_replace('_', ' ', (string) $order->order_type))),
-                    $this->sanitizeCsvCell((string) ($order->table_number ?? '—')),
+                $writeRow([
+                    (string) $order->order_number,
+                    $createdAt,
+                    (string) ($order->branch_name ?? 'Global'),
+                    (string) ($order->cashier_name ?? 'Staff'),
+                    strtoupper(str_replace('_', ' ', (string) $order->order_type)),
+                    (string) ($order->table_number ?? '—'),
                     number_format((float) $order->subtotal, 2, '.', ''),
                     number_format((float) $order->discount_amount, 2, '.', ''),
                     number_format((float) $order->total_amount, 2, '.', ''),
-                    $this->sanitizeCsvCell(ucwords(str_replace('_', ' ', $paymentMethod))),
-                    $this->sanitizeCsvCell(ucfirst((string) $order->status)),
+                    ucwords(str_replace('_', ' ', $paymentMethod)),
+                    ucfirst((string) $order->status),
                 ]);
             }
-
-            fflush($output);
         }, 'orders.id', 'id');
-
-        fflush($output);
-
-        if (!app()->runningInConsole() && !app()->environment('testing')) {
-            if (ob_get_level() > 0) {
-                @ob_flush();
-            }
-            @flush();
-        }
     }
 
     /**

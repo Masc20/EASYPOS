@@ -48,6 +48,86 @@ class SalesRecordsTest extends TestCase
         $responseOwner->assertStatus(200);
     }
 
+    public function test_export_link_downloads_the_filtered_csv_without_livewire_navigation(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-15 12:00', 'Asia/Manila'));
+        $page = $this->actingAs($this->admin)->get('/admin/sales-records')->assertOk();
+        $html = new \DOMDocument();
+        $html->loadHTML($page->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING);
+        $link = (new \DOMXPath($html))->query('//a[contains(@href, "/sales-records/export-csv")]')->item(0);
+
+        $this->assertInstanceOf(\DOMElement::class, $link);
+        foreach ($link->attributes as $attribute) {
+            $this->assertStringStartsNotWith('wire:navigate', $attribute->name);
+        }
+        $url = $link->getAttribute('href');
+        parse_str(parse_url($url, PHP_URL_QUERY), $filters);
+        $this->assertSame('2026-11-15', $filters['startDate']);
+        $this->assertSame('2026-11-15', $filters['endDate']);
+        $this->get($url)->assertOk()
+            ->assertHeader('Content-Type', 'text/csv; charset=UTF-8')
+            ->assertDownload('sales-records-2026-11-15-to-2026-11-15.csv');
+    }
+
+    public function test_excel_export_has_typed_cells_and_respects_filters(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-15 12:00', 'Asia/Manila'));
+        $order = Order::create([
+            'order_number' => '=FORMULA-TEXT',
+            'branch_id' => 1,
+            'cashier_id' => $this->cashier->id,
+            'order_type' => 'dine_in',
+            'subtotal' => 350,
+            'discount_amount' => 50,
+            'tax_amount' => 0,
+            'total_amount' => 300,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+        ]);
+        $url = '/admin/sales-records/export-excel?startDate=2026-11-15&endDate=2026-11-15&cashierId=' . $this->cashier->id;
+        $response = $this->actingAs($this->admin)->get($url)->assertOk()
+            ->assertDownload('sales-records-2026-11-15-to-2026-11-15.xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'sales-xlsx-');
+        $reader = new \OpenSpout\Reader\XLSX\Reader();
+        try {
+            file_put_contents($path, $response->streamedContent());
+            $reader->open($path);
+            $rows = [];
+            foreach ($reader->getSheetIterator() as $sheet) {
+                foreach ($sheet->getRowIterator() as $row) {
+                    $rows[] = $row->toArray();
+                }
+            }
+            $this->assertSame('Order #', $rows[0][0]);
+            $this->assertCount(2, $rows);
+            $this->assertSame('=FORMULA-TEXT', $rows[1][0]);
+            $this->assertInstanceOf(\DateTimeInterface::class, $rows[1][1]);
+            $this->assertEquals(300, $rows[1][8]);
+            $this->assertIsNumeric($rows[1][8]);
+        } finally {
+            $reader->close();
+            unlink($path);
+        }
+        $emptyResponse = $this->get('/admin/sales-records/export-excel?startDate=2026-11-16&endDate=2026-11-16')
+            ->assertOk()->assertDownload('sales-records-2026-11-16-to-2026-11-16.xlsx');
+        $path = tempnam(sys_get_temp_dir(), 'sales-xlsx-empty-');
+        try {
+            file_put_contents($path, $emptyResponse->streamedContent());
+            $reader->open($path);
+            foreach ($reader->getSheetIterator() as $sheet) {
+                $this->assertCount(1, iterator_to_array($sheet->getRowIterator()));
+            }
+        } finally {
+            $reader->close();
+            unlink($path);
+        }
+        $this->actingAs($this->admin)->withSession([
+            \App\Support\Constants\SystemConstants::SESSION_AUTH_METHOD => 'pin',
+        ])->get($url)->assertForbidden();
+        $this->actingAs($this->cashier)->get($url)->assertForbidden();
+        $this->assertSame(1, Order::whereKey($order->id)->count());
+    }
+
     public function test_floor_staff_cannot_access_sales_records(): void
     {
         $responseCashier = $this->actingAs($this->cashier)->get('/admin/sales-records');

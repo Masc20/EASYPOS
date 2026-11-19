@@ -75,7 +75,7 @@ Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get(
     ]);
 })->name('sales-records.audit-report');
 
-Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get('/admin/sales-records/export-csv', function (\Illuminate\Http\Request $request, \App\Domains\PointOfSale\Services\SalesAggregationService $service) {
+$exportSalesRecords = function (\Illuminate\Http\Request $request, \App\Domains\PointOfSale\Services\SalesAggregationService $service) {
     $user = auth()->user();
 
     if (session(\App\Support\Constants\SystemConstants::SESSION_AUTH_METHOD) === 'pin') {
@@ -103,7 +103,17 @@ Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get(
 
     $safeStart = $service->sanitizeFilenameSegment($startDate);
     $safeEnd = $service->sanitizeFilenameSegment($endDate);
-    $filename = 'sales-records-' . $safeStart . '-to-' . $safeEnd . '.csv';
+    $format = $request->route()->getName() === 'sales-records.export-excel' ? 'xlsx' : 'csv';
+    $filename = 'sales-records-' . $safeStart . '-to-' . $safeEnd . '.' . $format;
+
+    if ($format === 'xlsx') {
+        return response()->streamDownload(function () use ($service, $startDate, $endDate, $effectiveBranchId, $cashierId) {
+            $service->streamOrdersExcel($startDate, $endDate, $effectiveBranchId, $cashierId);
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
 
     return response()->streamDownload(function () use ($service, $startDate, $endDate, $effectiveBranchId, $cashierId) {
         $handle = fopen('php://output', 'w');
@@ -119,7 +129,12 @@ Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get(
         'Content-Type' => 'text/csv; charset=UTF-8',
         'X-Accel-Buffering' => 'no',
     ]);
-})->name('sales-records.export-csv');
+};
+
+Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->group(function () use ($exportSalesRecords) {
+    Route::get('/admin/sales-records/export-csv', $exportSalesRecords)->name('sales-records.export-csv');
+    Route::get('/admin/sales-records/export-excel', $exportSalesRecords)->name('sales-records.export-excel');
+});
 
 Route::middleware('auth')->group(function () {
     Route::get('/terminal/lock', [TerminalLockController::class, 'show'])->name('terminal.lock.show');
