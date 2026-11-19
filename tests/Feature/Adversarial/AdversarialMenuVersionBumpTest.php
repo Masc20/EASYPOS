@@ -21,10 +21,15 @@ class AdversarialMenuVersionBumpTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
+
     protected User $chef1;
+
     protected User $chef2;
+
     protected User $admin;
+
     protected MealCategory $category;
 
     protected function setUp(): void
@@ -79,7 +84,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->chef1);
-        (new ToggleMealAvailabilityAction())->handle($meal);
+        (new ToggleMealAvailabilityAction)->handle($meal);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -97,7 +102,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->chef1);
-        $meal = (new CreateMealAction())->handle([
+        $meal = (new CreateMealAction)->handle([
             'name' => 'New B1 Caldereta',
             'category_id' => $this->category->id,
             'branch_id' => $this->branch1->id,
@@ -129,7 +134,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->chef1);
-        (new UpdateMealAction())->handle($meal, ['price' => 450.00]);
+        (new UpdateMealAction)->handle($meal, ['price' => 450.00]);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -155,7 +160,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->chef1);
-        (new DeleteMealAction())->handle($meal);
+        (new DeleteMealAction)->handle($meal);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -181,7 +186,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->admin);
-        (new ToggleMealAvailabilityAction())->handle($globalMeal);
+        (new ToggleMealAvailabilityAction)->handle($globalMeal);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -199,7 +204,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->admin);
-        $globalMeal = (new CreateMealAction())->handle([
+        $globalMeal = (new CreateMealAction)->handle([
             'name' => 'HQ Signature Halo-Halo',
             'category_id' => $this->category->id,
             'branch_id' => null,
@@ -231,7 +236,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->admin);
-        (new UpdateMealAction())->handle($globalMeal, ['price' => 95.00]);
+        (new UpdateMealAction)->handle($globalMeal, ['price' => 95.00]);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -257,7 +262,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->admin);
-        (new DeleteMealAction())->handle($globalMeal);
+        (new DeleteMealAction)->handle($globalMeal);
 
         $v1 = Cache::get("branch_{$this->branch1->id}_menu_version");
         $v2 = Cache::get("branch_{$this->branch2->id}_menu_version");
@@ -282,7 +287,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
 
         // 1. Chef 1 cannot toggle Branch 2 dish
         try {
-            (new ToggleMealAvailabilityAction())->handle($mealB2);
+            (new ToggleMealAvailabilityAction)->handle($mealB2);
             $this->fail('Expected 403 HttpException when toggling another branch dish.');
         } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
@@ -290,7 +295,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
 
         // 2. Chef 1 cannot update Branch 2 dish
         try {
-            (new UpdateMealAction())->handle($mealB2, ['price' => 50.00]);
+            (new UpdateMealAction)->handle($mealB2, ['price' => 50.00]);
             $this->fail('Expected 403 HttpException when updating another branch dish.');
         } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
@@ -298,7 +303,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
 
         // 3. Chef 1 cannot delete Branch 2 dish
         try {
-            (new DeleteMealAction())->handle($mealB2);
+            (new DeleteMealAction)->handle($mealB2);
             $this->fail('Expected 403 HttpException when deleting another branch dish.');
         } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
@@ -306,7 +311,7 @@ class AdversarialMenuVersionBumpTest extends TestCase
 
         // 4. Chef 1 cannot create a dish for Branch 2
         try {
-            (new CreateMealAction())->handle([
+            (new CreateMealAction)->handle([
                 'name' => 'Intruder Dish',
                 'category_id' => $this->category->id,
                 'branch_id' => $this->branch2->id,

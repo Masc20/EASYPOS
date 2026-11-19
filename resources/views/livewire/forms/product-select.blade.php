@@ -14,7 +14,7 @@
                             <span class="font-mono bg-brand-bg px-1 rounded-xs">{{ $selectedMeal->menu_code }}</span>
                         @endif
                         <span
-                            class="font-semibold text-brand-primary">₱{{ number_format($selectedMeal->price, 2) }}</span>
+                            class="font-semibold text-brand-primary">{{ $currencySymbol }}{{ number_format($selectedMeal->price, 2) }}</span>
                     </div>
                 </div>
             </div>
@@ -69,11 +69,12 @@
                         </div>
                         <div class="text-right pl-2">
                             <span
-                                class="text-xs font-bold text-brand-primary">₱{{ number_format($meal->price, 2) }}</span>
-                            @if ($meal->track_stock)
+                                class="text-xs font-bold text-brand-primary">{{ $currencySymbol }}{{ number_format($meal->price, 2) }}</span>
+                            @if ($meal->trackStockForBranch($effectiveBranchId))
+                                @php $branchStock = $meal->stockQuantityForBranch($effectiveBranchId) ?? 0; @endphp
                                 <span
-                                    class="block text-[9px] font-mono {{ $meal->stock_quantity <= 5 ? 'text-brand-error' : 'text-zinc-500' }}">
-                                    {{ $meal->stock_quantity }} in stock
+                                    class="block text-[9px] font-mono {{ $branchStock <= 5 ? 'text-brand-error' : 'text-zinc-500' }}">
+                                    {{ $branchStock }} in stock
                                 </span>
                             @endif
                         </div>

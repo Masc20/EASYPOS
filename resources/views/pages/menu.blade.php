@@ -34,11 +34,32 @@
         add(detail) {
             const data = Array.isArray(detail) ? detail[0] : detail;
             const toast = typeof data === 'object' && data !== null ? data : { message: String(data), type: 'error' };
+            const message = toast.message || 'Notification';
+            const type = toast.type || 'error';
+            this.toasts = this.toasts.filter(t => {
+                if (t.type === type && t.message === message) {
+                    if (t.timeoutId) {
+                        clearTimeout(t.timeoutId);
+                    }
+                    return false;
+                }
+                return true;
+            });
+            while (this.toasts.length >= 4) {
+                const oldest = this.toasts.shift();
+                if (oldest && oldest.timeoutId) {
+                    clearTimeout(oldest.timeoutId);
+                }
+            }
             const id = Date.now() + Math.random();
-            this.toasts.push({ id, message: toast.message || 'Notification', type: toast.type || 'error' });
-            setTimeout(() => this.remove(id), 4500);
+            const timeoutId = setTimeout(() => this.remove(id), 4500);
+            this.toasts.push({ id, message, type, timeoutId });
         },
         remove(id) {
+            const target = this.toasts.find(t => t.id === id);
+            if (target && target.timeoutId) {
+                clearTimeout(target.timeoutId);
+            }
             this.toasts = this.toasts.filter(t => t.id !== id);
         }
     }" x-on:menu-alert.window="add($event.detail)"
@@ -75,6 +96,24 @@
 
     <script>
         (function () {
+            const isMenuRoute = () => typeof window !== 'undefined'
+                && window.location
+                && typeof window.location.pathname === 'string'
+                && window.location.pathname.startsWith('/menu');
+
+            const isolateMenuFromFilamentNotifications = () => {
+                if (isMenuRoute() && typeof window.filamentErrorNotifications !== 'undefined') {
+                    window.filamentErrorNotifications = undefined;
+                }
+            };
+
+            isolateMenuFromFilamentNotifications();
+
+            if (!window.__easyposMenuNavigationIsolationRegistered) {
+                window.__easyposMenuNavigationIsolationRegistered = true;
+                document.addEventListener('livewire:navigated', isolateMenuFromFilamentNotifications);
+            }
+
             const registerMenuAvailabilityHooks = () => {
                 if (window.__easyposMenuAvailabilityHooksRegistered || !window.Livewire || typeof window.Livewire.hook !== 'function') {
                     return;
@@ -106,15 +145,27 @@
                     }
                 };
 
+                const extractToggledMealIds = (commit) => {
+                    if (!Array.isArray(commit?.calls)) {
+                        return [];
+                    }
+                    return commit.calls
+                        .filter((call) => call?.method === 'toggleAvailability')
+                        .map((call) => Number(call?.params?.[0]))
+                        .filter((id) => Number.isFinite(id));
+                };
+
                 window.Livewire.hook('request', ({ options, payload, respond, succeed, fail }) => {
                     if (!payloadHasToggleCall(payload)) {
                         return;
                     }
 
+                    isolateMenuFromFilamentNotifications();
+
                     const controller = new AbortController();
                     options.signal = controller.signal;
 
-                    const timeoutId = setTimeout(() => controller.abort(), 8000);
+                    const timeoutId = setTimeout(() => controller.abort(), 3000);
                     const onOffline = () => controller.abort();
                     window.addEventListener('offline', onOffline, { once: true });
 
@@ -127,22 +178,48 @@
                     succeed(cleanup);
                     fail(({ status, preventDefault }) => {
                         cleanup();
-                        if (status === 503 || status >= 500 || status === 0) {
+                        if (typeof preventDefault === 'function' && (status === 0 || status >= 400 || !status)) {
                             preventDefault();
                         }
                     });
+
+                    if (!navigator.onLine) {
+                        controller.abort();
+                    }
                 });
 
-                window.Livewire.hook('commit', ({ commit, fail }) => {
-                    const isToggleCommit = Array.isArray(commit?.calls) && commit.calls.some(
-                        (call) => call?.method === 'toggleAvailability'
-                    );
+                window.Livewire.hook('commit', ({ commit, respond, succeed, fail }) => {
+                    const mealIds = extractToggledMealIds(commit);
 
-                    if (!isToggleCommit) {
+                    if (mealIds.length === 0) {
                         return;
                     }
 
+                    let settled = false;
+                    const dispatchSettled = (failed) => {
+                        if (settled) {
+                            return;
+                        }
+                        settled = true;
+                        window.dispatchEvent(new CustomEvent('menu-toggle-settled', {
+                            detail: { mealIds, failed }
+                        }));
+                    };
+
+                    respond(() => {
+                        queueMicrotask(() => {
+                            if (!settled) {
+                                dispatchSettled(false);
+                            }
+                        });
+                    });
+
+                    succeed(() => {
+                        dispatchSettled(false);
+                    });
+
                     fail(() => {
+                        dispatchSettled(true);
                         emitToggleErrorToast();
                     });
                 });

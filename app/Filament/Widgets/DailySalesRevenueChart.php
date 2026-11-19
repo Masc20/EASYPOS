@@ -2,7 +2,9 @@
 
 namespace App\Filament\Widgets;
 
+use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Services\SalesAggregationService;
+use Carbon\Carbon;
 use Filament\Widgets\ChartWidget;
 
 class DailySalesRevenueChart extends ChartWidget
@@ -32,12 +34,45 @@ class DailySalesRevenueChart extends ChartWidget
 
     protected function getData(): array
     {
+        $user = auth()->user();
+        $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
+        $cashierId = $this->cashierId;
+
         $service = app(SalesAggregationService::class);
+
+        if ($user && $user->isBranchScoped() && $effectiveBranchId < 0) {
+            $fallbackDate = $service->parseSafeDate($this->startDate) ?? now();
+
+            return [
+                'datasets' => [
+                    [
+                        'label' => 'Net Revenue (₱)',
+                        'data' => [0.00],
+                        'fill' => 'start',
+                        'backgroundColor' => 'rgba(150, 13, 16, 0.12)',
+                        'borderColor' => '#960D10',
+                        'tension' => 0.35,
+                        'pointBackgroundColor' => '#960D10',
+                        'pointRadius' => 4,
+                    ],
+                ],
+                'labels' => [$fallbackDate->format('M d')],
+            ];
+        }
+
+        if ($user && $user->isBranchScoped() && $cashierId) {
+            $cashierBelongs = User::where('id', $cashierId)
+                ->where('branch_id', $effectiveBranchId)
+                ->exists();
+            if (! $cashierBelongs) {
+                $cashierId = null;
+            }
+        }
         $trend = $service->getDailyRevenueTrend(
             $this->startDate,
             $this->endDate,
-            $this->branchId,
-            $this->cashierId
+            $effectiveBranchId,
+            $cashierId
         );
 
         return [

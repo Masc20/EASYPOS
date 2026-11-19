@@ -228,7 +228,7 @@
 
                         <div class="space-y-1.5 py-1">
                             @foreach ($ticket->items as $item)
-                                <div wire:key="kitchen-item-{{ $item->id }}" x-data="{ isDone: {{ $item->status === 'done' ? 'true' : 'false' }} }"
+                                <div wire:key="kitchen-item-{{ $item->id }}" x-data="{ isDone: {{ $item->status === \App\Support\Enums\KitchenTicketItemStatus::DONE->value ? 'true' : 'false' }} }"
                                     x-on:click="isDone = !isDone; $wire.toggleItem({{ $item->id }})"
                                     :class="isDone ? 'bg-brand-bg/70 border-brand-border/40 opacity-60' :
                                         'bg-brand-bg border-brand-border hover:border-brand-primary/50'"
@@ -271,7 +271,7 @@
                                     <span
                                         :class="isDone ? 'text-brand-success font-bold' : 'text-amber-500 font-semibold'"
                                         class="text-[10px] font-mono uppercase">
-                                        {{ $item->status === 'done' ? 'Done' : 'Cooking' }}
+                                        {{ $item->status === \App\Support\Enums\KitchenTicketItemStatus::DONE->value ? 'Done' : 'Cooking' }}
                                     </span>
                                 </div>
                             @endforeach

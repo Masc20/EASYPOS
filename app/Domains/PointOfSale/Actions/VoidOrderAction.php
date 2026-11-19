@@ -3,15 +3,18 @@
 namespace App\Domains\PointOfSale\Actions;
 
 use App\Domains\Identity\Models\User;
+use App\Domains\Menu\Models\Meal;
 use App\Domains\PointOfSale\Events\OrderVoided;
 use App\Domains\PointOfSale\Models\Order;
 use App\Support\Constants\SystemConstants;
 use App\Support\Enums\KitchenTicketStatus;
 use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
+use App\Support\Enums\StaffRole;
+use App\Support\SecurityLogger;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 
@@ -31,19 +34,24 @@ class VoidOrderAction
      */
     public function execute(array $data): Order
     {
-        // Resolve approving manager by emp_id first, falling back to numeric ID
-        $manager = User::where('emp_id', $data['manager_id'])
-            ->where('is_active', true)
-            ->first();
+        $rawManagerId = trim((string) ($data['manager_id'] ?? ''));
 
-        if (! $manager) {
-            $manager = User::where('id', $data['manager_id'])
+        // Resolve approving manager by case-insensitive emp_id first, falling back to numeric ID only when numeric
+        $manager = null;
+        if ($rawManagerId !== '') {
+            $manager = User::whereRaw('UPPER(emp_id) = ?', [strtoupper($rawManagerId)])
                 ->where('is_active', true)
                 ->first();
+
+            if (! $manager && ctype_digit($rawManagerId)) {
+                $manager = User::where('id', (int) $rawManagerId)
+                    ->where('is_active', true)
+                    ->first();
+            }
         }
 
         if (! $manager) {
-            Log::channel('security')?->warning('VOID_ORDER_FAILED_MANAGER_NOT_FOUND', [
+            SecurityLogger::log('warning', 'VOID_ORDER_FAILED_MANAGER_NOT_FOUND', [
                 'event' => 'void_order_failed_manager_not_found',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
@@ -56,9 +64,22 @@ class VoidOrderAction
 
         $skipPin = (bool) ($data['skip_pin_check'] ?? false);
         if ($skipPin) {
+            // Unauthenticated callers cannot use skip_pin_check
+            if (! Auth::check() || ! Auth::user()) {
+                SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHENTICATED_SKIP_PIN', [
+                    'event' => 'void_order_unauthenticated_skip_pin',
+                    'actor' => 'guest',
+                    'actor_id' => null,
+                    'ip' => request()->ip(),
+                    'order_id' => $data['order_id'] ?? null,
+                    'manager_id' => $manager->id,
+                ]);
+                throw new InvalidArgumentException("Authentication required for back-office void.");
+            }
+
             // Floor terminal sessions cannot bypass manager PIN verification
             if (session(SystemConstants::SESSION_AUTH_METHOD) === 'pin' || session('auth_method') === 'pin') {
-                Log::channel('security')?->warning('VOID_ORDER_UNAUTHORIZED_FLOOR_BYPASS', [
+                SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHORIZED_FLOOR_BYPASS', [
                     'event' => 'void_order_unauthorized_floor_bypass',
                     'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                     'actor_id' => Auth::id(),
@@ -69,9 +90,22 @@ class VoidOrderAction
                 throw new InvalidArgumentException("Floor terminal sessions cannot bypass manager PIN verification.");
             }
 
+            // Reject audit spoofing where authenticated actor passes a different manager_id
+            if ((int) Auth::id() !== (int) $manager->id) {
+                SecurityLogger::log('warning', 'VOID_ORDER_AUDIT_SPOOFING_ATTEMPT', [
+                    'event' => 'void_order_audit_spoofing_attempt',
+                    'actor' => Auth::user()?->emp_id ?? (string) Auth::id(),
+                    'actor_id' => Auth::id(),
+                    'ip' => request()->ip(),
+                    'order_id' => $data['order_id'] ?? null,
+                    'manager_id' => $manager->id,
+                ]);
+                throw new InvalidArgumentException("Authenticated user must match approving manager.");
+            }
+
             // Reject untrusted callers when authenticated user cannot approve refunds
-            if (Auth::check() && ! Auth::user()->isOwner() && ! Auth::user()->can('pos.refund')) {
-                Log::channel('security')?->warning('VOID_ORDER_UNAUTHORIZED_BACKOFFICE_ATTEMPT', [
+            if (! Auth::user()->isOwner() && ! Auth::user()->hasRole(StaffRole::SUPER_ADMIN->value) && ! Auth::user()->can('pos.refund')) {
+                SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHORIZED_BACKOFFICE_ATTEMPT', [
                     'event' => 'void_order_unauthorized_backoffice_attempt',
                     'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                     'actor_id' => Auth::id(),
@@ -82,9 +116,9 @@ class VoidOrderAction
                 throw new InvalidArgumentException("Unauthorized back-office void attempt.");
             }
         } else {
-            $pin = (string) ($data['manager_pin'] ?? '');
+            $pin = trim((string) ($data['manager_pin'] ?? ''));
             if (! $manager->verifyPin($pin)) {
-                Log::channel('security')?->warning('VOID_ORDER_INVALID_MANAGER_PIN', [
+                SecurityLogger::log('warning', 'VOID_ORDER_INVALID_MANAGER_PIN', [
                     'event' => 'void_order_invalid_manager_pin',
                     'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                     'actor_id' => Auth::id(),
@@ -106,9 +140,9 @@ class VoidOrderAction
             throw new InvalidArgumentException("Order #{$order->order_number} is already cancelled.");
         }
 
-        // Cross-branch isolation check: manager must belong to same branch unless global Owner / Super-Admin
-        if (! $manager->isOwner() && $order->branch_id && $manager->branch_id !== $order->branch_id) {
-            Log::channel('security')?->warning('VOID_ORDER_CROSS_BRANCH_MISMATCH', [
+        // Cross-branch isolation check: branch-scoped managers must have a non-null matching branch; Owner & Super-Admin are cross-branch
+        if ($manager->isBranchScoped() && ($manager->branch_id === null || ($order->branch_id && (int) $manager->branch_id !== (int) $order->branch_id))) {
+            SecurityLogger::log('warning', 'VOID_ORDER_CROSS_BRANCH_MISMATCH', [
                 'event' => 'void_order_cross_branch_mismatch',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
@@ -119,9 +153,25 @@ class VoidOrderAction
             throw new InvalidArgumentException("Manager does not belong to this branch.");
         }
 
+        // If an authenticated branch-scoped actor (e.g. floor cashier) initiated the void, the target order must belong to their branch
+        if (Auth::check() && Auth::user()?->isBranchScoped()) {
+            $actorBranchId = Auth::user()->branch_id;
+            if ($actorBranchId === null || ($order->branch_id && (int) $actorBranchId !== (int) $order->branch_id)) {
+                SecurityLogger::log('warning', 'VOID_ORDER_ACTOR_CROSS_BRANCH_MISMATCH', [
+                    'event' => 'void_order_actor_cross_branch_mismatch',
+                    'actor' => Auth::user()?->emp_id ?? (string) Auth::id(),
+                    'actor_id' => Auth::id(),
+                    'ip' => request()->ip(),
+                    'order_id' => $order->id,
+                    'manager_id' => $manager->id,
+                ]);
+                throw new InvalidArgumentException("Manager does not belong to this branch.");
+            }
+        }
+
         // Permission check: must possess pos.refund permission or be an Owner / Super-Admin
-        if (! $manager->isOwner() && ! $manager->can('pos.refund')) {
-            Log::channel('security')?->warning('VOID_ORDER_UNAUTHORIZED_REFUND_PERMISSION', [
+        if (! $manager->isOwner() && ! $manager->hasRole(StaffRole::SUPER_ADMIN->value) && ! $manager->can('pos.refund')) {
+            SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHORIZED_REFUND_PERMISSION', [
                 'event' => 'void_order_unauthorized_refund_permission',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
                 'actor_id' => Auth::id(),
@@ -136,7 +186,7 @@ class VoidOrderAction
             throw new InvalidArgumentException("A valid cancellation reason is required.");
         }
 
-        return DB::transaction(function () use ($manager, $data) {
+        $voidedOrder = DB::transaction(function () use ($manager, $data) {
             // Acquire pessimistic row lock on target order to serialize voids and prevent double stock restoration
             $order = Order::where('id', $data['order_id'])->lockForUpdate()->firstOrFail();
 
@@ -145,7 +195,7 @@ class VoidOrderAction
             }
 
             // Re-verify branch isolation under row lock
-            if (! $manager->isOwner() && $order->branch_id && $manager->branch_id !== $order->branch_id) {
+            if ($manager->isBranchScoped() && ($manager->branch_id === null || ($order->branch_id && (int) $manager->branch_id !== (int) $order->branch_id))) {
                 throw new InvalidArgumentException("Manager does not belong to this branch.");
             }
             $previousStatus = $order->status;
@@ -211,7 +261,7 @@ class VoidOrderAction
             ];
 
             Log::info("ORDER_VOIDED", $voidContext);
-            Log::channel('security')?->warning("ORDER_VOID_AUTHORIZED", $voidContext);
+            SecurityLogger::log('warning', 'ORDER_VOID_AUTHORIZED', $voidContext);
 
             event(new OrderVoided($order, $manager, $data['reason']));
 
@@ -219,5 +269,12 @@ class VoidOrderAction
 
             return $order;
         });
+
+        if ($voidedOrder->branch_id) {
+            Cache::forget("branch_{$voidedOrder->branch_id}_order_progress_counts");
+            Meal::bumpMenuVersionForSingleBranch((int) $voidedOrder->branch_id);
+        }
+
+        return $voidedOrder;
     }
 }

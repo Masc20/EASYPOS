@@ -53,6 +53,8 @@ class RoleForm
                             ->required()
                             ->maxLength(255)
                             ->unique('roles', 'name', ignoreRecord: true)
+                            ->disabled(fn (?Role $record): bool => $record !== null && in_array($record->name, \App\Support\Enums\StaffRole::executiveValues(), true))
+                            ->dehydrated()
                             ->placeholder('e.g. branch-manager, cashier, cook')
                             ->helperText('Matching operational station responsibilities.'),
                     ]),

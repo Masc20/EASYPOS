@@ -14,6 +14,21 @@ use UnitEnum;
 
 class SalesRecords extends Page
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user
+            && $user->canAccessAdmin()
+            && ($user->isOwner() || $user->can('reports.view'))
+            && (! $user->isBranchScoped() || $user->branch_id !== null));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedChartBar;
 
     protected static string|UnitEnum|null $navigationGroup = 'Sales & Transactions';
@@ -45,7 +60,7 @@ class SalesRecords extends Page
     public function mount(): void
     {
         if (auth()->user()?->isBranchScoped()) {
-            $this->branchId = (int) auth()->user()->branch_id;
+            $this->branchId = auth()->user()->effectiveBranchId();
         }
         $this->setPreset('today');
     }
@@ -122,7 +137,7 @@ class SalesRecords extends Page
     public function resetFilters(): void
     {
         $this->branchId = auth()->user()?->isBranchScoped()
-            ? (int) auth()->user()->branch_id
+            ? auth()->user()->effectiveBranchId()
             : null;
         $this->cashierId = null;
         $this->bestSellerCategoryId = null;
@@ -136,6 +151,8 @@ class SalesRecords extends Page
 
     public function exportCsv(SalesAggregationService $service): StreamedResponse
     {
+        $this->skipRender();
+
         $user = auth()->user();
         $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
         $cashierId = $this->cashierId;
@@ -147,7 +164,9 @@ class SalesRecords extends Page
             }
         }
 
-        $filename = 'sales-records-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
+        $safeStart = $service->sanitizeFilenameSegment($this->startDate);
+        $safeEnd = $service->sanitizeFilenameSegment($this->endDate);
+        $filename = 'sales-records-' . $safeStart . '-to-' . $safeEnd . '.csv';
 
         return response()->streamDownload(function () use ($service, $effectiveBranchId, $cashierId) {
             $handle = fopen('php://output', 'w');
@@ -167,6 +186,8 @@ class SalesRecords extends Page
 
     public function exportPeriodicCsv(SalesAggregationService $service): StreamedResponse
     {
+        $this->skipRender();
+
         $user = auth()->user();
         $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
         $cashierId = $this->cashierId;
@@ -181,7 +202,9 @@ class SalesRecords extends Page
         $interval = in_array(strtolower($this->periodicInterval), ['day', 'week', 'month', 'year'])
             ? strtolower($this->periodicInterval)
             : 'day';
-        $filename = 'periodic-sales-' . $interval . '-' . ($this->startDate ?: 'all') . '-to-' . ($this->endDate ?: 'all') . '.csv';
+        $safeStart = $service->sanitizeFilenameSegment($this->startDate);
+        $safeEnd = $service->sanitizeFilenameSegment($this->endDate);
+        $filename = 'periodic-sales-' . $interval . '-' . $safeStart . '-to-' . $safeEnd . '.csv';
 
         return response()->streamDownload(function () use ($service, $interval, $effectiveBranchId, $cashierId) {
             $output = fopen('php://output', 'w');
@@ -205,6 +228,55 @@ class SalesRecords extends Page
         $user = auth()->user();
         $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
         $this->branchId = $effectiveBranchId;
+
+        if ($user && $user->isBranchScoped() && $effectiveBranchId < 0) {
+            return [
+                'summary' => [
+                    'gross_sales' => 0.0,
+                    'net_sales' => 0.0,
+                    'total_discounts' => 0.0,
+                    'orders_count' => 0,
+                    'average_order_value' => 0.0,
+                    'payments_breakdown' => [],
+                    'order_types_breakdown' => [],
+                    'tax_summary' => [
+                        'vatable_sales' => 0.0,
+                        'vat_amount' => 0.0,
+                        'vat_exempt_sales' => 0.0,
+                        'zero_rated_sales' => 0.0,
+                    ],
+                    'cash_reconciliation' => [
+                        'net_cash_in_drawer' => 0.0,
+                        'total_cash_tendered' => 0.0,
+                        'total_change_given' => 0.0,
+                        'total_digital' => 0.0,
+                    ],
+                    'refunds_summary' => [
+                        'refunded_amount' => 0.0,
+                        'refunded_count' => 0,
+                    ],
+                    'top_selling_items' => [],
+                    'cashier_performance' => [],
+                ],
+                'periodicReport' => [
+                    'interval' => $this->periodicInterval,
+                    'items' => [],
+                    'totals' => [
+                        'orders_count' => 0,
+                        'gross_sales' => 0.0,
+                        'total_discounts' => 0.0,
+                        'net_sales' => 0.0,
+                        'vatable_sales' => 0.0,
+                        'vat_amount' => 0.0,
+                        'vat_exempt_sales' => 0.0,
+                        'average_order_value' => 0.0,
+                    ],
+                ],
+                'branches' => collect(),
+                'cashiers' => collect(),
+                'isBranchScoped' => true,
+            ];
+        }
 
         if ($user && $user->isBranchScoped() && $this->cashierId) {
             $cashierBelongs = User::where('id', $this->cashierId)->where('branch_id', $effectiveBranchId)->exists();
@@ -246,7 +318,7 @@ class SalesRecords extends Page
         }
 
         $branches = ($user && $user->isBranchScoped())
-            ? Branch::where('id', $user->branch_id)->get()
+            ? Branch::where('id', $effectiveBranchId)->get()
             : Branch::query()->orderBy('name')->get();
 
         $cashiersQuery = User::query()
@@ -254,7 +326,7 @@ class SalesRecords extends Page
             ->orderBy('name');
 
         if ($user && $user->isBranchScoped()) {
-            $cashiersQuery->where('branch_id', $user->branch_id);
+            $cashiersQuery->where('branch_id', $effectiveBranchId);
         }
 
         $cashiers = $cashiersQuery->get();

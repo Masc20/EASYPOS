@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Roles\Pages;
 
+use App\Domains\Audit\Services\ActivityLogger;
 use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use Filament\Actions\CreateAction;
@@ -23,6 +24,14 @@ class ListRoles extends ListRecords
                     [$cleanData, $permissions] = RoleForm::extractPermissions($data);
                     $record = $model::create($cleanData);
                     $record->syncPermissions($permissions);
+
+                    ActivityLogger::success(
+                        category: 'security',
+                        event: 'role_created',
+                        description: "Created role '{$record->name}'.",
+                        subject: $record,
+                        metadata: ['role' => $record->name, 'permissions' => $permissions],
+                    );
 
                     return $record;
                 }),

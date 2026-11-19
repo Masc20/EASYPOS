@@ -4,18 +4,40 @@ namespace Tests\Feature;
 
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
+use App\Domains\Menu\Actions\CreateMealAction;
+use App\Domains\Menu\Actions\DeleteMealAction;
+use App\Domains\Menu\Actions\ToggleMealAvailabilityAction;
+use App\Domains\Menu\Actions\UpdateMealAction;
+use App\Domains\Menu\Events\MealAvailabilityToggled;
+use App\Domains\Menu\Events\MealCreated;
+use App\Domains\Menu\Events\MealDeleted;
+use App\Domains\Menu\Events\MealUpdated;
+use App\Domains\Menu\Livewire\CreateMealModal;
 use App\Domains\Menu\Livewire\DailySpecialsBoard;
+use App\Domains\Menu\Livewire\EditMealModal;
 use App\Domains\Menu\Livewire\MealCatalogTable;
+use App\Domains\Menu\Livewire\MealForm;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use App\Domains\PointOfSale\Livewire\MealCatalog;
 use Database\Seeders\MenuSeeder;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Event;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class MenuDatabaseTest extends TestCase
 {
     use RefreshDatabase;
+
+    private function actingOwner(): User
+    {
+        $this->seed(RolesAndPermissionsSeeder::class);
+
+        return User::where('email', 'owner@easypos.com')->firstOrFail();
+    }
 
     public function test_menu_seeder_populates_categories_and_meals_with_peso_prices(): void
     {
@@ -72,9 +94,11 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_catalog_table_renders_with_peso_symbols(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
 
-        Livewire::test(MealCatalogTable::class)
+        Livewire::actingAs($owner)
+            ->test(MealCatalogTable::class)
             ->assertSee('₱420.00')
             ->assertSee('₱1,450.00')
             ->assertSee('Truffle Mushroom Risotto')
@@ -83,17 +107,20 @@ class MenuDatabaseTest extends TestCase
 
     public function test_chef_can_toggle_86d_status_in_catalog_table(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
         $risotto = Meal::where('menu_code', 'M-01')->first();
 
         $this->assertTrue($risotto->is_available);
 
-        Livewire::test(MealCatalogTable::class)
+        Livewire::actingAs($owner)
+            ->test(MealCatalogTable::class)
             ->call('toggleAvailability', $risotto->id);
 
         $this->assertFalse($risotto->fresh()->is_available);
 
-        Livewire::test(MealCatalogTable::class)
+        Livewire::actingAs($owner)
+            ->test(MealCatalogTable::class)
             ->call('toggleAvailability', $risotto->id);
 
         $this->assertTrue($risotto->fresh()->is_available);
@@ -101,21 +128,25 @@ class MenuDatabaseTest extends TestCase
 
     public function test_daily_specials_board_displays_limited_specials(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
 
-        Livewire::test(DailySpecialsBoard::class)
+        Livewire::actingAs($owner)
+            ->test(DailySpecialsBoard::class)
             ->assertSee('Slow-Braised Lamb Shank')
             ->assertSee('left');
     }
 
     public function test_meal_form_creates_new_meal_in_database(): void
     {
+        $owner = $this->actingOwner();
         $category = MealCategory::create([
             'name' => 'Specials',
             'slug' => 'specials',
         ]);
 
-        Livewire::test(\App\Domains\Menu\Livewire\MealForm::class)
+        Livewire::actingAs($owner)
+            ->test(MealForm::class)
             ->set('name', 'Grilled Salmon Bowl')
             ->set('menu_code', 'SP-99')
             ->set('category_id', $category->id)
@@ -134,7 +165,10 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_form_validates_required_fields(): void
     {
-        Livewire::test(\App\Domains\Menu\Livewire\MealForm::class)
+        $owner = $this->actingOwner();
+
+        Livewire::actingAs($owner)
+            ->test(MealForm::class)
             ->set('name', '')
             ->set('category_id', null)
             ->set('price', '')
@@ -144,10 +178,12 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_catalog_table_searches_and_dispatches_edit(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
         $risotto = Meal::where('menu_code', 'M-01')->first();
 
-        Livewire::test(MealCatalogTable::class)
+        Livewire::actingAs($owner)
+            ->test(MealCatalogTable::class)
             ->set('search', 'Risotto')
             ->assertSee('Truffle Mushroom Risotto')
             ->assertDontSee('Ribeye Steak')
@@ -157,7 +193,10 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_form_modal_open_and_close(): void
     {
-        Livewire::test(\App\Domains\Menu\Livewire\MealForm::class)
+        $owner = $this->actingOwner();
+
+        Livewire::actingAs($owner)
+            ->test(MealForm::class)
             ->assertSet('isOpen', false)
             ->call('openNewMealModal')
             ->assertSet('isOpen', true)
@@ -167,10 +206,12 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_catalog_table_can_delete_meal(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
         $risotto = Meal::where('menu_code', 'M-01')->first();
 
-        Livewire::test(MealCatalogTable::class)
+        Livewire::actingAs($owner)
+            ->test(MealCatalogTable::class)
             ->call('deleteMeal', $risotto->id)
             ->assertDispatched('meal-saved');
 
@@ -179,10 +220,12 @@ class MenuDatabaseTest extends TestCase
 
     public function test_meal_form_responds_to_edit_meal_and_open_meal_modal_events(): void
     {
+        $owner = $this->actingOwner();
         $this->seed(MenuSeeder::class);
         $risotto = Meal::where('menu_code', 'M-01')->first();
 
-        Livewire::test(\App\Domains\Menu\Livewire\MealForm::class)
+        Livewire::actingAs($owner)
+            ->test(MealForm::class)
             ->dispatch('edit-meal', id: $risotto->id)
             ->assertSet('mealId', $risotto->id)
             ->assertSet('name', 'Truffle Mushroom Risotto')
@@ -195,14 +238,16 @@ class MenuDatabaseTest extends TestCase
 
     public function test_create_meal_modal_creates_dish_via_domain_action(): void
     {
-        \Illuminate\Support\Facades\Event::fake([\App\Domains\Menu\Events\MealCreated::class]);
+        $owner = $this->actingOwner();
+        Event::fake([MealCreated::class]);
 
         $category = MealCategory::create([
             'name' => 'Desserts',
             'slug' => 'desserts',
         ]);
 
-        Livewire::test(\App\Domains\Menu\Livewire\CreateMealModal::class)
+        Livewire::actingAs($owner)
+            ->test(CreateMealModal::class)
             ->set('name', 'Ube Cheesecake')
             ->set('menu_code', 'DES-01')
             ->set('category_id', $category->id)
@@ -219,17 +264,19 @@ class MenuDatabaseTest extends TestCase
             'price' => '220.00',
         ]);
 
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealCreated::class);
+        Event::assertDispatched(MealCreated::class);
     }
 
     public function test_edit_meal_modal_hydrates_and_updates_via_domain_action(): void
     {
-        \Illuminate\Support\Facades\Event::fake([\App\Domains\Menu\Events\MealUpdated::class]);
+        $owner = $this->actingOwner();
+        Event::fake([MealUpdated::class]);
 
         $this->seed(MenuSeeder::class);
         $risotto = Meal::where('menu_code', 'M-01')->first();
 
-        Livewire::test(\App\Domains\Menu\Livewire\EditMealModal::class)
+        Livewire::actingAs($owner)
+            ->test(EditMealModal::class)
             ->dispatch('edit-meal', id: $risotto->id)
             ->assertSet('name', 'Truffle Mushroom Risotto')
             ->assertDispatched('open-modal', 'edit-meal-modal')
@@ -240,16 +287,19 @@ class MenuDatabaseTest extends TestCase
             ->assertDispatched('meal-saved');
 
         $this->assertEquals('480.00', $risotto->fresh()->price);
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealUpdated::class);
+        Event::assertDispatched(MealUpdated::class);
     }
 
     public function test_menu_domain_actions_and_events(): void
     {
-        \Illuminate\Support\Facades\Event::fake([
-            \App\Domains\Menu\Events\MealCreated::class,
-            \App\Domains\Menu\Events\MealUpdated::class,
-            \App\Domains\Menu\Events\MealAvailabilityToggled::class,
-            \App\Domains\Menu\Events\MealDeleted::class,
+        $owner = $this->actingOwner();
+        $this->actingAs($owner);
+
+        Event::fake([
+            MealCreated::class,
+            MealUpdated::class,
+            MealAvailabilityToggled::class,
+            MealDeleted::class,
         ]);
 
         $category = MealCategory::create([
@@ -257,7 +307,7 @@ class MenuDatabaseTest extends TestCase
             'slug' => 'beverages',
         ]);
 
-        $createAction = new \App\Domains\Menu\Actions\CreateMealAction();
+        $createAction = new CreateMealAction;
         $meal = $createAction->handle([
             'name' => 'Calamansi Juice',
             'menu_code' => 'DRK-01',
@@ -265,27 +315,27 @@ class MenuDatabaseTest extends TestCase
             'price' => 95.00,
         ]);
 
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealCreated::class);
+        Event::assertDispatched(MealCreated::class);
 
-        $updateAction = new \App\Domains\Menu\Actions\UpdateMealAction();
+        $updateAction = new UpdateMealAction;
         $updateAction->handle($meal, ['price' => 110.00]);
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealUpdated::class);
+        Event::assertDispatched(MealUpdated::class);
         $this->assertEquals('110.00', $meal->fresh()->price);
 
-        $toggleAction = new \App\Domains\Menu\Actions\ToggleMealAvailabilityAction();
+        $toggleAction = new ToggleMealAvailabilityAction;
         $toggleAction->handle($meal);
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealAvailabilityToggled::class);
+        Event::assertDispatched(MealAvailabilityToggled::class);
         $this->assertFalse($meal->fresh()->is_available);
 
-        $deleteAction = new \App\Domains\Menu\Actions\DeleteMealAction();
+        $deleteAction = new DeleteMealAction;
         $deleteAction->handle($meal);
-        \Illuminate\Support\Facades\Event::assertDispatched(\App\Domains\Menu\Events\MealDeleted::class);
+        Event::assertDispatched(MealDeleted::class);
         $this->assertSoftDeleted('meals', ['id' => $meal->id]);
     }
 
     public function test_chef_created_meal_is_isolated_to_their_branch(): void
     {
-        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $this->seed(RolesAndPermissionsSeeder::class);
         $this->seed(MenuSeeder::class);
 
         $chefB1 = User::where('emp_id', 'B01-CHF-001')->firstOrFail();
@@ -295,7 +345,7 @@ class MenuDatabaseTest extends TestCase
 
         // Branch 1 Chef creates a dish
         Livewire::actingAs($chefB1)
-            ->test(\App\Domains\Menu\Livewire\CreateMealModal::class)
+            ->test(CreateMealModal::class)
             ->set('name', 'Manila Secret Adobo')
             ->set('menu_code', 'M-999')
             ->set('category_id', $category->id)
@@ -318,19 +368,16 @@ class MenuDatabaseTest extends TestCase
 
         // Branch 2 Cashier CANNOT see it on /pos
         Livewire::actingAs($cashierB2)
-            ->test(\App\Domains\PointOfSale\Livewire\MealCatalog::class)
+            ->test(MealCatalog::class)
             ->assertDontSee('Manila Secret Adobo');
 
         // Branch 2 Chef CANNOT toggle or modify Branch 1's dish
         $this->actingAs($chefB2);
         try {
-            (new \App\Domains\Menu\Actions\ToggleMealAvailabilityAction())->handle($branch1Meal);
+            (new ToggleMealAvailabilityAction)->handle($branch1Meal);
             $this->fail('Expected 403 when Branch 2 Chef toggles Branch 1 meal.');
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) {
+        } catch (HttpException $e) {
             $this->assertEquals(403, $e->getStatusCode());
         }
     }
 }
-
-
-

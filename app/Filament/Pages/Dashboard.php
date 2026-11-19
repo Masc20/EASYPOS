@@ -13,6 +13,21 @@ use Illuminate\Contracts\Support\Htmlable;
 
 class Dashboard extends BaseDashboard
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user
+            && $user->canAccessAdmin()
+            && ($user->isOwner() || $user->can('reports.view'))
+            && (! $user->isBranchScoped() || $user->branch_id !== null));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPresentationChartLine;
 
     protected static ?string $navigationLabel = 'Dashboard';
@@ -36,7 +51,7 @@ class Dashboard extends BaseDashboard
     public function mount(): void
     {
         if (auth()->user()?->isBranchScoped()) {
-            $this->branchId = (int) auth()->user()->branch_id;
+            $this->branchId = auth()->user()->effectiveBranchId(null);
         }
         $this->setPreset('today');
     }
@@ -80,7 +95,27 @@ class Dashboard extends BaseDashboard
 
     public function setBestSellerCategory(?int $categoryId): void
     {
-        $this->bestSellerCategoryId = $categoryId ?: null;
+        if (! $categoryId) {
+            $this->bestSellerCategoryId = null;
+
+            return;
+        }
+
+        $user = auth()->user();
+        if ($user && $user->isBranchScoped()) {
+            $allowed = MealCategory::query()
+                ->where('id', $categoryId)
+                ->forBranch($user->effectiveBranchId())
+                ->exists();
+
+            if (! $allowed) {
+                $this->bestSellerCategoryId = null;
+
+                return;
+            }
+        }
+
+        $this->bestSellerCategoryId = $categoryId;
     }
 
     public function setBestSellerLimit(int $limit): void
@@ -91,7 +126,7 @@ class Dashboard extends BaseDashboard
     public function resetFilters(): void
     {
         $this->branchId = auth()->user()?->isBranchScoped()
-            ? (int) auth()->user()->branch_id
+            ? auth()->user()->effectiveBranchId(null)
             : null;
         $this->bestSellerCategoryId = null;
         $this->bestSellerSortBy = 'quantity';
@@ -104,6 +139,65 @@ class Dashboard extends BaseDashboard
         $user = auth()->user();
         $effectiveBranchId = $user ? $user->effectiveBranchId($this->branchId) : $this->branchId;
         $this->branchId = $effectiveBranchId;
+
+        if ($user && $user->isBranchScoped() && $effectiveBranchId < 0) {
+            return [
+                'summary' => [
+                    'gross_sales' => 0.0,
+                    'net_sales' => 0.0,
+                    'total_discounts' => 0.0,
+                    'orders_count' => 0,
+                    'average_order_value' => 0.0,
+                    'payments_breakdown' => [],
+                    'order_types_breakdown' => [],
+                    'tax_summary' => [
+                        'vatable_sales' => 0.0,
+                        'vat_amount' => 0.0,
+                        'vat_exempt_sales' => 0.0,
+                        'zero_rated_sales' => 0.0,
+                    ],
+                    'cash_reconciliation' => [
+                        'net_cash_in_drawer' => 0.0,
+                        'total_cash_tendered' => 0.0,
+                        'total_change_given' => 0.0,
+                        'total_digital' => 0.0,
+                    ],
+                    'refunds_summary' => [
+                        'refunded_amount' => 0.0,
+                        'refunded_count' => 0,
+                    ],
+                    'top_selling_items' => [],
+                    'cashier_performance' => [],
+                ],
+                'hourlyDistribution' => [
+                    'hours' => [],
+                    'peak_hour' => null,
+                    'peak_hour_label' => 'No Peak Activity',
+                    'peak_orders_count' => 0,
+                    'peak_revenue' => 0.0,
+                    'lunch_rush' => ['orders_count' => 0, 'revenue' => 0.0, 'label' => '11:00 AM - 2:00 PM'],
+                    'dinner_rush' => ['orders_count' => 0, 'revenue' => 0.0, 'label' => '5:00 PM - 9:00 PM'],
+                    'total_orders' => 0,
+                    'total_revenue' => 0.0,
+                ],
+                'bestSellingRankings' => [],
+                'categoryRankings' => [],
+                'branches' => collect(),
+                'categories' => collect(),
+                'isBranchScoped' => true,
+            ];
+        }
+
+        if ($user && $user->isBranchScoped() && $this->bestSellerCategoryId !== null) {
+            $categoryAllowed = MealCategory::query()
+                ->where('id', $this->bestSellerCategoryId)
+                ->forBranch($effectiveBranchId)
+                ->exists();
+
+            if (! $categoryAllowed) {
+                $this->bestSellerCategoryId = null;
+            }
+        }
 
         $service = app(SalesAggregationService::class);
 
@@ -145,9 +239,13 @@ class Dashboard extends BaseDashboard
         );
 
         $branches = ($user && $user->isBranchScoped())
-            ? Branch::where('id', $user->branch_id)->get()
+            ? Branch::where('id', $effectiveBranchId)->get()
             : Branch::query()->orderBy('name')->get();
-        $categories = MealCategory::query()->where('is_active', true)->orderBy('name')->get();
+        $categories = MealCategory::query()
+            ->when($user && $user->isBranchScoped(), fn ($q) => $q->forBranch($effectiveBranchId))
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         return [
             'summary' => $summary,

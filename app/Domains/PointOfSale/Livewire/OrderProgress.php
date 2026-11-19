@@ -33,11 +33,29 @@ class OrderProgress extends Component
 
     public int $readyCount = 0;
 
+    private function resolveBranchId(?int $branchId = null): int
+    {
+        if ($branchId !== null) {
+            return $branchId;
+        }
+
+        $user = Auth::user();
+        if (! $user) {
+            return -1;
+        }
+
+        if ($user->isBranchScoped()) {
+            return $user->effectiveBranchId() ?? -1;
+        }
+
+        return $user->branch_id !== null ? (int) $user->branch_id : 1;
+    }
+
     #[On('open-order-progress')]
     public function open(): void
     {
         $this->isOpen = true;
-        $branchId = Auth::user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $this->counts = $this->loadBadgeCounts($branchId);
         $this->readyCount = $this->counts['ready'] ?? 0;
     }
@@ -62,7 +80,7 @@ class OrderProgress extends Component
     #[On('order-voided')]
     public function refreshTickets(): void
     {
-        $branchId = Auth::user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         Cache::forget("branch_{$branchId}_order_progress_counts");
 
         if (! $this->isOpen) {
@@ -81,7 +99,7 @@ class OrderProgress extends Component
      */
     public function loadBadgeCounts(?int $branchId = null): array
     {
-        $branchId = $branchId ?? Auth::user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId($branchId);
 
         return Cache::remember("branch_{$branchId}_order_progress_counts", 10, function () use ($branchId) {
             $groupedCounts = $this->baseTicketQuery($branchId)
@@ -108,7 +126,7 @@ class OrderProgress extends Component
      */
     public function buildTicketQuery(?int $branchId = null): Builder
     {
-        $branchId = $branchId ?? Auth::user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId($branchId);
         $query = $this->baseTicketQuery($branchId);
 
         if ($this->statusFilter === 'all') {
@@ -174,8 +192,17 @@ class OrderProgress extends Component
                 })->orWhere(function (Builder $servedQuery) use ($startOfDay, $startOfTomorrow) {
                     $servedQuery
                         ->where('status', KitchenTicketStatus::SERVED->value)
-                        ->where('created_at', '>=', $startOfDay)
-                        ->where('created_at', '<', $startOfTomorrow);
+                        ->where(function (Builder $todayWindow) use ($startOfDay, $startOfTomorrow) {
+                            $todayWindow
+                                ->where(function (Builder $createdToday) use ($startOfDay, $startOfTomorrow) {
+                                    $createdToday->where('created_at', '>=', $startOfDay)
+                                        ->where('created_at', '<', $startOfTomorrow);
+                                })
+                                ->orWhere(function (Builder $servedToday) use ($startOfDay, $startOfTomorrow) {
+                                    $servedToday->where('served_at', '>=', $startOfDay)
+                                        ->where('served_at', '<', $startOfTomorrow);
+                                });
+                        });
                 });
             })
             ->whereHas('order', fn (Builder $query) => $query
@@ -186,7 +213,7 @@ class OrderProgress extends Component
 
     public function render()
     {
-        $branchId = Auth::user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
 
         // Compute badge counts via single grouped aggregate SQL query
         $this->counts = $this->loadBadgeCounts($branchId);

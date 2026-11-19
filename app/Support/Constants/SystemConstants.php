@@ -8,32 +8,50 @@ class SystemConstants
      * Value Added Tax (VAT) rate in the Philippines (12%).
      */
     public const VAT_RATE = 0.12;
+
     public const VAT_DIVISOR = 1.12;
+
     public const VAT_PERCENTAGE = 12;
 
     /**
      * Senior Citizen and Person with Disability (PWD) statutory discount rate (20%).
      */
     public const SENIOR_PWD_DISCOUNT_RATE = 0.20;
+
     public const SENIOR_PWD_DISCOUNT_PERCENTAGE = 20;
 
     /**
      * Default currency code and symbol.
      */
     public const CURRENCY_CODE = 'PHP';
+
     public const CURRENCY_SYMBOL = '₱';
 
     /**
      * Session keys.
      */
     public const SESSION_AUTH_METHOD = 'auth_method';
+
     public const SESSION_CURRENT_BRANCH = 'current_branch_id';
+
+    public const SESSION_TERMINAL_LOCKED = 'terminal_locked';
+
+    public const SESSION_TERMINAL_LOCKED_AT = 'terminal_locked_at';
+
+    public const SESSION_TERMINAL_LOCKED_BY = 'terminal_locked_by';
+
+    public const SESSION_TERMINAL_LOCK_RETURN_URL = 'terminal_lock_return_url';
+
+    public const SESSION_POS_SAVED_CART = 'pos_saved_cart';
 
     /**
      * Performance budgets & pagination constants (Core Web Vitals).
      */
     public const DEFAULT_TABLE_PAGE_SIZE = 10;
+
     public const PERFORMANCE_BUDGET_INP_MS = 200;
+
     public const PERFORMANCE_BUDGET_LCP_SECONDS = 2.5;
+
     public const PERFORMANCE_BUDGET_CLS_SCORE = 0.1;
 }

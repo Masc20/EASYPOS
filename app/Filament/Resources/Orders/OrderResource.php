@@ -14,6 +14,21 @@ use UnitEnum;
 
 class OrderResource extends Resource
 {
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return (bool) ($user
+            && $user->canAccessAdmin()
+            && ($user->isOwner() || $user->can('reports.view') || $user->can('pos.refund'))
+            && (! $user->isBranchScoped() || $user->branch_id !== null));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
+    }
+
     protected static ?string $model = Order::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedReceiptRefund;
@@ -49,7 +64,7 @@ class OrderResource extends Resource
 
         $user = auth()->user();
         if ($user && $user->isBranchScoped()) {
-            $query->where('branch_id', $user->branch_id);
+            $query->where('branch_id', $user->effectiveBranchId());
         }
 
         return $query;

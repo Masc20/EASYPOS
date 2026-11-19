@@ -6,6 +6,9 @@ use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use App\Filament\Resources\Branches\Pages\ListBranches;
+use App\Filament\Resources\Meals\Pages\ListMeals;
+use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Support\Constants\SystemConstants;
 use App\Support\Enums\OrderStatus;
 use App\Support\Enums\OrderType;
@@ -14,8 +17,10 @@ use App\Support\Enums\PaymentStatus;
 use App\Support\Enums\PermissionEnum;
 use App\Support\Enums\StaffRole;
 use App\Support\Services\CodeGeneratorService;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class CodeGeneratorAndEnumsTest extends TestCase
@@ -107,7 +112,7 @@ class CodeGeneratorAndEnumsTest extends TestCase
         $this->assertEquals('B01-CSH-002', $empId2);
 
         $previewMap = CodeGeneratorService::getEmpIdPreviewMap();
-        $this->assertEquals('B01-CSH-002', $previewMap["{$branch->id}:" . StaffRole::CASHIER->value]);
+        $this->assertEquals('B01-CSH-002', $previewMap["{$branch->id}:".StaffRole::CASHIER->value]);
 
         $cookId = CodeGeneratorService::generateEmpId($branch->id, StaffRole::COOK->value);
         $this->assertEquals('B01-COK-001', $cookId);
@@ -118,7 +123,7 @@ class CodeGeneratorAndEnumsTest extends TestCase
 
     public function test_filament_modals_render_clean_html_and_reactively_update_codes(): void
     {
-        $this->seed(\Database\Seeders\RolesAndPermissionsSeeder::class);
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         $branch1 = Branch::firstOrCreate(['code' => 'B01'], ['name' => 'Branch One', 'is_active' => true]);
         $branch2 = Branch::firstOrCreate(['code' => 'B02'], ['name' => 'Branch Two', 'is_active' => true]);
@@ -139,14 +144,14 @@ class CodeGeneratorAndEnumsTest extends TestCase
         $this->actingAs($owner);
 
         // 1. New Branch modal: ensure no leaked JS attributes and live name->code works
-        \Livewire\Livewire::test(\App\Filament\Resources\Branches\Pages\ListBranches::class)
+        Livewire::test(ListBranches::class)
             ->mountAction('create')
             ->assertDontSee('= 2) { code =')
             ->setActionData(['name' => 'Makati Central'])
             ->assertActionDataSet(['code' => 'MACE']);
 
         // 2. Meal modal: changing category_id updates menu_code
-        \Livewire\Livewire::test(\App\Filament\Resources\Meals\Pages\ListMeals::class)
+        Livewire::test(ListMeals::class)
             ->mountAction('create')
             ->setActionData(['category_id' => $cat1->id])
             ->assertActionDataSet(['menu_code' => CodeGeneratorService::generateMenuCode($cat1->id)])
@@ -157,7 +162,7 @@ class CodeGeneratorAndEnumsTest extends TestCase
         $expectedB1 = CodeGeneratorService::generateEmpId($branch1->id, StaffRole::CASHIER->value);
         $expectedB2 = CodeGeneratorService::generateEmpId($branch2->id, StaffRole::CASHIER->value);
 
-        \Livewire\Livewire::test(\App\Filament\Resources\Users\Pages\ListUsers::class)
+        Livewire::test(ListUsers::class)
             ->mountAction('create_floor_staff')
             ->assertActionDataSet(['emp_id' => $expectedB1])
             ->setActionData(['branch_id' => $branch2->id])
@@ -175,7 +180,7 @@ class CodeGeneratorAndEnumsTest extends TestCase
             $cashier->assignRole(StaffRole::CASHIER->value);
         }
 
-        \Livewire\Livewire::test(\App\Filament\Resources\Users\Pages\ListUsers::class)
+        Livewire::test(ListUsers::class)
             ->mountTableAction('edit', $cashier)
             ->setTableActionData(['branch_id' => $branch2->id])
             ->assertTableActionDataSet(['emp_id' => CodeGeneratorService::generateEmpId($branch2->id, StaffRole::CASHIER->value)]);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Meals\Schemas;
 
+use App\Domains\Menu\Models\MealCategory;
 use App\Support\Constants\SystemConstants;
 use App\Support\Services\CodeGeneratorService;
 use Filament\Forms\Components\Hidden;
@@ -11,6 +12,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Validation\Rules\Unique;
 
 class MealForm
@@ -18,13 +20,36 @@ class MealForm
     public static function configure(Schema $schema): Schema
     {
         $user = auth()->user();
-        $isBranchScoped = $user && $user->isBranchScoped();
+        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
+        $effectiveBranchId = $isBranchScoped ? $user->effectiveBranchId() : null;
 
         return $schema
             ->components([
                 Select::make('category_id')
                     ->label('Menu Category')
-                    ->relationship('category', 'name')
+                    ->relationship(
+                        'category',
+                        'name',
+                        modifyQueryUsing: fn (Builder $query): Builder => $isBranchScoped
+                            ? $query->forBranch($effectiveBranchId)
+                            : $query,
+                    )
+                    ->rule(function () use ($isBranchScoped, $effectiveBranchId): \Closure {
+                        return function (string $attribute, mixed $value, \Closure $fail) use ($isBranchScoped, $effectiveBranchId): void {
+                            if (! $isBranchScoped || blank($value)) {
+                                return;
+                            }
+
+                            $allowed = MealCategory::query()
+                                ->where('id', (int) $value)
+                                ->forBranch($effectiveBranchId)
+                                ->exists();
+
+                            if (! $allowed) {
+                                $fail('The selected category does not belong to your branch.');
+                            }
+                        };
+                    })
                     ->required()
                     ->preload()
                     ->live(debounce: 300)
@@ -41,8 +66,8 @@ class MealForm
 
                 $isBranchScoped
                     ? Hidden::make('branch_id')
-                        ->default($user->branch_id)
-                        ->dehydrateStateUsing(fn () => $user->branch_id)
+                        ->default($effectiveBranchId)
+                        ->dehydrateStateUsing(fn () => $effectiveBranchId)
                     : Select::make('branch_id')
                         ->label('Assigned Branch')
                         ->relationship('branch', 'name')

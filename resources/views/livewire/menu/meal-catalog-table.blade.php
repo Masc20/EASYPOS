@@ -135,8 +135,45 @@
 
                         <!-- Status Toggle (86'd / In Stock) -->
                         <td class="px-3 py-3 text-center">
-                            <button type="button" x-data
-                                x-on:click.prevent="if (!navigator.onLine) { window.dispatchEvent(new CustomEvent('menu-alert', { detail: { type: 'error', message: 'Could not save availability. Please try again.' } })); return; } $wire.toggleAvailability({{ $meal->id }})"
+                            <button type="button"
+                                wire:key="meal-availability-toggle-{{ $meal->id }}"
+                                data-meal-id="{{ $meal->id }}"
+                                data-available="{{ $isAvailable ? '1' : '0' }}"
+                                x-data="{
+                                    pending: false,
+                                    pendingTimer: null,
+                                    clearPending() {
+                                        if (this.pendingTimer) {
+                                            clearTimeout(this.pendingTimer);
+                                            this.pendingTimer = null;
+                                        }
+                                        this.pending = false;
+                                    },
+                                    toggle() {
+                                        if (this.pending) {
+                                            return;
+                                        }
+                                        if (!navigator.onLine) {
+                                            this.clearPending();
+                                            window.dispatchEvent(new CustomEvent('menu-alert', {
+                                                detail: {
+                                                    type: 'error',
+                                                    message: 'Could not save availability. Please try again.'
+                                                }
+                                            }));
+                                            return;
+                                        }
+                                        this.pending = true;
+                                        this.pendingTimer = setTimeout(() => {
+                                            this.pending = false;
+                                            this.pendingTimer = null;
+                                        }, 4000);
+                                        $wire.toggleAvailability({{ $meal->id }});
+                                    }
+                                }"
+                                x-on:click.prevent="toggle()"
+                                x-on:menu-toggle-settled.window="if ($event.detail?.mealIds?.includes({{ $meal->id }})) { clearPending(); }"
+                                :disabled="pending"
                                 wire:loading.attr="disabled" wire:target="toggleAvailability({{ $meal->id }})"
                                 title="Click to toggle 86'd / In Stock availability"
                                 class="inline-flex items-center gap-1.5 rounded-sm px-2.5 py-0.5 text-xs font-semibold transition cursor-pointer border shadow-2xs disabled:opacity-60 disabled:cursor-wait {{ $isAvailable ? 'bg-brand-success/15 text-brand-success border-brand-success/30 hover:bg-brand-success/25' : 'bg-brand-error/15 text-brand-error border-brand-error/30 hover:bg-brand-error/25' }}">
@@ -173,7 +210,7 @@
                                         </span>
                                     </button>
                                     <button type="button"
-                                        x-on:click="openDelete({{ $meal->id }}, '{{ addslashes($meal->name) }}')"
+                                        x-on:click="openDelete({{ $meal->id }}, @js($meal->name))"
                                         title="Permanently remove branch dish"
                                         class="rounded-sm px-1.5 py-1 font-semibold text-brand-error/70 hover:text-brand-error hover:bg-brand-error/10 transition cursor-pointer">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor"

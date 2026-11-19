@@ -28,11 +28,31 @@
             @endforeach --}}
         </div>
 
-        <form method="POST" action="{{ route('logout') }}" class="inline">
+        <form method="POST" action="{{ route('terminal.lock') }}" class="inline"
+            x-data="{ locking: false }"
+            @submit="if (locking) { $event.preventDefault(); return; } if ($refs.cartStateInput && typeof window.__easyposSerializeCart === 'function') { $refs.cartStateInput.value = window.__easyposSerializeCart() || ''; } locking = true; window.EASYPOS_BEGIN_LOGOUT?.();">
             @csrf
-            <button type="submit"
-                class="rounded-md border border-brand-border bg-brand-card px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-error hover:text-brand-error transition shadow-2xs cursor-pointer">
-                {{ $user->canAccessAdmin() && !$user->isStrictFloorStaff() ? 'Sign Out' : 'Clock Out' }}
+            <input type="hidden" name="return_url" value="{{ request()->getRequestUri() }}">
+            <input type="hidden" name="cart_state" x-ref="cartStateInput" value="">
+            <button type="submit" :disabled="locking"
+                class="rounded-md border border-brand-border bg-brand-card px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-primary hover:text-brand-primary transition shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+                <span x-show="!locking">Lock</span>
+                <span x-show="locking" x-cloak>Locking...</span>
+            </button>
+        </form>
+
+        <form method="POST" action="{{ route('logout') }}" class="inline"
+            x-data="{ loggingOut: false }"
+            @submit="if (loggingOut) { $event.preventDefault(); return; } window.__easyposClearSavedCart?.(); loggingOut = true; window.EASYPOS_BEGIN_LOGOUT?.();">
+            @csrf
+            <button type="submit" :disabled="loggingOut"
+                class="rounded-md border border-brand-border bg-brand-card px-3 py-1.5 text-xs font-medium text-brand-text hover:border-brand-error hover:text-brand-error transition shadow-2xs cursor-pointer disabled:opacity-60 disabled:cursor-wait">
+                <span x-show="!loggingOut">
+                    {{ $user->canAccessAdmin() && !$user->isStrictFloorStaff() ? 'Sign Out' : 'Clock Out' }}
+                </span>
+                <span x-show="loggingOut" x-cloak>
+                    {{ $user->canAccessAdmin() && !$user->isStrictFloorStaff() ? 'Signing out...' : 'Clocking out...' }}
+                </span>
             </button>
         </form>
     @else

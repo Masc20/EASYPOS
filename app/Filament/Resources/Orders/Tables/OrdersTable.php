@@ -159,7 +159,7 @@ class OrdersTable
                             ->placeholder('e.g., Customer changed mind, wrong items entered')
                             ->rows(3),
                     ])
-                    ->action(function (Order $record, array $data, VoidOrderAction $action) {
+                    ->action(function (Order $record, array $data) {
                         $user = auth()->user();
                         if ($user && $user->isBranchScoped() && (int) $record->branch_id !== (int) $user->branch_id) {
                             Notification::make()
@@ -171,7 +171,7 @@ class OrdersTable
                         }
 
                         try {
-                            $action->execute([
+                            app(VoidOrderAction::class)->execute([
                                 'order_id' => $record->id,
                                 'manager_id' => auth()->id(),
                                 'reason' => $data['reason'],
@@ -183,10 +183,18 @@ class OrdersTable
                                 ->body("Order #{$record->order_number} has been cancelled and refunded.")
                                 ->success()
                                 ->send();
-                        } catch (\Throwable $e) {
+                        } catch (\InvalidArgumentException $e) {
                             Notification::make()
                                 ->title('Void Failed')
                                 ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        } catch (\Throwable $e) {
+                            report($e);
+
+                            Notification::make()
+                                ->title('Void Failed')
+                                ->body('An unexpected error occurred while processing the void request.')
                                 ->danger()
                                 ->send();
                         }

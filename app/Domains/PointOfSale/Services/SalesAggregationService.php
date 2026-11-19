@@ -38,17 +38,44 @@ class SalesAggregationService
 
     /**
      * Resolve effective branch ID for caching and tenancy isolation.
+     * For branch-scoped users without an assigned branch, returns -1 (fail-closed sentinel).
      */
     public function resolveBranchScope(?int $branchId): ?int
     {
         if (auth()->check()) {
             $user = auth()->user();
             if ($user && method_exists($user, 'isBranchScoped') && $user->isBranchScoped()) {
-                return (int) $user->branch_id;
+                return method_exists($user, 'effectiveBranchId')
+                    ? $user->effectiveBranchId()
+                    : ($user->branch_id !== null ? (int) $user->branch_id : -1);
             }
         }
 
         return $branchId;
+    }
+
+    /**
+     * Safely parse a date string into a Carbon instance, returning null if blank or malformed.
+     */
+    public function parseSafeDate(?string $dateString): ?Carbon
+    {
+        if (blank($dateString)) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($dateString);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Normalize a date input string to Y-m-d if valid, or empty string if invalid/blank.
+     */
+    public function normalizeDateString(?string $dateString): string
+    {
+        return $this->parseSafeDate($dateString)?->toDateString() ?? '';
     }
 
     /**
@@ -57,7 +84,7 @@ class SalesAggregationService
     protected function buildFilteredOrdersQuery(
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $branchId = null,
+        ?int $effectiveBranchId = null,
         ?int $cashierId = null
     ): Builder {
         $query = Order::query()
@@ -66,16 +93,18 @@ class SalesAggregationService
                     ->orWhere('orders.status', OrderStatus::COMPLETED->value);
             });
 
-        if ($startDate) {
-            $query->where('orders.created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        $parsedStart = $this->parseSafeDate($startDate);
+        if ($parsedStart !== null) {
+            $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
         }
 
-        if ($endDate) {
-            $query->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        $parsedEnd = $this->parseSafeDate($endDate);
+        if ($parsedEnd !== null) {
+            $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
         }
 
-        if ($branchId) {
-            $query->where('orders.branch_id', $branchId);
+        if ($effectiveBranchId !== null) {
+            $query->where('orders.branch_id', $effectiveBranchId);
         }
 
         if ($cashierId) {
@@ -91,21 +120,23 @@ class SalesAggregationService
     protected function buildFilteredPaymentsQuery(
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $branchId = null,
+        ?int $effectiveBranchId = null,
         ?int $cashierId = null
     ): Builder {
         $query = Payment::query()->where('status', 'successful');
 
-        if ($startDate) {
-            $query->where('created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        $parsedStart = $this->parseSafeDate($startDate);
+        if ($parsedStart !== null) {
+            $query->where('created_at', '>=', $parsedStart->startOfDay());
         }
 
-        if ($endDate) {
-            $query->where('created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        $parsedEnd = $this->parseSafeDate($endDate);
+        if ($parsedEnd !== null) {
+            $query->where('created_at', '<=', $parsedEnd->endOfDay());
         }
 
-        if ($branchId) {
-            $query->where('branch_id', $branchId);
+        if ($effectiveBranchId !== null) {
+            $query->where('branch_id', $effectiveBranchId);
         }
 
         if ($cashierId) {

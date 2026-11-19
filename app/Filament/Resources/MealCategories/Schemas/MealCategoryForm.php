@@ -14,13 +14,14 @@ class MealCategoryForm
     {
         $user = auth()->user();
         $isBranchScoped = $user && $user->isBranchScoped();
+        $effectiveBranchId = $isBranchScoped ? $user->effectiveBranchId() : null;
 
         return $schema
             ->components([
                 $isBranchScoped
                     ? Hidden::make('branch_id')
-                        ->default($user->branch_id)
-                        ->dehydrateStateUsing(fn () => $user->branch_id)
+                        ->default($effectiveBranchId)
+                        ->dehydrateStateUsing(fn () => $effectiveBranchId)
                     : Select::make('branch_id')
                         ->relationship('branch', 'name')
                         ->placeholder('All Branches (Global Category)')

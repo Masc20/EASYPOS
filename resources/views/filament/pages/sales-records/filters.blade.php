@@ -13,8 +13,13 @@
                     Reset
                 </x-filament::button>
 
-                <x-filament::button color="success" size="sm" icon="heroicon-m-arrow-down-tray"
-                    wire:click="exportCsv">
+                <x-filament::button tag="a" color="success" size="sm" icon="heroicon-m-arrow-down-tray"
+                    :href="route('sales-records.export-csv', array_filter([
+                        'startDate' => $startDate,
+                        'endDate' => $endDate,
+                        'branchId' => $branchId,
+                        'cashierId' => $cashierId,
+                    ], fn ($v) => filled($v)))">
                     Export CSV Summary
                 </x-filament::button>
             </div>

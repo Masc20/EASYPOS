@@ -2,49 +2,58 @@
 
 namespace App\Domains\Menu\Actions;
 
-use App\Domains\Branches\Models\Branch;
+use App\Domains\Identity\Models\User;
+use App\Domains\Menu\Actions\Concerns\ValidatesMealInput;
 use App\Domains\Menu\Events\MealUpdated;
 use App\Domains\Menu\Models\Meal;
-use Illuminate\Support\Facades\Cache;
+use App\Support\InputSanitizer;
 
 class UpdateMealAction
 {
+    use ValidatesMealInput;
+
     public function handle(Meal|int $meal, array $data): Meal
     {
-        $instance = $meal instanceof Meal ? $meal : Meal::findOrFail($meal);
-
         $user = auth()->user();
-        if ($user && ! $user->isOwner() && ! $user->can('menu.manage')) {
+        if (! $user instanceof User || (! $user->isOwner() && ! $user->can('menu.manage'))) {
             abort(403, 'Unauthorized. You do not have permission to modify menu items.');
         }
 
-        if ($user && $user->isBranchScoped()) {
+        $instance = $meal instanceof Meal ? $meal : Meal::findOrFail($meal);
+
+        if ($user->isBranchScoped()) {
+            $effectiveBranchId = $user->effectiveBranchId();
+            if ($user->branch_id === null || $effectiveBranchId < 0) {
+                abort(403, 'Unauthorized. Branch assignment required.');
+            }
             if ($instance->branch_id === null) {
                 abort(403, 'Unauthorized. Global menu dishes can only be modified by system administrators.');
             }
-            if ((int) $instance->branch_id !== (int) $user->branch_id) {
+            if ((int) $instance->branch_id !== $effectiveBranchId) {
                 abort(403, 'Unauthorized. You cannot modify a dish belonging to another branch.');
             }
             if (array_key_exists('branch_id', $data) && $data['branch_id'] === null) {
                 abort(403, 'Unauthorized. You cannot make a branch dish global.');
             }
-            if (array_key_exists('branch_id', $data) && $data['branch_id'] !== null && (int) $data['branch_id'] !== (int) $user->branch_id) {
+            if (array_key_exists('branch_id', $data) && (int) $data['branch_id'] !== $effectiveBranchId) {
                 abort(403, 'Unauthorized. You cannot transfer a dish to another branch.');
             }
         }
 
         $payload = [];
 
+        if (array_key_exists('category_id', $data)) {
+            $targetBranchId = $instance->branch_id !== null ? (int) $instance->branch_id : null;
+            $category = $this->validateCategoryForBranch($user, $data['category_id'], $targetBranchId);
+            $payload['category_id'] = $category->id;
+        }
+
         if (array_key_exists('name', $data)) {
-            $payload['name'] = $this->sanitize($data['name'] ?? '') ?? '';
+            $payload['name'] = $this->sanitizeRequiredMealName($data['name']);
         }
 
         if (array_key_exists('menu_code', $data)) {
-            $payload['menu_code'] = !empty($data['menu_code']) ? strtoupper(trim($data['menu_code'])) : null;
-        }
-
-        if (array_key_exists('category_id', $data)) {
-            $payload['category_id'] = $data['category_id'];
+            $payload['menu_code'] = ! empty($data['menu_code']) ? strtoupper(trim($data['menu_code'])) : null;
         }
 
         if (array_key_exists('price', $data)) {
@@ -52,11 +61,11 @@ class UpdateMealAction
         }
 
         if (array_key_exists('cost_price', $data)) {
-            $payload['cost_price'] = !empty($data['cost_price']) ? (float) $data['cost_price'] : null;
+            $payload['cost_price'] = ! empty($data['cost_price']) ? (float) $data['cost_price'] : null;
         }
 
         if (array_key_exists('description', $data)) {
-            $payload['description'] = $this->sanitize($data['description']);
+            $payload['description'] = InputSanitizer::clean($data['description'] !== null ? (string) $data['description'] : null);
         }
 
         if (array_key_exists('is_available', $data)) {
@@ -70,40 +79,8 @@ class UpdateMealAction
 
         $instance->update($payload);
 
-        $timestamp = now()->timestamp;
-        Cache::forever('menu_version', $timestamp);
-        if ($instance->branch_id !== null) {
-            Cache::forever("branch_{$instance->branch_id}_menu_version", $timestamp);
-        } else {
-            Cache::forever('branch_global_menu_version', $timestamp);
-            try {
-                $branches = Branch::pluck('id');
-                foreach ($branches as $bId) {
-                    Cache::forever("branch_{$bId}_menu_version", $timestamp);
-                }
-            } catch (\Throwable $e) {
-                // Fallback if Branch table is not seeded
-            }
-        }
-
         event(new MealUpdated($instance));
 
         return $instance;
-    }
-
-    /**
-     * Sanitize text input by removing script/style/iframe container blocks and stripping HTML tags.
-     */
-    private function sanitize(mixed $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-
-        $cleaned = preg_replace('/<(script|style|iframe)\b[^>]*>(.*?)<\/\1>/is', '', (string) $value);
-        $cleaned = strip_tags($cleaned);
-        $cleaned = trim($cleaned);
-
-        return $cleaned !== '' ? $cleaned : null;
     }
 }

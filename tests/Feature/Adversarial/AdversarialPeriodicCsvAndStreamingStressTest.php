@@ -411,10 +411,10 @@ class AdversarialPeriodicCsvAndStreamingStressTest extends TestCase
         $this->assertCount(2, $lines);
 
         $row = str_getcsv($lines[1]);
-        $this->assertEquals('=SUM(A1:A10)', $row[0]);
+        $this->assertEquals("'=SUM(A1:A10)", $row[0]);
         $this->assertEquals('Branch España ₱ (Alpha)', $row[2]);
         $this->assertEquals('José "Pepe" Peña-ñ', $row[3]);
-        $this->assertEquals('+CMD|calc', $row[5]);
+        $this->assertEquals("'+CMD|calc", $row[5]);
         $this->assertEquals('900.00', $row[8]);
     }
 

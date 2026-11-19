@@ -2,6 +2,7 @@
 
 namespace App\Domains\Identity\Livewire\Auth;
 
+use App\Domains\Audit\Services\ActivityLogger;
 use App\Domains\Identity\Events\UserLoggedIn;
 use App\Domains\Identity\Models\User;
 use App\Support\Constants\SystemConstants;
@@ -64,7 +65,19 @@ class Login extends Component
 
         if (! $user || ! $user->verifyPin($this->pin)) {
             RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->globalThrottleKey());
             $this->pin = '';
+
+            ActivityLogger::failed(
+                category: 'auth',
+                event: 'login_failed',
+                description: 'Failed floor terminal login attempt for Employee ID ' . strtoupper(trim($this->emp_id)) . '.',
+                actor: $user,
+                branchId: $user?->branch_id,
+                metadata: ['emp_id' => strtoupper(trim($this->emp_id)), 'reason' => 'invalid_credentials'],
+                actorName: $user?->name ?? strtoupper(trim($this->emp_id)),
+                actorEmpId: $user?->emp_id ?? strtoupper(trim($this->emp_id)),
+            );
 
             throw ValidationException::withMessages([
                 'emp_id' => 'Invalid Employee ID or PIN.',
@@ -74,6 +87,14 @@ class Login extends Component
         // Check if user account is deactivated
         if (! $user->is_active) {
             $this->pin = '';
+            ActivityLogger::denied(
+                category: 'auth',
+                event: 'login_failed',
+                description: "Deactivated staff account {$user->emp_id} attempted floor terminal login.",
+                actor: $user,
+                branchId: $user->branch_id,
+                metadata: ['reason' => 'account_deactivated'],
+            );
             throw ValidationException::withMessages([
                 'emp_id' => 'Your account has been deactivated. Please contact your manager or system administrator.',
             ]);
@@ -82,12 +103,21 @@ class Login extends Component
         // Check branch status if assigned
         if ($user->branch && ! $user->branch->is_active) {
             $this->pin = '';
+            ActivityLogger::denied(
+                category: 'auth',
+                event: 'login_failed',
+                description: "Staff {$user->emp_id} attempted login on inactive branch.",
+                actor: $user,
+                branchId: $user->branch_id,
+                metadata: ['reason' => 'branch_inactive'],
+            );
             throw ValidationException::withMessages([
                 'emp_id' => 'Your assigned branch is currently inactive.',
             ]);
         }
 
         RateLimiter::clear($this->throttleKey());
+        RateLimiter::clear($this->globalThrottleKey());
 
         Auth::login($user);
         session()->regenerate();
@@ -100,9 +130,15 @@ class Login extends Component
 
         event(new UserLoggedIn($user));
 
-        session()->forget('url.intended');
+        session()->forget([
+            'url.intended',
+            SystemConstants::SESSION_TERMINAL_LOCKED,
+            SystemConstants::SESSION_TERMINAL_LOCKED_AT,
+            SystemConstants::SESSION_TERMINAL_LOCKED_BY,
+            SystemConstants::SESSION_TERMINAL_LOCK_RETURN_URL,
+        ]);
 
-        $this->redirect($user->stationRoute(), navigate: true);
+        $this->redirect($user->stationRoute());
     }
 
     /**
@@ -110,13 +146,19 @@ class Login extends Component
      */
     protected function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        $ipLimited = RateLimiter::tooManyAttempts($this->throttleKey(), 5);
+        $empLimited = RateLimiter::tooManyAttempts($this->globalThrottleKey(), 5);
+
+        if (! $ipLimited && ! $empLimited) {
             return;
         }
 
         event(new Lockout(request()));
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = max(
+            $ipLimited ? RateLimiter::availableIn($this->throttleKey()) : 0,
+            $empLimited ? RateLimiter::availableIn($this->globalThrottleKey()) : 0,
+        );
 
         throw ValidationException::withMessages([
             'emp_id' => __('auth.throttle', [
@@ -132,6 +174,14 @@ class Login extends Component
     protected function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->emp_id) . '|' . request()->ip());
+    }
+
+    /**
+     * Global rate limiting throttle key per employee ID across rotating IPs.
+     */
+    protected function globalThrottleKey(): string
+    {
+        return 'floor-login-emp:' . Str::transliterate(Str::lower(trim($this->emp_id)));
     }
 
     public function render()

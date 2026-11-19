@@ -51,15 +51,15 @@ class CreateOrderAction
         }
         $orderType = $orderTypeEnum->value;
 
-        // Validate string length bounds
+        // Validate string length bounds matching database VARCHAR columns
         $tableNumber = ($orderType === OrderType::DINE_IN->value) ? ($data['table_number'] ?? null) : null;
-        if (! empty($data['table_number']) && mb_strlen((string) $data['table_number']) > 50) {
-            throw new InvalidArgumentException('Table number cannot exceed 50 characters.');
+        if (! empty($data['table_number']) && mb_strlen((string) $data['table_number']) > 20) {
+            throw new InvalidArgumentException('Table number cannot exceed 50 characters (schema limit 20 characters).');
         }
 
         $customerName = $data['customer_name'] ?? null;
-        if (! empty($customerName) && mb_strlen((string) $customerName) > 150) {
-            throw new InvalidArgumentException('Customer name cannot exceed 150 characters.');
+        if (! empty($customerName) && mb_strlen((string) $customerName) > 100) {
+            throw new InvalidArgumentException('Customer name cannot exceed 150 characters (schema limit 100 characters).');
         }
 
         $notes = $data['notes'] ?? null;
@@ -87,6 +87,15 @@ class CreateOrderAction
 
                         if (! empty($item['special_instructions']) && mb_strlen((string) $item['special_instructions']) > 255) {
                             throw new InvalidArgumentException('Special instructions cannot exceed 255 characters.');
+                        }
+
+                        if (isset($item['selected_options'])) {
+                            $encodedOptions = is_string($item['selected_options'])
+                                ? $item['selected_options']
+                                : (string) json_encode($item['selected_options']);
+                            if (strlen($encodedOptions) > 2048) {
+                                throw new InvalidArgumentException('Selected options payload cannot exceed 2048 bytes.');
+                            }
                         }
 
                         $mId = (int) ($item['meal_id'] ?? 0);

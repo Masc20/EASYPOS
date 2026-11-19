@@ -5,7 +5,6 @@ namespace App\Domains\Menu\Actions;
 use App\Domains\Menu\Events\MealAvailabilityToggled;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealBranchAvailability;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -18,13 +17,17 @@ class UpdateBranchPortionsAction
     public function handle(int $mealId, bool $trackStock, ?int $stockQuantity): Meal
     {
         $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
             abort(403, 'Unauthorized.');
         }
 
+        $isBranchScoped = $user->isBranchScoped();
+        $branchId = $isBranchScoped ? $user->effectiveBranchId() : null;
+        if ($isBranchScoped && ($user->branch_id === null || $branchId < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
+
         $meal = Meal::findOrFail($mealId);
-        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
-        $branchId = $isBranchScoped ? (int) $user->branch_id : null;
 
         if ($isBranchScoped && $meal->branch_id !== null && (int) $meal->branch_id !== $branchId) {
             abort(403, 'Unauthorized. You cannot modify portions for a dish belonging to another branch.');
@@ -67,10 +70,10 @@ class UpdateBranchPortionsAction
             return $nextAvailable;
         });
 
-        $this->flushMenuCatalogCaches($meal->branch_id ?? $branchId);
+        $this->flushMenuCatalogCaches($meal, $isBranchScoped, $branchId);
 
         try {
-            broadcast(new MealAvailabilityToggled($meal, $effectiveAvailable, $branchId))->toOthers();
+            event(new MealAvailabilityToggled($meal, $branchId, $effectiveAvailable));
         } catch (Throwable $e) {
             Log::warning('Meal portion broadcast failed after database commit.', [
                 'meal_id' => $meal->id,
@@ -82,11 +85,10 @@ class UpdateBranchPortionsAction
         return $meal->fresh();
     }
 
-    private function flushMenuCatalogCaches(?int $branchId): void
+    private function flushMenuCatalogCaches(Meal $meal, bool $isBranchScoped, ?int $branchId): void
     {
-        Cache::forget('pos_menu_catalog_all');
-        if ($branchId !== null) {
-            Cache::forget("pos_menu_catalog_{$branchId}");
+        if ($meal->branch_id === null && $isBranchScoped && $branchId !== null) {
+            Meal::bumpMenuVersionForSingleBranch($branchId);
         }
     }
 }

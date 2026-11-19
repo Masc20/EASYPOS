@@ -8,8 +8,11 @@ use Livewire\Component;
 class DatePicker extends Component
 {
     public string $selectedDate = '';
+
     public string $label = '';
+
     public string $preset = 'today';
+
     public string $eventName = 'date-selected';
 
     public function mount(

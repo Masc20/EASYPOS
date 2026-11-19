@@ -314,9 +314,9 @@ class PointOfSaleTest extends TestCase
 
         Livewire::actingAs($this->cashier)
             ->test(\App\Domains\PointOfSale\Livewire\MealCatalog::class)
-            ->assertSeeHtml("86'd / Sold Out")
+            ->assertSeeHtml("Sold Out")
             ->assertSeeHtml("Sold Out (86'd)")
-            ->assertSee("Unavailable")
+            ->assertSeeHtml('aria-disabled="true"')
             ->assertViewHas('soldOutCount', 2);
     }
 
@@ -411,5 +411,93 @@ class PointOfSaleTest extends TestCase
         $result2 = $action->handle($risotto);
         $this->assertTrue($result2->isAvailableForBranch($chef->branch_id));
         $this->assertTrue($risotto->fresh()->isAvailableForBranch($chef->branch_id));
+    }
+
+    public function test_pos_client_checkout_with_senior_pwd_discount_applies_discount_to_order_payment_change_and_receipt(): void
+    {
+        $meal280 = Meal::create([
+            'branch_id' => $this->cashier->branch_id,
+            'category_id' => Meal::firstOrFail()->category_id,
+            'name' => 'Crispy Pork Kare-Kare',
+            'menu_code' => 'B01-BUG-280',
+            'price' => 280.00,
+            'is_available' => true,
+            'is_active' => true,
+        ]);
+
+        // 1. Exact tender (₱224.00 on ₱280.00 item with 20% Senior/PWD discount = ₱56.00 discount) succeeds
+        $modal = Livewire::actingAs($this->cashier)->test(CheckoutModal::class);
+        $modal->call('processCheckoutFromClient', [
+            'items' => [
+                ['meal_id' => $meal280->id, 'quantity' => 1, 'special_instructions' => ''],
+            ],
+            'order_type' => 'dine_in',
+            'table_number' => 'T-01',
+            'customer_name' => 'Lola Rosa',
+            'subtotal' => 280.00,
+            'discount_type' => 'senior_pwd',
+            'discount_amount' => 56.00,
+            'custom_discount' => 0,
+            'total_amount' => 224.00,
+            'notes' => '',
+            'payment_method' => 'cash',
+            'amount_tendered' => 224.00,
+            'reference_number' => '',
+        ])
+            ->assertReturned(null)
+            ->assertSet('errorMessage', null)
+            ->assertDispatched('show-receipt');
+
+        $orderExact = Order::latest('id')->firstOrFail();
+        $this->assertEquals(280.00, (float) $orderExact->subtotal);
+        $this->assertEquals(56.00, (float) $orderExact->discount_amount);
+        $this->assertEquals(224.00, (float) $orderExact->total_amount);
+
+        $paymentExact = $orderExact->payments()->firstOrFail();
+        $this->assertEquals(224.00, (float) $paymentExact->amount);
+        $this->assertEquals(224.00, (float) $paymentExact->amount_tendered);
+        $this->assertEquals(0.00, (float) $paymentExact->change_given);
+
+        // 2. ₱500.00 tender on ₱280.00 item with 20% Senior/PWD discount saves ₱224.00 total and ₱276.00 change
+        $modal->call('processCheckoutFromClient', [
+            'items' => [
+                ['meal_id' => $meal280->id, 'quantity' => 1, 'special_instructions' => ''],
+            ],
+            'order_type' => 'dine_in',
+            'table_number' => 'T-02',
+            'customer_name' => 'Lolo Pedro',
+            'subtotal' => 280.00,
+            'discount_type' => 'senior_pwd',
+            'discount_amount' => 56.00,
+            'custom_discount' => 0,
+            'total_amount' => 224.00,
+            'notes' => '',
+            'payment_method' => 'cash',
+            'amount_tendered' => 500.00,
+            'reference_number' => '',
+        ])
+            ->assertReturned(null)
+            ->assertSet('errorMessage', null)
+            ->assertDispatched('show-receipt');
+
+        $order500 = Order::where('id', '>', $orderExact->id)->firstOrFail();
+        $this->assertEquals(280.00, (float) $order500->subtotal);
+        $this->assertEquals(56.00, (float) $order500->discount_amount);
+        $this->assertEquals(224.00, (float) $order500->total_amount);
+
+        $payment500 = $order500->payments()->firstOrFail();
+        $this->assertEquals(224.00, (float) $payment500->amount);
+        $this->assertEquals(500.00, (float) $payment500->amount_tendered);
+        $this->assertEquals(276.00, (float) $payment500->change_given);
+
+        // 3. Official sales receipt displays ₱280.00 subtotal, -₱56.00 discount, ₱224.00 total, ₱500.00 tendered, ₱276.00 change
+        Livewire::actingAs($this->cashier)
+            ->test(\App\Domains\PointOfSale\Livewire\Checkout\ReceiptPreview::class)
+            ->call('loadOrder', $order500->id)
+            ->assertSee('280.00')
+            ->assertSee('-₱56.00')
+            ->assertSee('224.00')
+            ->assertSee('500.00')
+            ->assertSee('276.00');
     }
 }

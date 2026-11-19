@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Meals\Tables;
 
 use App\Domains\Menu\Models\Meal;
+use App\Filament\Resources\Meals\MealResource;
 use App\Support\Constants\SystemConstants;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -15,6 +16,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MealsTable
 {
@@ -66,7 +68,17 @@ class MealsTable
             ])
             ->filters([
                 SelectFilter::make('category_id')
-                    ->relationship('category', 'name')
+                    ->relationship(
+                        'category',
+                        'name',
+                        modifyQueryUsing: function (Builder $query): Builder {
+                            $user = auth()->user();
+
+                            return ($user && $user->isBranchScoped())
+                                ? $query->forBranch($user->effectiveBranchId())
+                                : $query;
+                        }
+                    )
                     ->label('Category'),
                 SelectFilter::make('branch_id')
                     ->relationship('branch', 'name')
@@ -82,51 +94,22 @@ class MealsTable
                 EditAction::make()
                     ->modal()
                     ->modalWidth('2xl')
-                    ->visible(function (Meal $record): bool {
-                        $user = auth()->user();
-                        if (! $user) {
-                            return false;
-                        }
-                        if ($user->isOwner()) {
-                            return true;
-                        }
-                        if ($user->isBranchScoped()) {
-                            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
-                        }
-                        return true;
-                    })
-                    ->authorize(function (Meal $record): bool {
-                        $user = auth()->user();
-                        if (! $user) {
-                            return false;
-                        }
-                        if ($user->isOwner()) {
-                            return true;
-                        }
-                        if ($user->isBranchScoped()) {
-                            return $record->branch_id !== null && (int) $record->branch_id === (int) $user->branch_id;
-                        }
-                        return true;
-                    }),
+                    ->visible(fn (Meal $record): bool => MealResource::canEdit($record))
+                    ->authorize(fn (Meal $record): bool => MealResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
-                        ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
-                            $user = auth()->user();
-                            foreach ($records as $record) {
-                                if ($user && $user->isBranchScoped()) {
-                                    if ($record->branch_id === null || (int) $record->branch_id !== (int) $user->branch_id) {
-                                        continue;
-                                    }
-                                }
-                                $record->delete();
-                            }
-                        }),
+                        ->authorizeIndividualRecords()
+                        ->authorize(fn (): bool => MealResource::canDeleteAny()),
                     ForceDeleteBulkAction::make()
-                        ->visible(fn () => ! auth()->user()?->isBranchScoped()),
+                        ->visible(fn () => ! auth()->user()?->isBranchScoped())
+                        ->authorize(fn (): bool => MealResource::canForceDeleteAny())
+                        ->authorizeIndividualRecords(),
                     RestoreBulkAction::make()
-                        ->visible(fn () => ! auth()->user()?->isBranchScoped()),
+                        ->visible(fn () => ! auth()->user()?->isBranchScoped())
+                        ->authorize(fn (): bool => MealResource::canRestoreAny())
+                        ->authorizeIndividualRecords(),
                 ]),
             ]);
     }

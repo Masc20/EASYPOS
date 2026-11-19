@@ -1,13 +1,69 @@
 <div x-data="{
+    storageKey: 'easypos_pos_cart_{{ (int) auth()->id() }}',
     items: @js($items),
-    orderType: '{{ $orderType }}',
-    tableNumber: '{{ $tableNumber }}',
-    customerName: '{{ $customerName }}',
-    discountType: '{{ $discountType }}',
+    orderType: @js($orderType),
+    tableNumber: @js($tableNumber),
+    customerName: @js($customerName),
+    discountType: @js($discountType),
     customDiscount: {{ (float) $customDiscount }},
-    notes: '{{ $notes }}',
+    notes: @js($notes),
+
+    persistDraft() {
+        try {
+            if (!Array.isArray(this.items) || this.items.length === 0) {
+                sessionStorage.removeItem(this.storageKey);
+                return '';
+            }
+            const payload = JSON.stringify({
+                items: this.items,
+                orderType: this.orderType,
+                tableNumber: this.tableNumber,
+                customerName: this.customerName,
+                discountType: this.discountType,
+                customDiscount: this.customDiscount,
+                notes: this.notes,
+            });
+            sessionStorage.setItem(this.storageKey, payload);
+            return payload;
+        } catch (_) {
+            return '';
+        }
+    },
+
+    restoreDraftIfNeeded() {
+        try {
+            if (Array.isArray(this.items) && this.items.length > 0) {
+                this.persistDraft();
+                return;
+            }
+            const raw = sessionStorage.getItem(this.storageKey);
+            if (!raw) return;
+            const saved = JSON.parse(raw);
+            if (saved && Array.isArray(saved.items) && saved.items.length > 0) {
+                this.items = saved.items;
+                this.orderType = saved.orderType || 'dine_in';
+                this.tableNumber = saved.tableNumber || '';
+                this.customerName = saved.customerName || '';
+                this.discountType = saved.discountType || 'none';
+                this.customDiscount = parseFloat(saved.customDiscount) || 0;
+                this.notes = saved.notes || '';
+            }
+        } catch (_) {}
+    },
 
     init() {
+        this.restoreDraftIfNeeded();
+        window.__easyposSerializeCart = () => this.persistDraft();
+        window.__easyposClearSavedCart = () => {
+            try { sessionStorage.removeItem(this.storageKey); } catch (_) {}
+        };
+        this.$watch('orderType', () => this.persistDraft());
+        this.$watch('tableNumber', () => this.persistDraft());
+        this.$watch('customerName', () => this.persistDraft());
+        this.$watch('discountType', () => this.persistDraft());
+        this.$watch('customDiscount', () => this.persistDraft());
+        this.$watch('notes', () => this.persistDraft());
+
         window.addEventListener('add-to-cart-client', (e) => {
             this.addMeal(e.detail);
         });
@@ -22,6 +78,7 @@
         window.addEventListener('cart-availability-updated', (e) => {
             if (e.detail && e.detail.items) {
                 this.items = e.detail.items;
+                this.persistDraft();
             }
         });
     },
@@ -55,6 +112,7 @@
                 max_quantity: meal.maxQty !== undefined ? meal.maxQty : null
             });
         }
+        this.persistDraft();
     },
 
     increment(index) {
@@ -65,12 +123,14 @@
             return;
         }
         item.quantity++;
+        this.persistDraft();
     },
 
     decrement(index) {
         if (!this.items[index]) return;
         if (this.items[index].quantity > 1) {
             this.items[index].quantity--;
+            this.persistDraft();
         } else {
             this.remove(index);
         }
@@ -78,6 +138,7 @@
 
     remove(index) {
         this.items.splice(index, 1);
+        this.persistDraft();
     },
 
     clear() {
@@ -87,6 +148,7 @@
         this.discountType = 'none';
         this.customDiscount = 0;
         this.notes = '';
+        this.persistDraft();
     },
 
     get itemCount() {
@@ -133,7 +195,9 @@
             table_number: this.tableNumber,
             customer_name: this.customerName,
             subtotal: this.subtotal,
+            discount_type: this.discountType,
             discount_amount: this.discountAmount,
+            custom_discount: this.customDiscount,
             total_amount: this.totalAmount,
             notes: this.notes
         };

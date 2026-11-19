@@ -1,0 +1,16 @@
+parameters:
+    paths:
+        - app/Domains
+        - app/Livewire
+        - app/Models
+        - app/Providers
+        - routes
+    level: 5
+
+    shipmonkDeadCode:
+        detect:
+            deadMethods: true
+            deadConstants: true
+            deadProperties:
+                neverRead: true
+                neverWritten: true   

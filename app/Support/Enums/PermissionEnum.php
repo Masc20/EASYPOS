@@ -2,6 +2,8 @@
 
 namespace App\Support\Enums;
 
+use Spatie\Permission\Models\Permission;
+
 class PermissionEnum
 {
     /**
@@ -69,7 +71,7 @@ class PermissionEnum
      */
     public static function allWithLabels(): array
     {
-        $permissions = \Spatie\Permission\Models\Permission::pluck('name', 'name')->toArray();
+        $permissions = Permission::pluck('name', 'name')->toArray();
         $mapped = [];
 
         foreach ($permissions as $perm) {

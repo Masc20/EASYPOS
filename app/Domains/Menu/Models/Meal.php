@@ -4,12 +4,14 @@ namespace App\Domains\Menu\Models;
 
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
+use App\Support\Services\CodeGeneratorService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Cache;
 
 class Meal extends Model
 {
@@ -35,9 +37,77 @@ class Meal extends Model
     {
         static::creating(function (Meal $meal) {
             if (blank($meal->menu_code) && $meal->category_id) {
-                $meal->menu_code = \App\Support\Services\CodeGeneratorService::generateMenuCode((int) $meal->category_id);
+                $meal->menu_code = CodeGeneratorService::generateMenuCode((int) $meal->category_id);
             }
         });
+
+        static::saved(function (Meal $meal) {
+            $branchId = $meal->branch_id !== null ? (int) $meal->branch_id : null;
+            static::bumpMenuVersionForBranch($branchId);
+
+            if ($meal->wasChanged('branch_id')) {
+                $originalBranchId = $meal->getOriginal('branch_id') !== null
+                    ? (int) $meal->getOriginal('branch_id')
+                    : null;
+
+                if ($originalBranchId !== $branchId) {
+                    static::bumpMenuVersionForBranch($originalBranchId);
+                }
+            }
+        });
+
+        static::deleted(function (Meal $meal) {
+            $branchId = $meal->branch_id !== null ? (int) $meal->branch_id : null;
+            static::bumpMenuVersionForBranch($branchId);
+        });
+
+        static::restored(function (Meal $meal) {
+            $branchId = $meal->branch_id !== null ? (int) $meal->branch_id : null;
+            static::bumpMenuVersionForBranch($branchId);
+        });
+    }
+
+    /**
+     * Monotonically bump a menu version cache key.
+     */
+    public static function bumpVersionKey(string $key): int
+    {
+        $next = max(((int) Cache::get($key, 0)) + 1, now()->timestamp);
+        Cache::forever($key, $next);
+
+        return $next;
+    }
+
+    /**
+     * Bump menu version cache keys and flush catalog caches for a single branch.
+     */
+    public static function bumpMenuVersionForSingleBranch(int $branchId): void
+    {
+        static::bumpVersionKey('menu_version');
+        static::bumpVersionKey("branch_{$branchId}_menu_version");
+        Cache::forget('pos_menu_catalog_all');
+        Cache::forget("pos_menu_catalog_{$branchId}");
+    }
+
+    /**
+     * Bump menu version cache keys and flush catalog caches for the affected branch (or all branches if global).
+     */
+    public static function bumpMenuVersionForBranch(?int $branchId): void
+    {
+        if ($branchId !== null) {
+            static::bumpMenuVersionForSingleBranch($branchId);
+
+            return;
+        }
+
+        static::bumpVersionKey('menu_version');
+        static::bumpVersionKey('branch_global_menu_version');
+        Cache::forget('pos_menu_catalog_all');
+
+        foreach (Branch::pluck('id') as $id) {
+            static::bumpVersionKey("branch_{$id}_menu_version");
+            Cache::forget("pos_menu_catalog_{$id}");
+        }
     }
 
     /**
@@ -115,25 +185,25 @@ class Meal extends Model
     }
 
     /**
-     * Scope query to dishes effectively marked In Stock (is_available = true) for the given branch.
+     * Scope query to dishes effectively matching the target availability state for the given branch.
      */
-    public function scopeInStockForBranch(Builder $query, ?int $branchId): Builder
+    protected function scopeWithBranchAvailability(Builder $query, ?int $branchId, bool $available): Builder
     {
         if ($branchId === null) {
-            return $query->where('is_available', true);
+            return $query->where('is_available', $available);
         }
 
-        return $query->where(function (Builder $q) use ($branchId) {
-            $q->where(function (Builder $branchMeal) {
+        return $query->where(function (Builder $q) use ($branchId, $available) {
+            $q->where(function (Builder $branchMeal) use ($available) {
                 $branchMeal->whereNotNull('meals.branch_id')
-                    ->where('meals.is_available', true);
-            })->orWhere(function (Builder $globalMeal) use ($branchId) {
+                    ->where('meals.is_available', $available);
+            })->orWhere(function (Builder $globalMeal) use ($branchId, $available) {
                 $globalMeal->whereNull('meals.branch_id')
-                    ->where(function (Builder $effective) use ($branchId) {
-                        $effective->whereHas('branchAvailabilities', function (Builder $ov) use ($branchId) {
-                            $ov->where('branch_id', $branchId)->where('is_available', true);
-                        })->orWhere(function (Builder $noOv) use ($branchId) {
-                            $noOv->where('meals.is_available', true)
+                    ->where(function (Builder $effective) use ($branchId, $available) {
+                        $effective->whereHas('branchAvailabilities', function (Builder $ov) use ($branchId, $available) {
+                            $ov->where('branch_id', $branchId)->where('is_available', $available);
+                        })->orWhere(function (Builder $noOv) use ($branchId, $available) {
+                            $noOv->where('meals.is_available', $available)
                                 ->whereDoesntHave('branchAvailabilities', fn (Builder $ov) => $ov->where('branch_id', $branchId));
                         });
                     });
@@ -142,30 +212,19 @@ class Meal extends Model
     }
 
     /**
+     * Scope query to dishes effectively marked In Stock (is_available = true) for the given branch.
+     */
+    public function scopeInStockForBranch(Builder $query, ?int $branchId): Builder
+    {
+        return $this->scopeWithBranchAvailability($query, $branchId, true);
+    }
+
+    /**
      * Scope query to dishes effectively marked 86'd / Sold Out (is_available = false) for the given branch.
      */
     public function scopeEightSixForBranch(Builder $query, ?int $branchId): Builder
     {
-        if ($branchId === null) {
-            return $query->where('is_available', false);
-        }
-
-        return $query->where(function (Builder $q) use ($branchId) {
-            $q->where(function (Builder $branchMeal) {
-                $branchMeal->whereNotNull('meals.branch_id')
-                    ->where('meals.is_available', false);
-            })->orWhere(function (Builder $globalMeal) use ($branchId) {
-                $globalMeal->whereNull('meals.branch_id')
-                    ->where(function (Builder $effective) use ($branchId) {
-                        $effective->whereHas('branchAvailabilities', function (Builder $ov) use ($branchId) {
-                            $ov->where('branch_id', $branchId)->where('is_available', false);
-                        })->orWhere(function (Builder $noOv) use ($branchId) {
-                            $noOv->where('meals.is_available', false)
-                                ->whereDoesntHave('branchAvailabilities', fn (Builder $ov) => $ov->where('branch_id', $branchId));
-                        });
-                    });
-            });
-        });
+        return $this->scopeWithBranchAvailability($query, $branchId, false);
     }
 
     /**
@@ -233,6 +292,8 @@ class Meal extends Model
 
     /**
      * Per-branch availability overrides for global/shared meals.
+     *
+     * @return HasMany<MealBranchAvailability, $this>
      */
     public function branchAvailabilities(): HasMany
     {

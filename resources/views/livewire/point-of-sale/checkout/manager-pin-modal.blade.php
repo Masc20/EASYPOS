@@ -4,7 +4,7 @@
         pin: '',
         reason: '',
         isProcessing: false,
-        error: '{{ $errorMessage ?? '' }}',
+        error: @js($errorMessage ?? ''),
         orderId: {{ $orderId ?? 'null' }},
         orderNumber: '',
     
@@ -29,9 +29,10 @@
             this.isProcessing = true;
             this.error = '';
             $wire.submitVoidRequest({
-                    manager_id: this.empId,
-                    manager_pin: this.pin,
-                    reason: this.reason
+                    order_id: this.orderId,
+                    manager_id: this.empId.trim(),
+                    manager_pin: this.pin.trim(),
+                    reason: this.reason.trim()
                 }).then((success) => {
                     if (success) {
                         $dispatch('close-modal', 'manager-pin-modal');

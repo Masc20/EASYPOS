@@ -7,8 +7,10 @@ use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use App\Support\Enums\StaffRole;
-use Illuminate\Support\Facades\DB;
+use App\Support\SqlDialect;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 
 class CodeGeneratorService
 {
@@ -26,38 +28,16 @@ class CodeGeneratorService
             }
         }
 
-        $roleEnum = StaffRole::tryFrom($roleName);
-        $rolePrefix = $roleEnum ? $roleEnum->codePrefix() : Str::upper(substr(preg_replace('/[^a-zA-Z]/', '', $roleName), 0, 3) ?: 'STF');
-
+        $rolePrefix = self::resolveRolePrefix($roleName);
         $prefix = "{$branchCode}-{$rolePrefix}-";
 
-        try {
-            $driver = DB::connection()->getDriverName();
-            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
-            $startPos = strlen($prefix) + 1;
-
-            $maxSequence = User::where('emp_id', 'like', "{$prefix}%")
-                ->selectRaw("MAX(CAST(SUBSTR(emp_id, {$startPos}) AS {$castType})) as max_seq")
-                ->value('max_seq');
-        } catch (\Throwable) {
-            $maxSequence = User::where('emp_id', 'like', "{$prefix}%")
-                ->pluck('emp_id')
-                ->map(function ($id) use ($prefix) {
-                    $num = str_replace($prefix, '', (string) $id);
-                    return is_numeric($num) ? (int) $num : 0;
-                })
-                ->max();
-        }
-
-        $seq = (int) ($maxSequence ?? 0) + 1;
-        $candidate = "{$prefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-
-        while (User::where('emp_id', $candidate)->exists()) {
-            $seq++;
-            $candidate = "{$prefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-        }
-
-        return $candidate;
+        return self::nextSequenceCode(
+            User::where('emp_id', 'like', "{$prefix}%"),
+            'emp_id',
+            $prefix,
+            3,
+            fn (string $candidate): bool => User::where('emp_id', $candidate)->exists()
+        );
     }
 
     /**
@@ -84,7 +64,7 @@ class CodeGeneratorService
             }
         }
 
-        $rolesById = \Spatie\Permission\Models\Role::pluck('name', 'id')->toArray();
+        $rolesById = Role::pluck('name', 'id')->toArray();
 
         $map = [];
         foreach ($branches as $bId => $bCode) {
@@ -92,15 +72,14 @@ class CodeGeneratorService
             foreach (StaffRole::cases() as $role) {
                 $prefix = "{$branchCode}-{$role->codePrefix()}-";
                 $next = ($maxByPrefix[$prefix] ?? 0) + 1;
-                $generated = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+                $generated = $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
                 $map["{$bId}:{$role->value}"] = $generated;
             }
             foreach ($rolesById as $roleId => $roleName) {
-                $roleEnum = StaffRole::tryFrom($roleName);
-                $rolePrefix = $roleEnum ? $roleEnum->codePrefix() : Str::upper(substr(preg_replace('/[^a-zA-Z]/', '', (string) $roleName), 0, 3) ?: 'STF');
+                $rolePrefix = self::resolveRolePrefix((string) $roleName);
                 $prefix = "{$branchCode}-{$rolePrefix}-";
                 $next = ($maxByPrefix[$prefix] ?? 0) + 1;
-                $map["{$bId}:{$roleId}"] = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+                $map["{$bId}:{$roleId}"] = $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
             }
         }
 
@@ -118,42 +97,19 @@ class CodeGeneratorService
         if ($categoryId) {
             $categoryName = MealCategory::whereKey($categoryId)->value('name');
             if (filled($categoryName)) {
-                $clean = Str::upper(preg_replace('/[^a-zA-Z]/', '', $categoryName));
-                $prefix = strlen($clean) >= 1 ? substr($clean, 0, 1) : str_pad($clean, 1, 'X');
+                $prefix = self::resolveCategoryPrefix((string) $categoryName);
             }
         }
 
         $codePrefix = "{$prefix}-";
 
-        try {
-            $driver = DB::connection()->getDriverName();
-            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
-            $startPos = strlen($codePrefix) + 1;
-
-            $maxSequence = Meal::withTrashed()
-                ->where('menu_code', 'like', "{$codePrefix}%")
-                ->selectRaw("MAX(CAST(SUBSTR(menu_code, {$startPos}) AS {$castType})) as max_seq")
-                ->value('max_seq');
-        } catch (\Throwable) {
-            $maxSequence = Meal::withTrashed()
-                ->where('menu_code', 'like', "{$codePrefix}%")
-                ->pluck('menu_code')
-                ->map(function ($code) use ($codePrefix) {
-                    $num = str_replace($codePrefix, '', (string) $code);
-                    return is_numeric($num) ? (int) $num : 0;
-                })
-                ->max();
-        }
-
-        $seq = (int) ($maxSequence ?? 0) + 1;
-        $candidate = "{$codePrefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-
-        while (Meal::withTrashed()->where('menu_code', $candidate)->exists()) {
-            $seq++;
-            $candidate = "{$codePrefix}" . str_pad((string) $seq, 3, '0', STR_PAD_LEFT);
-        }
-
-        return $candidate;
+        return self::nextSequenceCode(
+            Meal::withTrashed()->where('menu_code', 'like', "{$codePrefix}%"),
+            'menu_code',
+            $codePrefix,
+            3,
+            fn (string $candidate): bool => Meal::withTrashed()->where('menu_code', $candidate)->exists()
+        );
     }
 
     /**
@@ -180,10 +136,9 @@ class CodeGeneratorService
 
         $map = [];
         foreach ($categories as $catId => $catName) {
-            $clean = Str::upper(preg_replace('/[^a-zA-Z]/', '', (string) $catName));
-            $prefix = (strlen($clean) >= 1 ? substr($clean, 0, 1) : str_pad($clean, 1, 'X')) . '-';
+            $prefix = self::resolveCategoryPrefix((string) $catName).'-';
             $next = ($maxByPrefix[$prefix] ?? 0) + 1;
-            $map[(int) $catId] = $prefix . str_pad((string) $next, 3, '0', STR_PAD_LEFT);
+            $map[(int) $catId] = $prefix.str_pad((string) $next, 3, '0', STR_PAD_LEFT);
         }
 
         return $map;
@@ -194,7 +149,8 @@ class CodeGeneratorService
      * Format: 4 numeric digits (0000-9999).
      * Ensures uniqueness per branch (or globally if no branch context).
      *
-     * @param int|null $branchId If provided, ensures PIN uniqueness within that branch only.
+     * @param  int|null  $branchId  If provided, ensures PIN uniqueness within that branch only.
+     *
      * @throws \RuntimeException if PIN space exhausted (after 1000 attempts).
      */
     public static function generatePin(?int $branchId = null): string
@@ -228,7 +184,7 @@ class CodeGeneratorService
         $lower = 'abcdefghijklmnopqrstuvwxyz';
         $digits = '0123456789';
         $symbols = '!@#$%';
-        $all = $upper . $lower . $digits . $symbols;
+        $all = $upper.$lower.$digits.$symbols;
 
         // Guarantee at least one character from each required complexity class
         $chars = [
@@ -260,7 +216,7 @@ class CodeGeneratorService
         if (filled($branchName)) {
             $words = preg_split('/\s+/', trim($branchName)) ?: [];
             if (count($words) >= 2) {
-                $acronym = Str::upper(substr($words[0], 0, 2) . substr($words[1], 0, 2));
+                $acronym = Str::upper(substr($words[0], 0, 2).substr($words[1], 0, 2));
                 if (! Branch::whereRaw('UPPER(code) = ?', [$acronym])->exists()) {
                     return $acronym;
                 }
@@ -273,23 +229,80 @@ class CodeGeneratorService
         }
 
         // Sequential fallback: find next unused B{NN} code via direct SQL
+        return self::nextSequenceCode(
+            Branch::where('code', 'like', 'B%'),
+            'code',
+            'B',
+            2,
+            fn (string $candidate): bool => Branch::whereRaw('UPPER(code) = ?', [$candidate])->exists(),
+            fn (): int => Branch::count()
+        );
+    }
+
+    private static function resolveRolePrefix(string $roleName): string
+    {
+        $roleEnum = StaffRole::tryFrom($roleName);
+        if ($roleEnum) {
+            return $roleEnum->codePrefix();
+        }
+
+        $alpha = preg_replace('/[^a-zA-Z]/', '', $roleName) ?? '';
+
+        return Str::upper(substr($alpha, 0, 3) ?: 'STF');
+    }
+
+    private static function resolveCategoryPrefix(string $categoryName): string
+    {
+        $clean = Str::upper(preg_replace('/[^a-zA-Z]/', '', $categoryName) ?? '');
+
+        return strlen($clean) >= 1 ? substr($clean, 0, 1) : str_pad($clean, 1, 'X');
+    }
+
+    private static function nextSequenceCode(
+        Builder $baseQuery,
+        string $column,
+        string $prefix,
+        int $padLength,
+        \Closure $existsCheck,
+        ?\Closure $fallbackCount = null
+    ): string {
+        if (! preg_match('/^[a-zA-Z_][a-zA-Z0-9_]*$/', $column)) {
+            throw new \InvalidArgumentException("Invalid SQL column identifier: {$column}");
+        }
+
         try {
-            $driver = DB::connection()->getDriverName();
-            $castType = in_array($driver, ['sqlite', 'pgsql'], true) ? 'INTEGER' : 'UNSIGNED';
-            $maxSeq = Branch::where('code', 'like', 'B%')
-                ->selectRaw("MAX(CAST(SUBSTR(code, 2) AS {$castType})) as max_seq")
+            $castType = SqlDialect::castType();
+            $startPos = strlen($prefix) + 1;
+
+            $maxSequence = (clone $baseQuery)
+                ->selectRaw("MAX(CAST(SUBSTR({$column}, {$startPos}) AS {$castType})) as max_seq")
                 ->value('max_seq');
-            $count = ((int) ($maxSeq ?? 0)) + 1;
+
+            $seq = ((int) ($maxSequence ?? 0)) + 1;
         } catch (\Throwable) {
-            $count = Branch::count() + 1;
+            if ($fallbackCount !== null) {
+                $seq = ((int) $fallbackCount()) + 1;
+            } else {
+                $maxSequence = (clone $baseQuery)
+                    ->pluck($column)
+                    ->map(function ($value) use ($prefix) {
+                        $num = str_replace($prefix, '', (string) $value);
+
+                        return is_numeric($num) ? (int) $num : 0;
+                    })
+                    ->max();
+
+                $seq = ((int) ($maxSequence ?? 0)) + 1;
+            }
         }
 
-        $code = 'B' . str_pad((string) $count, 2, '0', STR_PAD_LEFT);
-        while (Branch::whereRaw('UPPER(code) = ?', [$code])->exists()) {
-            $count++;
-            $code = 'B' . str_pad((string) $count, 2, '0', STR_PAD_LEFT);
+        $candidate = $prefix.str_pad((string) $seq, $padLength, '0', STR_PAD_LEFT);
+
+        while ($existsCheck($candidate)) {
+            $seq++;
+            $candidate = $prefix.str_pad((string) $seq, $padLength, '0', STR_PAD_LEFT);
         }
 
-        return $code;
+        return $candidate;
     }
 }

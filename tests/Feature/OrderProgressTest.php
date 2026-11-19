@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Kitchen\Actions\ClaimKitchenTicketAction;
 use App\Domains\Kitchen\Actions\RecallKitchenTicketAction;
@@ -13,6 +12,7 @@ use App\Domains\Kitchen\Models\KitchenTicket;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\PointOfSale\Actions\CreateOrderAction;
 use App\Domains\PointOfSale\Actions\ProcessPaymentAction;
+use App\Domains\PointOfSale\Actions\VoidOrderAction;
 use App\Domains\PointOfSale\Livewire\OrderProgress;
 use Database\Seeders\MenuSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -26,7 +26,9 @@ class OrderProgressTest extends TestCase
     use RefreshDatabase;
 
     protected User $cashier;
+
     protected User $cook;
+
     protected User $cashierCebu;
 
     protected function setUp(): void
@@ -130,9 +132,11 @@ class OrderProgressTest extends TestCase
     {
         $ticketNew = $this->createPaidTicket($this->cashier, '1');
         $ticketInPrep = $this->createPaidTicket($this->cashier, '2');
+        $this->actingAs($this->cook);
         app(ClaimKitchenTicketAction::class)->execute($ticketInPrep, $this->cook);
 
         $ticketReady = $this->createPaidTicket($this->cashier, '3');
+        $this->actingAs($this->cook);
         app(UpdateKitchenTicketStatusAction::class)->execute($ticketReady, 'ready');
 
         Livewire::actingAs($this->cashier)
@@ -278,7 +282,7 @@ class OrderProgressTest extends TestCase
         $this->assertCount(1, $component->viewData('tickets'));
 
         // Void the order
-        app(\App\Domains\PointOfSale\Actions\VoidOrderAction::class)->execute([
+        app(VoidOrderAction::class)->execute([
             'order_id' => $ticket->order_id,
             'manager_id' => $manager->emp_id,
             'manager_pin' => '9999',

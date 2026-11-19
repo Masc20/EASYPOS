@@ -3,28 +3,28 @@
 @if ($user)
     <nav class="flex items-center gap-5 text-sm font-medium text-brand-text-muted">
         @if ($user->hasRole('owner') || $user->hasRole('super-admin') || $user->hasRole('branch-manager'))
-            <a href="{{ url('/') }}" wire:navigate
+            <a href="{{ url('/') }}"
                 class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('/') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                 Dashboard
             </a>
         @endif
         @if ($user->isStrictFloorStaff())
             @can('pos.access')
-                <a href="{{ route('pos') }}" wire:navigate
+                <a href="{{ route('pos') }}"
                     class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('pos*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                     Point of Sale
                 </a>
             @endcan
 
             @can('menu.view')
-                <a href="{{ route('menu') }}" wire:navigate
+                <a href="{{ route('menu') }}"
                     class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('menu*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                     Menu Catalog
                 </a>
             @endcan
 
             @can('kitchen.view')
-                <a href="{{ route('kitchen') }}" wire:navigate
+                <a href="{{ route('kitchen') }}"
                     class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('kitchen*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                     Kitchen Display
                 </a>
@@ -32,7 +32,7 @@
         @else
             @if ($user->hasRole('branch-manager'))
                 @can('pos.access')
-                    <a href="{{ route('pos') }}" wire:navigate
+                    <a href="{{ route('pos') }}"
                         class="hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('pos*') ? 'text-brand-primary dark:text-brand-secondary font-bold' : '' }}">
                         Point of Sale
                     </a>
@@ -58,21 +58,21 @@
                             Floor Terminals
                         </div>
                         @can('pos.access')
-                            <a href="{{ route('pos') }}" wire:navigate
+                            <a href="{{ route('pos') }}"
                                 class="flex items-center justify-between px-3.5 py-2 text-xs text-brand-text hover:bg-brand-bg hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('pos*') ? 'font-bold text-brand-primary dark:text-brand-secondary bg-brand-bg/50' : '' }}">
                                 <span>Point of Sale</span>
                                 <span class="text-2xs text-brand-text-muted font-mono">/pos</span>
                             </a>
                         @endcan
                         @can('menu.view')
-                            <a href="{{ route('menu') }}" wire:navigate
+                            <a href="{{ route('menu') }}"
                                 class="flex items-center justify-between px-3.5 py-2 text-xs text-brand-text hover:bg-brand-bg hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('menu*') ? 'font-bold text-brand-primary dark:text-brand-secondary bg-brand-bg/50' : '' }}">
                                 <span>Menu Catalog</span>
                                 <span class="text-2xs text-brand-text-muted font-mono">/menu</span>
                             </a>
                         @endcan
                         @can('kitchen.view')
-                            <a href="{{ route('kitchen') }}" wire:navigate
+                            <a href="{{ route('kitchen') }}"
                                 class="flex items-center justify-between px-3.5 py-2 text-xs text-brand-text hover:bg-brand-bg hover:text-brand-primary dark:hover:text-brand-secondary transition {{ request()->is('kitchen*') ? 'font-bold text-brand-primary dark:text-brand-secondary bg-brand-bg/50' : '' }}">
                                 <span>Kitchen Display</span>
                                 <span class="text-2xs text-brand-text-muted font-mono">/kitchen</span>

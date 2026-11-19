@@ -208,6 +208,8 @@ class VoidOrderTest extends TestCase
             'created_at' => now()->subWeeks(3),
         ]);
 
+        $this->actingAs($this->owner);
+
         $action = new VoidOrderAction();
         $voidedOrder = $action->execute([
             'order_id' => $order->id,

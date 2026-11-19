@@ -64,18 +64,19 @@
                 $isSoldOut = $meal->isSoldOutForBranch($branchId ?? null);
                 $trackStock = $meal->trackStockForBranch($branchId ?? null);
                 $stockQuantity = $meal->stockQuantityForBranch($branchId ?? null);
-                $searchableText = addslashes(strtolower($meal->name . ' ' . ($meal->menu_code ?? '')));
+                $searchableText = strtolower($meal->name . ' ' . ($meal->menu_code ?? ''));
+                $safeSingleQuotedMealName = str_replace(["\r", "\n"], ' ', addslashes($meal->name));
             @endphp
             <div wire:key="pos-meal-{{ $meal->id }}"
-                x-show="matches({{ $meal->category_id }}, '{{ $searchableText }}', {{ $isSoldOut ? 'true' : 'false' }})"
+                x-show="matches({{ $meal->category_id }}, @js($searchableText), {{ $isSoldOut ? 'true' : 'false' }})"
                 x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95"
                 x-transition:enter-end="opacity-100 scale-100"
-                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} })"
+                @if (!$isSoldOut) x-on:click="$dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: @js($meal->name), code: @js($meal->menu_code ?? ''), price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} })"
                     role="button"
                     tabindex="0"
-                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: '{{ addslashes($meal->name) }}', code: '{{ addslashes($meal->menu_code ?? '') }}', price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} }); }"
+                    onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); $dispatch('add-to-cart-client', { id: {{ $meal->id }}, name: @js($meal->name), code: @js($meal->menu_code ?? ''), price: {{ (float) $meal->price }}, maxQty: {{ $trackStock ? $stockQuantity ?? 0 : 'null' }} }); }"
                 @else
-                    x-on:click="$dispatch('pos-alert', { type: 'warning', message: 'Item \'{{ addslashes($meal->name) }}\' is 86\'d (Sold Out) and cannot be added.' })"
+                    x-on:click="$dispatch('pos-alert', { type: 'warning', message: 'Item \'{{ $safeSingleQuotedMealName }}\' is 86\'d (Sold Out) and cannot be added.' })"
                     role="button"
                     tabindex="0"
                     aria-disabled="true" @endif

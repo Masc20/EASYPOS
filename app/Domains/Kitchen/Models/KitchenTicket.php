@@ -5,7 +5,11 @@ namespace App\Domains\Kitchen\Models;
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\PointOfSale\Models\Order;
+use App\Support\Enums\KitchenTicketItemStatus;
 use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\PaymentStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -49,6 +53,8 @@ class KitchenTicket extends Model
 
     /**
      * Ticket item breakdown.
+     *
+     * @return HasMany<KitchenTicketItem, $this>
      */
     public function items(): HasMany
     {
@@ -65,10 +71,26 @@ class KitchenTicket extends Model
 
     /**
      * Scope tickets for a specific branch.
+     *
+     * @param  Builder<KitchenTicket>  $query
+     * @return Builder<KitchenTicket>
      */
-    public function scopeForBranch($query, int $branchId)
+    public function scopeForBranch(Builder $query, int $branchId): Builder
     {
         return $query->where('branch_id', $branchId);
+    }
+
+    /**
+     * Scope tickets whose associated order has not been cancelled or refunded.
+     */
+    public function scopeWhereOrderNotVoided(Builder $query): Builder
+    {
+        return $query->where(function (Builder $q) {
+            $q->whereNull('order_id')->orWhereHas('order', function (Builder $oq) {
+                $oq->where('status', '!=', OrderStatus::CANCELLED->value)
+                    ->where('payment_status', '!=', PaymentStatus::REFUNDED->value);
+            });
+        });
     }
 
     /**
@@ -111,6 +133,6 @@ class KitchenTicket extends Model
      */
     public function areAllItemsDone(): bool
     {
-        return $this->items->every(fn($item) => $item->status === 'done');
+        return $this->items->every(fn ($item) => $item->status === KitchenTicketItemStatus::DONE->value);
     }
 }

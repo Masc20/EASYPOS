@@ -31,6 +31,58 @@ class CheckoutCart extends Component
     public float $customDiscount = 0.00;
     public string $notes = '';
 
+    public static function savedCartSessionKey(?int $userId = null): string
+    {
+        return SystemConstants::SESSION_POS_SAVED_CART . '_' . ($userId ?? (int) auth()->id());
+    }
+
+    public function mount(): void
+    {
+        if (empty($this->items)) {
+            $saved = session(self::savedCartSessionKey());
+            if (is_array($saved) && ! empty($saved['items']) && is_array($saved['items'])) {
+                $this->items = array_values($saved['items']);
+                $this->orderType = is_string($saved['orderType'] ?? null) && $saved['orderType'] !== ''
+                    ? $saved['orderType']
+                    : OrderType::DINE_IN->value;
+                $this->tableNumber = (string) ($saved['tableNumber'] ?? '');
+                $this->customerName = (string) ($saved['customerName'] ?? '');
+                $this->discountType = in_array($saved['discountType'] ?? 'none', ['none', 'senior_pwd', 'custom'], true)
+                    ? (string) $saved['discountType']
+                    : 'none';
+                $this->customDiscount = (float) ($saved['customDiscount'] ?? 0.00);
+                $this->notes = (string) ($saved['notes'] ?? '');
+                $this->verifyCartAvailability();
+            }
+        }
+    }
+
+    public function updated(): void
+    {
+        $this->syncCartToSession();
+    }
+
+    public function syncCartToSession(): void
+    {
+        $key = self::savedCartSessionKey();
+
+        if (empty($this->items)) {
+            session()->forget($key);
+
+            return;
+        }
+
+        session()->put($key, [
+            'items' => array_values($this->items),
+            'orderType' => $this->orderType,
+            'tableNumber' => $this->tableNumber,
+            'customerName' => $this->customerName,
+            'discountType' => $this->discountType,
+            'customDiscount' => $this->customDiscount,
+            'notes' => $this->notes,
+        ]);
+    }
+
     #[On('meal-availability-synced')]
     public function handleAvailabilitySynced(): void
     {
@@ -68,6 +120,7 @@ class CheckoutCart extends Component
                     return;
                 }
                 $this->items[$index]['quantity']++;
+                $this->syncCartToSession();
 
                 return;
             }
@@ -83,6 +136,7 @@ class CheckoutCart extends Component
             'special_instructions' => '',
             'max_quantity' => $maxQty,
         ];
+        $this->syncCartToSession();
     }
 
     public function incrementQuantity(int $index): void
@@ -102,6 +156,7 @@ class CheckoutCart extends Component
         }
 
         $item['quantity']++;
+        $this->syncCartToSession();
     }
 
     public function decrementQuantity(int $index): void
@@ -112,6 +167,7 @@ class CheckoutCart extends Component
 
         if ($this->items[$index]['quantity'] > 1) {
             $this->items[$index]['quantity']--;
+            $this->syncCartToSession();
         } else {
             $this->removeItem($index);
         }
@@ -122,6 +178,7 @@ class CheckoutCart extends Component
         if (isset($this->items[$index])) {
             unset($this->items[$index]);
             $this->items = array_values($this->items);
+            $this->syncCartToSession();
         }
     }
 
@@ -133,6 +190,7 @@ class CheckoutCart extends Component
         $this->discountType = 'none';
         $this->customDiscount = 0.00;
         $this->notes = '';
+        $this->syncCartToSession();
     }
 
     #[On('cart-reset')]

@@ -88,28 +88,15 @@ class UsersTable
                     ->label('Deactivate')
                     ->icon('heroicon-o-user-minus')
                     ->color('danger')
-                    ->visible(function (User $record): bool {
-                        if (! (bool) $record->is_active) {
-                            return false;
-                        }
-                        $actor = auth()->user();
-                        if (! $actor || (int) $record->id === (int) $actor->id) {
-                            return false;
-                        }
-                        if ($actor->isBranchScoped()) {
-                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
-                                return false;
-                            }
-                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    })
+                    ->visible(fn (User $record): bool => (bool) $record->is_active && self::canActorManageTarget($record))
+                    ->authorize(fn (User $record): bool => (bool) $record->is_active && self::canActorManageTarget($record))
                     ->requiresConfirmation()
                     ->modalHeading('Deactivate Staff Account')
                     ->modalDescription(fn (User $record): string => "Are you sure you want to deactivate {$record->name}'s account? They will be immediately blocked from logging into POS terminals and back-office portals.")
                     ->action(function (User $record) {
+                        if (! self::canActorManageTarget($record)) {
+                            abort(403, 'Unauthorized.');
+                        }
                         app(ToggleUserActiveStatusAction::class)->execute($record);
                         Notification::make()
                             ->title('User Deactivated')
@@ -122,28 +109,15 @@ class UsersTable
                     ->label('Reactivate')
                     ->icon('heroicon-o-user-plus')
                     ->color('success')
-                    ->visible(function (User $record): bool {
-                        if ((bool) $record->is_active) {
-                            return false;
-                        }
-                        $actor = auth()->user();
-                        if (! $actor || (int) $record->id === (int) $actor->id) {
-                            return false;
-                        }
-                        if ($actor->isBranchScoped()) {
-                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
-                                return false;
-                            }
-                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    })
+                    ->visible(fn (User $record): bool => ! (bool) $record->is_active && self::canActorManageTarget($record))
+                    ->authorize(fn (User $record): bool => ! (bool) $record->is_active && self::canActorManageTarget($record))
                     ->requiresConfirmation()
                     ->modalHeading('Reactivate Staff Account')
                     ->modalDescription(fn (User $record): string => "Reactivate {$record->name}'s account? They will regain access to their assigned station and permissions.")
                     ->action(function (User $record) {
+                        if (! self::canActorManageTarget($record)) {
+                            abort(403, 'Unauthorized.');
+                        }
                         app(ToggleUserActiveStatusAction::class)->execute($record);
                         Notification::make()
                             ->title('User Reactivated')
@@ -155,27 +129,8 @@ class UsersTable
                 EditAction::make()
                     ->modal()
                     ->modalWidth('lg')
-                    ->visible(function (User $record): bool {
-                        $actor = auth()->user();
-                        if (! $actor) {
-                            return false;
-                        }
-                        if ($actor->isOwner()) {
-                            return true;
-                        }
-                        if ($actor->isBranchScoped()) {
-                            if ((int) $record->id === (int) $actor->id) {
-                                return false;
-                            }
-                            if ((int) $record->branch_id !== (int) $actor->branch_id) {
-                                return false;
-                            }
-                            if (! $record->hasAnyRole(StaffRole::floorValues())) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    }),
+                    ->visible(fn (User $record): bool => self::canActorEditTarget($record))
+                    ->authorize(fn (User $record): bool => self::canActorEditTarget($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -241,20 +196,51 @@ class UsersTable
 
                     DeleteBulkAction::make()
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
-                            $actor = auth()->user();
                             foreach ($records as $record) {
-                                if ((int) $record->id === (int) $actor?->id) {
+                                if (! $record instanceof User || ! self::canActorManageTarget($record)) {
                                     continue;
-                                }
-                                if ($actor?->isBranchScoped()) {
-                                    if ((int) $record->branch_id !== (int) $actor->branch_id || ! $record->hasAnyRole(StaffRole::floorValues())) {
-                                        continue;
-                                    }
                                 }
                                 $record->delete();
                             }
                         }),
                 ]),
             ]);
+    }
+
+    private static function canActorManageTarget(User $record): bool
+    {
+        $actor = auth()->user();
+        if (! $actor || (int) $record->id === (int) $actor->id) {
+            return false;
+        }
+
+        if ($actor->isOwner()) {
+            return true;
+        }
+
+        if ($actor->isBranchScoped()) {
+            if ($actor->branch_id === null || (int) $record->branch_id !== (int) $actor->branch_id) {
+                return false;
+            }
+            if (! $record->hasAnyRole(StaffRole::floorValues()) || $record->hasAnyRole(StaffRole::managementValues())) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private static function canActorEditTarget(User $record): bool
+    {
+        $actor = auth()->user();
+        if (! $actor) {
+            return false;
+        }
+
+        if ($actor->isOwner()) {
+            return true;
+        }
+
+        return self::canActorManageTarget($record);
     }
 }
