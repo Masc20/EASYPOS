@@ -5,7 +5,17 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>@yield('code', 'Error') - @yield('title', 'EASYPOS')</title>
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @php
+        $errorCodeString = trim((string) $__env->yieldContent('code', 'ERR'));
+        $isServerFault = str_starts_with($errorCodeString, '5');
+        $viteAssetsHtml = '';
+        try {
+            $viteAssetsHtml = app(\Illuminate\Foundation\Vite::class)(['resources/css/app.css', 'resources/js/app.js'])->toHtml();
+        } catch (\Throwable) {
+            $viteAssetsHtml = '';
+        }
+    @endphp
+    {!! $viteAssetsHtml !!}
 </head>
 
 <body
@@ -81,7 +91,7 @@
                     @hasSection('action')
                         @yield('action')
                     @else
-                        @auth
+                        @if (! $isServerFault && auth()->check())
                             <a href="{{ auth()->user()->stationRoute() }}"
                                 class="inline-flex items-center justify-center gap-2 rounded-md bg-brand-primary hover:bg-brand-primary-hover text-white px-5 py-2.5 text-sm font-semibold transition cursor-pointer shadow-sm">
                                 <span>Return to {{ auth()->user()->stationTitle() }}</span>
@@ -106,7 +116,7 @@
                                         d="M14 5l7 7m0 0l-7 7m7-7H3" />
                                 </svg>
                             </a>
-                        @endauth
+                        @endif
 
                         <button type="button"
                             onclick="window.history.length > 1 ? window.history.back() : window.location.href='{{ url('/') }}'"
@@ -133,13 +143,13 @@
                     POS Engine</span>
             </div>
             <div class="flex items-center gap-3 text-[11px]">
-                @auth
+                @if (! $isServerFault && auth()->check())
                     <span>Branch: <strong
                             class="text-brand-text font-mono">{{ auth()->user()->branch?->code ?? (auth()->user()->branch_code ?? 'HQ') }}</strong></span>
                     <span>&bull;</span>
                     <span>Terminal: <strong class="text-brand-text">{{ auth()->user()->stationTitle() }}</strong></span>
                     <span>&bull;</span>
-                @endauth
+                @endif
                 <span class="font-mono">{{ now()->format('Y-m-d H:i') }}</span>
             </div>
         </div>

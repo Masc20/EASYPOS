@@ -20,6 +20,7 @@ use App\Domains\PointOfSale\Livewire\ProductSearch;
 use App\Filament\Resources\Meals\MealResource;
 use App\Support\Enums\StaffRole;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -34,19 +35,33 @@ class ChefMenuCatalogBugsTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
+
     protected User $owner;
+
     protected User $superAdmin;
+
     protected User $manager1;
+
     protected User $manager2;
+
     protected User $chef1;
+
     protected User $chef2;
+
     protected User $cashier1;
+
     protected User $cashier2;
+
     protected MealCategory $mainsCategory;
+
     protected MealCategory $dessertsCategory;
+
     protected Meal $globalMeal;
+
     protected Meal $branch1Meal;
+
     protected Meal $branch2Meal;
 
     protected function setUp(): void
@@ -245,8 +260,9 @@ class ChefMenuCatalogBugsTest extends TestCase
         // Browser Tab 2 (/pos MealCatalog) polls syncAvailability and updates the dish pill with wire:key & 86'd alert
         $posCatalog->call('syncAvailability')
             ->assertDispatched('meal-availability-synced')
-            ->assertSeeHtml('wire:key="pos-meal-' . $this->globalMeal->id . '"')
-            ->assertSee("86'd / Sold Out", false)
+            ->assertSeeHtml('wire:key="pos-meal-'.$this->globalMeal->id.'"')
+            ->assertSee('Sold Out', false)
+            ->assertSeeHtml('aria-disabled="true"')
             ->assertSee("Item \\'Creamy Leche Flan\\' is 86\\'d (Sold Out) and cannot be added.", false);
     }
 
@@ -262,16 +278,40 @@ class ChefMenuCatalogBugsTest extends TestCase
             ->assertSee("window.addEventListener('offline'", false)
             ->assertSee("Livewire.hook('request'", false)
             ->assertSee("Livewire.hook('commit'", false)
-            ->assertSee('wire:loading.attr="disabled"', false);
+            ->assertSee('wire:loading.attr="disabled"', false)
+            ->assertSee('controller.abort(), 3000', false)
+            ->assertDontSee('controller.abort(), 8000', false)
+            ->assertSee('preventDefault()', false)
+            ->assertSee('filamentErrorNotifications', false)
+            ->assertSee('menu-toggle-settled', false)
+            ->assertSee(':disabled="pending"', false)
+            ->assertSeeHtml('wire:key="meal-availability-toggle-'.$this->globalMeal->id.'"')
+            ->assertSeeHtml('data-available="1"');
     }
 
     public function test_failed_toggle_availability_leaves_database_and_ui_unchanged(): void
     {
-        // Unauthorized user (Cashier) gets 403 and leaves availability unchanged
+        // Unauthorized user (Cashier) gets 403 on mount and leaves availability unchanged
         Livewire::actingAs($this->cashier1)
             ->test(MealCatalogTable::class)
+            ->assertForbidden();
+
+        // User with menu.view only can mount the table, but gets 403 on menu.manage actions
+        $viewOnly = User::create([
+            'name' => 'Menu Viewer B1',
+            'email' => 'viewer1_menu_test@easypos.test',
+            'password' => Hash::make('password'),
+            'emp_id' => 'B01-VIW-M01',
+            'branch_id' => $this->branch1->id,
+            'is_active' => true,
+        ]);
+        $viewOnly->givePermissionTo('menu.view');
+
+        Livewire::actingAs($viewOnly)
+            ->test(MealCatalogTable::class)
+            ->assertOk()
             ->call('toggleAvailability', $this->branch1Meal->id)
-            ->assertStatus(403);
+            ->assertForbidden();
 
         $this->assertTrue($this->branch1Meal->fresh()->is_available);
         $this->assertDatabaseCount('meal_branch_availabilities', 0);
@@ -282,7 +322,7 @@ class ChefMenuCatalogBugsTest extends TestCase
                 ->test(MealCatalogTable::class)
                 ->call('toggleAvailability', 999999);
             $this->fail('Expected ModelNotFoundException for non-existent meal ID.');
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+        } catch (ModelNotFoundException $e) {
             $this->assertStringContainsString('Meal', $e->getMessage());
         }
 
@@ -297,7 +337,7 @@ class ChefMenuCatalogBugsTest extends TestCase
         });
 
         $this->actingAs($this->chef1);
-        $action = new ToggleMealAvailabilityAction();
+        $action = new ToggleMealAvailabilityAction;
         $action->handle($this->globalMeal);
 
         $this->assertFalse($this->globalMeal->fresh()->isAvailableForBranch($this->branch1->id));
@@ -479,12 +519,14 @@ class ChefMenuCatalogBugsTest extends TestCase
         Livewire::actingAs($this->cashier1)
             ->test(PosMealCatalog::class)
             ->assertViewHas('soldOutCount', 1)
-            ->assertSee("86'd / Sold Out", false);
+            ->assertSeeHtml('aria-disabled="true"')
+            ->assertSee("Item \\'Creamy Leche Flan\\' is 86\\'d (Sold Out) and cannot be added.", false);
 
         Livewire::actingAs($this->cashier2)
             ->test(PosMealCatalog::class)
             ->assertViewHas('soldOutCount', 0)
-            ->assertDontSee("86'd / Sold Out", false);
+            ->assertDontSeeHtml('aria-disabled="true"')
+            ->assertDontSee("Item \\'Creamy Leche Flan\\' is 86\\'d (Sold Out) and cannot be added.", false);
 
         Livewire::actingAs($this->cashier1)
             ->test(CheckoutCart::class)

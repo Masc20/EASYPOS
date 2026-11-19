@@ -3,11 +3,16 @@
 namespace App\Domains\PointOfSale\Services\Concerns;
 
 use App\Support\Constants\SystemConstants;
+use App\Support\Enums\OrderStatus;
+use App\Support\Enums\PaymentStatus;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
 
 trait StreamsSalesCsv
 {
     /**
-     * Stream filtered orders directly to an output resource (e.g. php://output) in chunks.
+     * Stream filtered orders directly to an output resource (e.g. php://output) in chunks
+     * using lightweight stdClass queries (zero Eloquent model hydration, O(1) memory, bounded SQL).
      *
      * @param resource $output
      */
@@ -38,44 +43,82 @@ trait StreamsSalesCsv
             'Status',
         ]);
 
-        $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId)
+        $query = DB::table('orders')
+            ->leftJoin('branches', 'orders.branch_id', '=', 'branches.id')
+            ->leftJoin('users', 'orders.cashier_id', '=', 'users.id')
+            ->whereNull('orders.deleted_at')
+            ->where(function ($q) {
+                $q->where('orders.payment_status', PaymentStatus::PAID->value)
+                    ->orWhere('orders.status', OrderStatus::COMPLETED->value);
+            })
             ->select([
                 'orders.id',
                 'orders.order_number',
                 'orders.created_at',
-                'orders.branch_id',
-                'orders.cashier_id',
                 'orders.order_type',
                 'orders.table_number',
                 'orders.subtotal',
                 'orders.discount_amount',
                 'orders.total_amount',
                 'orders.status',
-            ])
-            ->with([
-                'branch:id,name',
-                'cashier:id,name',
-                'payments:id,order_id,payment_method',
+                'branches.name as branch_name',
+                'users.name as cashier_name',
             ]);
 
-        // Stream orders in bounded chunks using lazyById(500) for O(1) memory
-        foreach ($query->lazyById(500) as $order) {
-            $paymentMethod = $order->payments->pluck('payment_method')->unique()->implode(', ') ?: 'Unpaid';
-
-            fputcsv($output, [
-                $order->order_number,
-                $order->created_at?->format('Y-m-d H:i:s') ?? '',
-                $order->branch?->name ?? 'Global',
-                $order->cashier?->name ?? 'Staff',
-                strtoupper(str_replace('_', ' ', $order->order_type)),
-                $order->table_number ?? '—',
-                number_format((float) $order->subtotal, 2, '.', ''),
-                number_format((float) $order->discount_amount, 2, '.', ''),
-                number_format((float) $order->total_amount, 2, '.', ''),
-                ucwords(str_replace('_', ' ', $paymentMethod)),
-                ucfirst($order->status),
-            ]);
+        $parsedStart = $this->parseSafeDate($startDate);
+        if ($parsedStart !== null) {
+            $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
         }
+
+        $parsedEnd = $this->parseSafeDate($endDate);
+        if ($parsedEnd !== null) {
+            $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
+        }
+
+        if ($effectiveBranchId !== null) {
+            $query->where('orders.branch_id', $effectiveBranchId);
+        }
+
+        if ($cashierId) {
+            $query->where('orders.cashier_id', $cashierId);
+        }
+
+        // Stream orders in 1,000-row chunks with a single batched payment lookup per chunk
+        $query->chunkById(1000, function ($orders) use ($output): void {
+            $orderIds = $orders->pluck('id')->all();
+
+            $paymentsByOrder = DB::table('payments')
+                ->whereIn('order_id', $orderIds)
+                ->get(['order_id', 'payment_method'])
+                ->groupBy('order_id');
+
+            foreach ($orders as $order) {
+                $methods = isset($paymentsByOrder[$order->id])
+                    ? $paymentsByOrder[$order->id]->pluck('payment_method')->filter()->unique()->implode(', ')
+                    : '';
+                $paymentMethod = $methods !== '' ? $methods : 'Unpaid';
+
+                $createdAt = $order->created_at
+                    ? Carbon::parse($order->created_at)->format('Y-m-d H:i:s')
+                    : '';
+
+                fputcsv($output, [
+                    $this->sanitizeCsvCell((string) $order->order_number),
+                    $this->sanitizeCsvCell($createdAt),
+                    $this->sanitizeCsvCell((string) ($order->branch_name ?? 'Global')),
+                    $this->sanitizeCsvCell((string) ($order->cashier_name ?? 'Staff')),
+                    $this->sanitizeCsvCell(strtoupper(str_replace('_', ' ', (string) $order->order_type))),
+                    $this->sanitizeCsvCell((string) ($order->table_number ?? '—')),
+                    number_format((float) $order->subtotal, 2, '.', ''),
+                    number_format((float) $order->discount_amount, 2, '.', ''),
+                    number_format((float) $order->total_amount, 2, '.', ''),
+                    $this->sanitizeCsvCell(ucwords(str_replace('_', ' ', $paymentMethod))),
+                    $this->sanitizeCsvCell(ucfirst((string) $order->status)),
+                ]);
+            }
+
+            fflush($output);
+        }, 'orders.id', 'id');
 
         fflush($output);
 
@@ -195,5 +238,43 @@ trait StreamsSalesCsv
         fclose($handle);
 
         return $csvContent ?: '';
+    }
+
+    /**
+     * Neutralize spreadsheet formula injection (CSV injection) in string cells.
+     */
+    protected function sanitizeCsvCell(string $value): string
+    {
+        if ($value === '') {
+            return '';
+        }
+
+        $trimmed = ltrim($value, " \t\r\n");
+        $firstRaw = $value[0];
+        $firstTrimmed = $trimmed !== '' ? $trimmed[0] : '';
+
+        if (
+            in_array($firstRaw, ['=', '+', '-', '@', "\t", "\r"], true)
+            || in_array($firstTrimmed, ['=', '+', '-', '@'], true)
+        ) {
+            return "'" . $value;
+        }
+
+        return $value;
+    }
+
+    /**
+     * Sanitize a filename date/filter segment to prevent header injection or path traversal.
+     */
+    public function sanitizeFilenameSegment(?string $segment, string $fallback = 'all'): string
+    {
+        $normalized = $this->normalizeDateString($segment);
+        if ($normalized !== '') {
+            return $normalized;
+        }
+
+        $cleaned = preg_replace('/[^A-Za-z0-9_-]/', '', (string) $segment);
+
+        return ($cleaned !== null && $cleaned !== '') ? $cleaned : $fallback;
     }
 }

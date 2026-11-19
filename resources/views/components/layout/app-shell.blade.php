@@ -23,17 +23,88 @@
     </main>
 
     @livewireScripts
-    @if (auth()->check() && auth()->user()->isStrictFloorStaff())
+    <script>
+        (function () {
+            if (window.filamentErrorNotifications) {
+                delete window.filamentErrorNotifications;
+            }
+
+            window.__easyposLoggingOut = false;
+            window.__easyposActiveWireControllers = window.__easyposActiveWireControllers || new Set();
+
+            window.EASYPOS_BEGIN_LOGOUT = function () {
+                window.__easyposLoggingOut = true;
+                window.__easyposActiveWireControllers.forEach((ctrl) => {
+                    try { ctrl.abort(); } catch (_) {}
+                });
+                window.__easyposActiveWireControllers.clear();
+            };
+
+            const registerGlobalRequestHook = () => {
+                if (window.__easyposGlobalRequestHookRegistered || !window.Livewire || typeof window.Livewire.hook !== 'function') {
+                    return;
+                }
+                window.__easyposGlobalRequestHookRegistered = true;
+
+                window.Livewire.hook('request', ({ options, respond, succeed, fail }) => {
+                    const controller = new AbortController();
+                    const existingSignal = options.signal;
+
+                    if (existingSignal) {
+                        if (existingSignal.aborted) {
+                            controller.abort();
+                        } else {
+                            existingSignal.addEventListener('abort', () => controller.abort(), { once: true });
+                        }
+                    }
+                    options.signal = controller.signal;
+
+                    if (window.__easyposLoggingOut) {
+                        controller.abort();
+                    }
+
+                    window.__easyposActiveWireControllers.add(controller);
+                    const cleanup = () => window.__easyposActiveWireControllers.delete(controller);
+
+                    respond(cleanup);
+                    succeed(cleanup);
+                    fail(({ status, preventDefault }) => {
+                        cleanup();
+                        if (window.__easyposLoggingOut) {
+                            preventDefault();
+                            return;
+                        }
+                        if (status === 423) {
+                            preventDefault();
+                            window.location.href = @json(route('terminal.lock.show'));
+                        }
+                    });
+                });
+            };
+
+            if (window.Livewire) {
+                registerGlobalRequestHook();
+            } else {
+                document.addEventListener('livewire:init', registerGlobalRequestHook, { once: true });
+            }
+        })();
+    </script>
+    @auth
         <script>
-            // Terminal Page Lock: Trap browser back navigation on active terminal
-            (function() {
+            // Terminal Page Guard: Trap browser back navigation & reload bfcache snapshots
+            (function () {
                 history.pushState(null, document.title, location.href);
-                window.addEventListener('popstate', function() {
+                window.addEventListener('popstate', function () {
                     history.pushState(null, document.title, location.href);
+                });
+                window.addEventListener('pageshow', function (event) {
+                    if (event.persisted) {
+                        window.location.reload();
+                    }
                 });
             })();
         </script>
-    @endif
+    @endauth
 </body>
 
 </html>

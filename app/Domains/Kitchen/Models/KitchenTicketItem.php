@@ -26,6 +26,8 @@ class KitchenTicketItem extends Model
 
     /**
      * Parent kitchen ticket.
+     *
+     * @return BelongsTo<KitchenTicket, $this>
      */
     public function ticket(): BelongsTo
     {

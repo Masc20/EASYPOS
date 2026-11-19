@@ -16,6 +16,7 @@ use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -70,6 +71,84 @@ class AdminPanelProvider extends PanelProvider
                 \Filament\View\PanelsRenderHook::HEAD_END,
                 fn () => app(\Illuminate\Foundation\Vite::class)(['resources/css/app.css'])
             )
+            ->renderHook(
+                \Filament\View\PanelsRenderHook::BODY_END,
+                fn (): HtmlString => new HtmlString(<<<'HTML'
+<script>
+    (function () {
+        if (window.__easyposAdminLogoutHooked) {
+            return;
+        }
+        window.__easyposAdminLogoutHooked = true;
+        window.__easyposLoggingOut = false;
+        window.__easyposActiveWireControllers = window.__easyposActiveWireControllers || new Set();
+
+        const registerHook = () => {
+            if (window.__easyposAdminWireHooked || !window.Livewire || typeof window.Livewire.hook !== 'function') {
+                return;
+            }
+            window.__easyposAdminWireHooked = true;
+
+            window.Livewire.hook('request', ({ options, respond, succeed, fail }) => {
+                const controller = new AbortController();
+                const existingSignal = options.signal;
+                if (existingSignal) {
+                    if (existingSignal.aborted) {
+                        controller.abort();
+                    } else {
+                        existingSignal.addEventListener('abort', () => controller.abort(), { once: true });
+                    }
+                }
+                options.signal = controller.signal;
+                if (window.__easyposLoggingOut) {
+                    controller.abort();
+                }
+                window.__easyposActiveWireControllers.add(controller);
+                const cleanup = () => window.__easyposActiveWireControllers.delete(controller);
+                respond(cleanup);
+                succeed(cleanup);
+                fail(({ preventDefault }) => {
+                    cleanup();
+                    if (window.__easyposLoggingOut) {
+                        preventDefault();
+                    }
+                });
+            });
+        };
+
+        if (window.Livewire) {
+            registerHook();
+        } else {
+            document.addEventListener('livewire:init', registerHook, { once: true });
+        }
+
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement)) {
+                return;
+            }
+            const action = form.getAttribute('action') || '';
+            if (!action.endsWith('/admin/logout') && !action.endsWith('/logout') && !action.endsWith('/terminal/lock')) {
+                return;
+            }
+            if (form.dataset.loggingOut === '1') {
+                event.preventDefault();
+                return;
+            }
+            form.dataset.loggingOut = '1';
+            window.__easyposLoggingOut = true;
+            window.__easyposActiveWireControllers.forEach((ctrl) => {
+                try { ctrl.abort(); } catch (_) {}
+            });
+            window.__easyposActiveWireControllers.clear();
+            form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach((btn) => {
+                btn.disabled = true;
+            });
+        }, true);
+    })();
+</script>
+HTML)
+            )
             ->pages([
                 Dashboard::class,
             ])
@@ -85,9 +164,11 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                'throttle:admin',
                 \App\Http\Middleware\SecurityHeaders::class,
             ])
             ->authMiddleware([
+                \App\Http\Middleware\EnsureUserIsActive::class,
                 Authenticate::class,
                 \App\Http\Middleware\PreloadAuthenticatedUserPermissions::class,
             ]);

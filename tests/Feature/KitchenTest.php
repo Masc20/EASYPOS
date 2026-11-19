@@ -10,14 +10,19 @@ use App\Domains\Kitchen\Actions\ToggleKitchenTicketPriorityAction;
 use App\Domains\Kitchen\Actions\UpdateKitchenTicketStatusAction;
 use App\Domains\Kitchen\Livewire\KitchenDisplay;
 use App\Domains\Kitchen\Models\KitchenTicket;
-use App\Domains\Kitchen\Models\KitchenTicketItem;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\PointOfSale\Actions\CreateOrderAction;
 use App\Domains\PointOfSale\Actions\ProcessPaymentAction;
+use App\Support\Enums\KitchenTicketItemStatus;
+use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\StaffRole;
 use Database\Seeders\MenuSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class KitchenTest extends TestCase
@@ -25,7 +30,9 @@ class KitchenTest extends TestCase
     use RefreshDatabase;
 
     protected User $cook;
+
     protected User $cashier;
+
     protected User $chef;
 
     protected function setUp(): void
@@ -116,6 +123,7 @@ class KitchenTest extends TestCase
     public function test_cook_can_toggle_individual_item_status(): void
     {
         $ticket = $this->createPaidOrderWithKitchenTicket();
+        $this->actingAs($this->cook);
         app(ClaimKitchenTicketAction::class)->execute($ticket, $this->cook);
 
         $item = $ticket->items->first();
@@ -137,6 +145,7 @@ class KitchenTest extends TestCase
     public function test_cook_can_mark_ticket_ready(): void
     {
         $ticket = $this->createPaidOrderWithKitchenTicket();
+        $this->actingAs($this->cook);
         app(ClaimKitchenTicketAction::class)->execute($ticket, $this->cook);
 
         Livewire::actingAs($this->cook)
@@ -152,6 +161,7 @@ class KitchenTest extends TestCase
     public function test_cook_or_runner_can_mark_ticket_served_and_completes_order(): void
     {
         $ticket = $this->createPaidOrderWithKitchenTicket();
+        $this->actingAs($this->cook);
         app(UpdateKitchenTicketStatusAction::class)->execute($ticket, 'ready');
 
         Livewire::actingAs($this->cook)
@@ -170,6 +180,7 @@ class KitchenTest extends TestCase
     public function test_cook_can_recall_a_served_ticket(): void
     {
         $ticket = $this->createPaidOrderWithKitchenTicket();
+        $this->actingAs($this->cook);
         app(UpdateKitchenTicketStatusAction::class)->execute($ticket, 'served');
         $this->assertEquals('completed', $ticket->order->status);
 
@@ -243,7 +254,7 @@ class KitchenTest extends TestCase
     public function test_historical_tickets_served_before_today_are_excluded_from_signature(): void
     {
         $branchId = $this->cook->branch_id ?? 1;
-        $component = new KitchenDisplay();
+        $component = new KitchenDisplay;
         $initialSig = $component->getTicketSignatureVersion($branchId);
 
         // Ticket served yesterday should not affect signature
@@ -277,10 +288,129 @@ class KitchenTest extends TestCase
         $ticket->update(['updated_at' => now()->subHour()]);
         $oldUpdatedAt = $ticket->fresh()->updated_at;
 
-        $action = app(\App\Domains\Kitchen\Actions\ToggleKitchenItemStatusAction::class);
+        $action = app(ToggleKitchenItemStatusAction::class);
         $this->actingAs($this->cook);
         $action->execute($item);
 
         $this->assertTrue($ticket->fresh()->updated_at->gt($oldUpdatedAt));
+    }
+
+    public function test_unauthenticated_calls_to_all_five_kitchen_actions_and_display_fail_closed(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket();
+        $item = $ticket->items()->firstOrFail();
+
+        auth()->logout();
+
+        $calls = [
+            fn () => app(ClaimKitchenTicketAction::class)->execute($ticket, $this->cook),
+            fn () => app(UpdateKitchenTicketStatusAction::class)->execute($ticket, KitchenTicketStatus::READY->value),
+            fn () => app(ToggleKitchenItemStatusAction::class)->execute($item),
+            fn () => app(ToggleKitchenTicketPriorityAction::class)->execute($ticket),
+            fn () => app(RecallKitchenTicketAction::class)->execute($ticket),
+        ];
+
+        foreach ($calls as $call) {
+            try {
+                $call();
+                $this->fail('Expected 403 HttpException for unauthenticated Kitchen action call.');
+            } catch (HttpException $e) {
+                $this->assertSame(403, $e->getStatusCode());
+            }
+        }
+
+        Livewire::test(KitchenDisplay::class)->assertForbidden();
+
+        $this->assertSame(KitchenTicketStatus::NEW->value, $ticket->fresh()->status);
+        $this->assertSame(KitchenTicketItemStatus::PENDING->value, $item->fresh()->status);
+        $this->assertSame('normal', $ticket->fresh()->priority);
+    }
+
+    public function test_cross_branch_cook_is_denied_across_all_five_kitchen_actions_and_display(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket();
+        $item = $ticket->items()->firstOrFail();
+        $cookB2 = User::where('emp_id', 'B02-COK-001')->firstOrFail();
+
+        $this->actingAs($cookB2);
+
+        $calls = [
+            fn () => app(ClaimKitchenTicketAction::class)->execute($ticket, $cookB2),
+            fn () => app(UpdateKitchenTicketStatusAction::class)->execute($ticket, KitchenTicketStatus::READY->value),
+            fn () => app(ToggleKitchenItemStatusAction::class)->execute($item),
+            fn () => app(ToggleKitchenTicketPriorityAction::class)->execute($ticket),
+            fn () => app(RecallKitchenTicketAction::class)->execute($ticket),
+        ];
+
+        foreach ($calls as $call) {
+            try {
+                $call();
+                $this->fail('Expected 403 HttpException for cross-branch Kitchen action call.');
+            } catch (HttpException $e) {
+                $this->assertSame(403, $e->getStatusCode());
+            }
+        }
+
+        $displayB2 = Livewire::actingAs($cookB2)->test(KitchenDisplay::class);
+        foreach (['markServed', 'togglePriority', 'recallTicket'] as $method) {
+            try {
+                $displayB2->call($method, $ticket->id);
+                $this->fail("Expected ModelNotFoundException for cross-branch KitchenDisplay::{$method}().");
+            } catch (ModelNotFoundException) {
+                $this->assertTrue(true);
+            }
+        }
+
+        $this->assertSame(KitchenTicketStatus::NEW->value, $ticket->fresh()->status);
+        $this->assertSame(KitchenTicketItemStatus::PENDING->value, $item->fresh()->status);
+    }
+
+    public function test_null_branch_cook_and_non_kitchen_roles_are_denied_403_without_branch_1_fallback(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket();
+        $item = $ticket->items()->firstOrFail();
+
+        $nullBranchCook = User::create([
+            'name' => 'Unassigned Cook',
+            'email' => 'unassigned_cook@easypos.test',
+            'password' => Hash::make('password'),
+            'emp_id' => 'HQ-COK-NULL',
+            'branch_id' => null,
+            'is_active' => true,
+        ]);
+        $nullBranchCook->assignRole(StaffRole::COOK->value);
+
+        $this->actingAs($nullBranchCook);
+        try {
+            app(ClaimKitchenTicketAction::class)->execute($ticket, $nullBranchCook);
+            $this->fail('Expected 403 for null-branch cook calling ClaimKitchenTicketAction.');
+        } catch (HttpException $e) {
+            $this->assertSame(403, $e->getStatusCode());
+        }
+
+        Livewire::actingAs($nullBranchCook)
+            ->test(KitchenDisplay::class)
+            ->assertForbidden();
+
+        // Owner without kitchen.view/kitchen.prepare and Cashier are denied
+        $owner = User::where('email', 'owner@easypos.com')->firstOrFail();
+        foreach ([$this->cashier, $owner] as $nonKitchenUser) {
+            Livewire::actingAs($nonKitchenUser)
+                ->test(KitchenDisplay::class)
+                ->assertForbidden();
+        }
+
+        $this->assertSame(KitchenTicketStatus::NEW->value, $ticket->fresh()->status);
+        $this->assertSame(KitchenTicketItemStatus::PENDING->value, $item->fresh()->status);
+    }
+
+    public function test_toggle_kitchen_item_status_rejects_invalid_force_status(): void
+    {
+        $ticket = $this->createPaidOrderWithKitchenTicket();
+        $item = $ticket->items()->firstOrFail();
+
+        $this->actingAs($this->cook);
+        $this->expectException(\InvalidArgumentException::class);
+        app(ToggleKitchenItemStatusAction::class)->execute($item, 'bogus_status');
     }
 }

@@ -2,7 +2,9 @@
 
 namespace App\Domains\Menu\Livewire;
 
+use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Models\Meal;
+use App\Support\Constants\SystemConstants;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
@@ -17,8 +19,15 @@ class DailySpecialsBoard extends Component
     public function render()
     {
         $user = auth()->user();
-        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
-        $branchId = $isBranchScoped ? (int) $user->branch_id : null;
+        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage') && ! $user->isOwner())) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $isBranchScoped = $user->isBranchScoped();
+        $branchId = $isBranchScoped ? $user->effectiveBranchId() : null;
+        if ($isBranchScoped && ($user->branch_id === null || $branchId < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
 
         $limitedSpecials = Meal::query()
             ->when($isBranchScoped, fn ($q) => $q->forBranch($branchId))
@@ -41,7 +50,7 @@ class DailySpecialsBoard extends Component
             'limitedSpecials' => $limitedSpecials,
             'soldOutCount' => $soldOutCount,
             'branchId' => $branchId,
-            'currencySymbol' => config('pos.currency.symbol', '₱'),
+            'currencySymbol' => SystemConstants::CURRENCY_SYMBOL,
         ]);
     }
 }

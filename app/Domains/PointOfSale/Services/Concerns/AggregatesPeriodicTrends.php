@@ -3,9 +3,9 @@
 namespace App\Domains\PointOfSale\Services\Concerns;
 
 use App\Support\Constants\SystemConstants;
+use App\Support\SqlDialect;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 trait AggregatesPeriodicTrends
 {
@@ -50,7 +50,8 @@ trait AggregatesPeriodicTrends
         }
 
         if (empty($labels)) {
-            $labels[] = Carbon::parse($startDate ?: now())->format('M d');
+            $fallbackDate = $this->parseSafeDate($startDate) ?? now();
+            $labels[] = $fallbackDate->format('M d');
             $values[] = 0.00;
         }
 
@@ -98,31 +99,7 @@ trait AggregatesPeriodicTrends
     ): array {
         $effectiveBranchId = $this->resolveBranchScope($branchId);
         $interval = in_array(strtolower($interval), ['day', 'week', 'month', 'year']) ? strtolower($interval) : 'day';
-        $driver = DB::connection()->getDriverName();
-
-        if ($driver === 'sqlite') {
-            $periodSql = match ($interval) {
-                'week' => "strftime('%Y-W%W', orders.created_at)",
-                'month' => "strftime('%Y-%m', orders.created_at)",
-                'year' => "strftime('%Y', orders.created_at)",
-                default => "strftime('%Y-%m-%d', orders.created_at)",
-            };
-        } elseif ($driver === 'pgsql') {
-            $periodSql = match ($interval) {
-                'week' => "TO_CHAR(orders.created_at, 'IYYY-\"W\"IW')",
-                'month' => "TO_CHAR(orders.created_at, 'YYYY-MM')",
-                'year' => "TO_CHAR(orders.created_at, 'YYYY')",
-                default => "TO_CHAR(orders.created_at, 'YYYY-MM-DD')",
-            };
-        } else {
-            // MySQL / MariaDB
-            $periodSql = match ($interval) {
-                'week' => "DATE_FORMAT(orders.created_at, '%x-W%v')",
-                'month' => "DATE_FORMAT(orders.created_at, '%Y-%m')",
-                'year' => "DATE_FORMAT(orders.created_at, '%Y')",
-                default => "DATE(orders.created_at)",
-            };
-        }
+        $periodSql = SqlDialect::periodExpression('orders.created_at', $interval);
 
         $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
 
@@ -268,14 +245,7 @@ trait AggregatesPeriodicTrends
         ?int $cashierId = null
     ): array {
         $effectiveBranchId = $this->resolveBranchScope($branchId);
-        $driver = DB::connection()->getDriverName();
-        if ($driver === 'sqlite') {
-            $hourSql = "CAST(strftime('%H', orders.created_at) AS INTEGER)";
-        } elseif ($driver === 'pgsql') {
-            $hourSql = "EXTRACT(HOUR FROM orders.created_at)::INTEGER";
-        } else {
-            $hourSql = "HOUR(orders.created_at)";
-        }
+        $hourSql = SqlDialect::hourExpression('orders.created_at');
 
         $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
 

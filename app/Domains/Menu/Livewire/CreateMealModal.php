@@ -3,28 +3,43 @@
 namespace App\Domains\Menu\Livewire;
 
 use App\Domains\Menu\Actions\CreateMealAction;
-use App\Domains\Menu\Models\MealCategory;
+use App\Domains\Menu\Livewire\Concerns\InteractsWithMealForm;
+use App\Support\Constants\SystemConstants;
 use App\Support\Services\CodeGeneratorService;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class CreateMealModal extends Component
 {
+    use InteractsWithMealForm;
+
     public bool $isOpen = false;
+
     public string $name = '';
+
     public ?string $menu_code = null;
+
     public ?string $lastAutoCode = null;
+
     public ?int $category_id = null;
+
     public ?string $price = '';
+
     public ?string $description = null;
+
     public bool $is_available = true;
+
     public bool $track_stock = false;
+
     public ?int $stock_quantity = null;
 
     protected function rules(): array
     {
+        $user = $this->requireAuthenticatedMenuUser();
+        $isBranchScoped = $user->isBranchScoped();
+        $effectiveBranchId = $isBranchScoped ? $user->effectiveBranchId() : null;
+
         return [
             'name' => 'required|string|max:150',
             'menu_code' => [
@@ -33,7 +48,11 @@ class CreateMealModal extends Component
                 'max:20',
                 Rule::unique('meals', 'menu_code')->whereNull('deleted_at'),
             ],
-            'category_id' => 'required|exists:meal_categories,id',
+            'category_id' => [
+                'required',
+                'exists:meal_categories,id',
+                $this->categoryBelongsToBranchRule($isBranchScoped, $effectiveBranchId),
+            ],
             'price' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:1000',
             'is_available' => 'boolean',
@@ -42,15 +61,6 @@ class CreateMealModal extends Component
         ];
     }
 
-    protected $messages = [
-        'name.required' => 'Please provide the name of the dish.',
-        'category_id.required' => 'Please select a menu category.',
-        'category_id.exists' => 'The selected category is invalid.',
-        'price.required' => 'Selling price in Philippine Pesos (₱) is required.',
-        'price.numeric' => 'Selling price must be a valid number.',
-        'stock_quantity.required_if' => 'Please specify daily portion quantity when stock countdown is enabled.',
-    ];
-
     public function mount(): void
     {
         // Defer category loading and default category assignment until opened
@@ -58,9 +68,7 @@ class CreateMealModal extends Component
 
     protected function getCachedActiveCategories()
     {
-        return Cache::remember('meal_categories_active', 3600, function () {
-            return MealCategory::where('is_active', true)->orderBy('display_order')->get();
-        });
+        return $this->getScopedActiveCategories();
     }
 
     private function setDefaultCategory(): void
@@ -71,6 +79,8 @@ class CreateMealModal extends Component
 
     public function generateCode(): void
     {
+        $this->requireMenuManageUser();
+
         if (! $this->category_id) {
             $this->setDefaultCategory();
         }
@@ -84,10 +94,13 @@ class CreateMealModal extends Component
 
     public function updatedCategoryId($value): void
     {
+        $this->requireMenuManageUser();
+
         if (! $value) {
             if ($this->menu_code === $this->lastAutoCode) {
                 $this->menu_code = null;
             }
+
             return;
         }
 
@@ -101,6 +114,7 @@ class CreateMealModal extends Component
     #[On('open-create-meal-modal')]
     public function openCreateModal(): void
     {
+        $this->requireMenuManageUser();
         $this->isOpen = true;
         $this->resetForm();
         $this->setDefaultCategory();
@@ -122,18 +136,15 @@ class CreateMealModal extends Component
 
     public function save(CreateMealAction $action): void
     {
-        $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
-            abort(403, 'Unauthorized.');
-        }
+        $user = $this->requireMenuManageUser();
 
         if (blank($this->menu_code) && $this->category_id) {
             $this->menu_code = CodeGeneratorService::generateMenuCode((int) $this->category_id);
         }
 
-        $this->menu_code = filled($this->menu_code)
-            ? strtoupper(trim((string) $this->menu_code))
-            : null;
+        $this->menu_code = $this->normalizeMenuCode($this->menu_code);
+
+        $this->sanitizeMealFormInputs();
 
         $this->validate();
 
@@ -141,7 +152,7 @@ class CreateMealModal extends Component
             'name' => $this->name,
             'menu_code' => $this->menu_code,
             'category_id' => $this->category_id,
-            'branch_id' => auth()->user()?->branch_id,
+            'branch_id' => $user->isBranchScoped() ? $user->effectiveBranchId() : $user->branch_id,
             'price' => $this->price,
             'description' => $this->description,
             'is_available' => $this->is_available,
@@ -176,6 +187,8 @@ class CreateMealModal extends Component
 
     public function render()
     {
+        $this->requireAuthenticatedMenuUser();
+
         $categories = $this->isOpen
             ? $this->getCachedActiveCategories()
             : collect();
@@ -183,7 +196,7 @@ class CreateMealModal extends Component
         return view('livewire.menu.create-meal-modal', [
             'categories' => $categories,
             'categoryCodeMap' => $this->isOpen ? CodeGeneratorService::getCategoryMenuCodeMap() : [],
-            'currencySymbol' => config('pos.currency.symbol', '₱'),
+            'currencySymbol' => SystemConstants::CURRENCY_SYMBOL,
         ]);
     }
 }

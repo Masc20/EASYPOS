@@ -16,15 +16,25 @@ class MealCatalog extends Component
 
     public ?string $lastMenuVersion = null;
 
+    protected function resolveBranchId(): ?int
+    {
+        $user = auth()->user();
+        if ($user && $user->isBranchScoped()) {
+            return $user->effectiveBranchId();
+        }
+
+        return $user?->branch_id;
+    }
+
     public function mount(): void
     {
-        $branchId = auth()->user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $this->lastMenuVersion = $this->getCurrentMenuVersion($branchId);
     }
 
     public function getCurrentMenuVersion(?int $branchId): string
     {
-        $branchVersion = Cache::get("branch_{$branchId}_menu_version", 0);
+        $branchVersion = $branchId !== null ? Cache::get("branch_{$branchId}_menu_version", 0) : 0;
         $globalVersion = Cache::get('branch_global_menu_version', 0);
 
         return "{$branchVersion}:{$globalVersion}";
@@ -32,7 +42,7 @@ class MealCatalog extends Component
 
     public function syncAvailability(): void
     {
-        $branchId = auth()->user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $currentVersion = $this->getCurrentMenuVersion($branchId);
 
         if ($this->lastMenuVersion !== null && $this->lastMenuVersion === $currentVersion) {
@@ -51,7 +61,7 @@ class MealCatalog extends Component
     #[On('order-voided')]
     public function refreshCatalog(): void
     {
-        $branchId = auth()->user()?->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $this->lastMenuVersion = $this->getCurrentMenuVersion($branchId);
         $this->dispatch('meal-availability-synced');
     }
@@ -63,9 +73,10 @@ class MealCatalog extends Component
 
     public function render()
     {
-        $branchId = auth()->user()?->branch_id;
+        $branchId = $this->resolveBranchId();
 
         $categories = MealCategory::query()
+            ->when($branchId !== null, fn ($q) => $q->forBranch($branchId))
             ->where('is_active', true)
             ->orderBy('display_order')
             ->get();

@@ -128,9 +128,19 @@ class CheckoutModal extends Component
         $this->orderType = $data['order_type'] ?? OrderType::DINE_IN->value;
         $this->tableNumber = $data['table_number'] ?? '';
         $this->customerName = $data['customer_name'] ?? '';
-        $this->discountType = $data['discount_type'] ?? 'none';
+        $this->subtotal = (float) ($data['subtotal'] ?? $this->subtotal);
         $this->discountAmount = (float) ($data['discount_amount'] ?? 0);
         $this->customDiscount = (float) ($data['custom_discount'] ?? 0);
+        $incomingDiscountType = $data['discount_type'] ?? ($this->discountType ?: 'none');
+        if ($incomingDiscountType === 'none' && $this->discountAmount > 0) {
+            $incomingDiscountType = $this->customDiscount > 0 ? 'custom' : 'senior_pwd';
+        }
+        $this->discountType = $incomingDiscountType;
+        if (isset($data['total_amount'])) {
+            $this->totalAmount = (float) $data['total_amount'];
+        } elseif ($this->subtotal > 0) {
+            $this->totalAmount = max(0.00, round($this->subtotal - $this->discountAmount, 2));
+        }
         $this->notes = $data['notes'] ?? '';
         $this->paymentMethod = $data['payment_method'] ?? PaymentMethod::CASH->value;
         $this->amountTendered = (string) ($data['amount_tendered'] ?? '');
@@ -153,7 +163,14 @@ class CheckoutModal extends Component
             return;
         }
 
-        $branchId = $user->branch_id ?? 1;
+        if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() <= 0)) {
+            $this->errorMessage = 'Unauthorized. Branch assignment required.';
+            return;
+        }
+
+        $branchId = $user->isBranchScoped()
+            ? (int) $user->effectiveBranchId()
+            : ((int) ($user->branch_id ?? 1));
 
         // Validation
         if (empty($this->items)) {
@@ -162,16 +179,7 @@ class CheckoutModal extends Component
         }
 
         $tenderedFloat = (float) $this->amountTendered;
-        if ($this->paymentMethod === PaymentMethod::CASH->value) {
-            if ($tenderedFloat < $this->totalAmount) {
-                $this->errorMessage = sprintf(
-                    'Amount tendered (₱%.2f) is less than the total due (₱%.2f).',
-                    $tenderedFloat,
-                    $this->totalAmount
-                );
-                return;
-            }
-        } elseif (in_array($this->paymentMethod, PaymentMethod::referenceRequiredValues())) {
+        if (in_array($this->paymentMethod, PaymentMethod::referenceRequiredValues())) {
             if (empty(trim($this->referenceNumber))) {
                 $this->errorMessage = 'Reference / Approval Code is required for card and digital payments.';
                 return;
@@ -180,7 +188,7 @@ class CheckoutModal extends Component
 
         try {
             $order = DB::transaction(function () use ($createOrderAction, $processPaymentAction, $branchId, $user, $tenderedFloat) {
-                // 1. Create Order and Items
+                // 1. Create Order and Items (computes authoritative server-side subtotal, discount, and total_amount)
                 $order = $createOrderAction->execute([
                     'branch_id' => $branchId,
                     'cashier_id' => $user->id,
@@ -201,8 +209,8 @@ class CheckoutModal extends Component
                     }, $this->items),
                 ]);
 
-                // 2. Process Payment & Dispatch to Kitchen
-                $result = $processPaymentAction->execute($order, [
+                // 2. Process Payment & Dispatch to Kitchen (validates amountTendered >= authoritative $order->total_amount)
+                $processPaymentAction->execute($order, [
                     'cashier_id' => $user->id,
                     'payment_method' => $this->paymentMethod,
                     'amount_tendered' => $tenderedFloat,
@@ -224,6 +232,8 @@ class CheckoutModal extends Component
             $this->dispatch('open-modal', 'receipt-modal');
             $this->dispatch('show-receipt', orderId: $order->id);
 
+        } catch (\InvalidArgumentException $e) {
+            $this->errorMessage = $e->getMessage();
         } catch (\Throwable $e) {
             \Illuminate\Support\Facades\Log::error($e);
             $this->errorMessage = app()->environment('production')

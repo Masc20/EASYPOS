@@ -11,7 +11,6 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Livewire\Livewire;
-use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class AdversarialMealCatalogTableStressTest extends TestCase
@@ -19,10 +18,15 @@ class AdversarialMealCatalogTableStressTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
+
     protected User $chef1;
+
     protected User $cashier1;
+
     protected MealCategory $categoryMain;
+
     protected MealCategory $categoryDrink;
 
     protected function setUp(): void
@@ -102,6 +106,7 @@ class AdversarialMealCatalogTableStressTest extends TestCase
         $queries = DB::getQueryLog();
         $standaloneCount = collect($queries)->filter(function ($q) {
             $sql = strtolower($q['query']);
+
             return str_contains($sql, 'select count(*) as aggregate from `meals`')
                 || str_contains($sql, 'select count(*) as aggregate from "meals"');
         });
@@ -337,15 +342,32 @@ class AdversarialMealCatalogTableStressTest extends TestCase
             'is_available' => true,
         ]);
 
-        // Cashier has no menu.manage permission
+        // Cashier has no menu.view or menu.manage permission (denied at mount/render)
         Livewire::actingAs($this->cashier1)
             ->test(MealCatalogTable::class)
-            ->call('toggleAvailability', $meal->id)
-            ->assertStatus(403);
+            ->assertForbidden();
 
-        Livewire::actingAs($this->cashier1)
+        // A user with menu.view only can render the table, but is forbidden from mutating meals
+        $viewOnly = User::factory()->create([
+            'branch_id' => $this->branch1->id,
+            'name' => 'Menu Viewer B1',
+            'email' => 'viewerb1@test.com',
+        ]);
+        $viewOnly->givePermissionTo('menu.view');
+
+        Livewire::actingAs($viewOnly)
             ->test(MealCatalogTable::class)
+            ->assertOk()
+            ->call('toggleAvailability', $meal->id)
+            ->assertForbidden();
+
+        Livewire::actingAs($viewOnly)
+            ->test(MealCatalogTable::class)
+            ->assertOk()
             ->call('deleteMeal', $meal->id)
-            ->assertStatus(403);
+            ->assertForbidden();
+
+        $this->assertTrue((bool) $meal->fresh()->is_available);
+        $this->assertNotSoftDeleted('meals', ['id' => $meal->id]);
     }
 }

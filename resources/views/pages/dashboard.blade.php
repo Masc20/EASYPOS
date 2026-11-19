@@ -114,10 +114,10 @@
                 @endauth
             </div>
             <div class="rounded-md bg-brand-bg/70 p-4 border border-brand-border/70">
-                <span class="text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Installed
-                    Ecosystem</span>
-                <p class="mt-1 text-lg font-black text-brand-text">Laravel 12 + Livewire 3</p>
-                <p class="text-xs text-brand-text-muted mt-1">Filament 4 • Spatie RBAC • Tailwind v4</p>
+                <span class="text-xs font-semibold text-brand-text-muted uppercase tracking-wider">Terminal
+                    Readiness</span>
+                <p class="mt-1 text-lg font-black text-brand-text">Multi-Branch POS</p>
+                <p class="text-xs text-brand-text-muted mt-1">Checkout • Kitchen Display • Back-Office</p>
             </div>
         </div>
     </div>

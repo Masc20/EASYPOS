@@ -5,7 +5,9 @@
         tableNumber: '{{ $tableNumber }}',
         customerName: '{{ $customerName }}',
         subtotal: {{ (float) $subtotal }},
+        discountType: '{{ $discountType }}',
         discountAmount: {{ (float) $discountAmount }},
+        customDiscount: {{ (float) $customDiscount }},
         totalAmount: {{ (float) $totalAmount }},
         notes: '{{ $notes }}',
     
@@ -23,7 +25,9 @@
                 this.tableNumber = data.table_number || '';
                 this.customerName = data.customer_name || '';
                 this.subtotal = parseFloat(data.subtotal) || 0;
+                this.discountType = data.discount_type || 'none';
                 this.discountAmount = parseFloat(data.discount_amount) || 0;
+                this.customDiscount = parseFloat(data.custom_discount) || 0;
                 this.totalAmount = parseFloat(data.total_amount) || 0;
                 this.notes = data.notes || '';
     
@@ -77,7 +81,11 @@
                     order_type: this.orderType,
                     table_number: this.tableNumber,
                     customer_name: this.customerName,
+                    subtotal: this.subtotal,
+                    discount_type: this.discountType,
                     discount_amount: this.discountAmount,
+                    custom_discount: this.customDiscount,
+                    total_amount: this.totalAmount,
                     notes: this.notes,
                     payment_method: this.paymentMethod,
                     amount_tendered: tendered,

@@ -71,6 +71,27 @@ class UserForm
                             ? fn (Builder $query) => $query->whereIn('name', StaffRole::floorValues())
                             : null
                     )
+                    ->saveRelationshipsUsing(function ($component, $record, $state) {
+                        $actor = auth()->user();
+                        $roleIds = array_map('intval', (array) ($state ?? []));
+
+                        if ($actor && $actor->isBranchScoped()) {
+                            $allowedFloorRoleIds = Role::query()
+                                ->whereIn('name', StaffRole::floorValues())
+                                ->pluck('id')
+                                ->map(fn ($id) => (int) $id)
+                                ->all();
+
+                            foreach ($roleIds as $roleId) {
+                                if (! in_array($roleId, $allowedFloorRoleIds, true)) {
+                                    abort(403, 'Branch managers can only assign floor staff roles.');
+                                }
+                            }
+                        }
+
+                        $record->roles()->sync($roleIds);
+                        $record->unsetRelation('roles');
+                    })
                     ->multiple()
                     ->preload()
                     ->required()

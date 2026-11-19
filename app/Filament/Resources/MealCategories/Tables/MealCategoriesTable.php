@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\MealCategories\Tables;
 
+use App\Domains\Menu\Models\MealCategory;
+use App\Filament\Resources\MealCategories\MealCategoryResource;
 use App\Support\Constants\SystemConstants;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -33,7 +35,6 @@ class MealCategoriesTable
                     ->fontFamily('mono')
                     ->searchable(),
                 TextColumn::make('meals_count')
-                    ->counts('meals')
                     ->label('Dishes')
                     ->alignment('center')
                     ->badge(),
@@ -63,11 +64,15 @@ class MealCategoriesTable
             ->recordActions([
                 EditAction::make()
                     ->modal()
-                    ->modalWidth('md'),
+                    ->modalWidth('md')
+                    ->visible(fn (MealCategory $record): bool => MealCategoryResource::canEdit($record))
+                    ->authorize(fn (MealCategory $record): bool => MealCategoryResource::canEdit($record)),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->authorizeIndividualRecords()
+                        ->authorize(fn (): bool => MealCategoryResource::canDeleteAny()),
                 ]),
             ]);
     }

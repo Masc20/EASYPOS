@@ -131,14 +131,6 @@ class ListUsers extends ListRecords
                         ->body("{$user->name} ({$user->emp_id}) has been added.")
                         ->success()
                         ->send();
-
-                    // Additional result notification with credentials
-                    Notification::make()
-                        ->title('Credentials Ready')
-                        ->body("Employee ID: {$user->emp_id}\nTerminal PIN: {$data['pin_code']}\nShare these securely with the staff member.")
-                        ->info()
-                        ->persistent()
-                        ->send();
                 }),
 
             // 2. Dedicated Modal for Back-Office Admin / Manager (Email & Password)
@@ -260,14 +252,6 @@ class ListUsers extends ListRecords
                         ->title('Admin / Manager Created')
                         ->body("{$user->name} ({$user->emp_id}) has been added.")
                         ->success()
-                        ->send();
-
-                    // Result notification with credentials
-                    Notification::make()
-                        ->title('Credentials Ready')
-                        ->body("Employee ID: {$user->emp_id}\nEmail: {$user->email}\nBack-Office Password: {$data['password']}\nApproval PIN: {$data['pin_code']}\n\nShare these securely with the new admin.")
-                        ->info()
-                        ->persistent()
                         ->send();
                 }),
         ];

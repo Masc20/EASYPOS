@@ -19,16 +19,80 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             \App\Http\Middleware\SecurityHeaders::class,
+            \App\Http\Middleware\EnsureUserIsActive::class,
+            \App\Http\Middleware\EnsureTerminalUnlocked::class,
             \App\Http\Middleware\PreloadAuthenticatedUserPermissions::class,
         ]);
         $middleware->alias([
+            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'terminal.unlocked' => \App\Http\Middleware\EnsureTerminalUnlocked::class,
             'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
         ]);
+
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: \App\Http\Middleware\EnsureUserIsActive::class,
+        );
+        $middleware->prependToPriorityList(
+            before: \Illuminate\Contracts\Auth\Middleware\AuthenticatesRequests::class,
+            prepend: \App\Http\Middleware\EnsureTerminalUnlocked::class,
+        );
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (\Throwable $e, Request $request) {
+            if (class_exists(\Livewire\Features\SupportRedirects\SupportRedirects::class)) {
+                while (! empty(\Livewire\Features\SupportRedirects\SupportRedirects::$redirectorCacheStack)) {
+                    $previousRedirector = array_pop(\Livewire\Features\SupportRedirects\SupportRedirects::$redirectorCacheStack);
+                    if ($previousRedirector instanceof \Illuminate\Routing\Redirector) {
+                        app()->instance('redirect', $previousRedirector);
+                    }
+                }
+            }
+
+            $isCsrf419 = $e instanceof \Illuminate\Session\TokenMismatchException
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getStatusCode() === 419);
+
+            if ($isCsrf419 && ($request->is('logout') || $request->is('admin/logout'))) {
+                $isAdminLogout = $request->is('admin/logout');
+                $user = \Illuminate\Support\Facades\Auth::guard('web')->user();
+                $isFloorStaff = $request->hasSession()
+                    ? ($request->session()->get(\App\Support\Constants\SystemConstants::SESSION_AUTH_METHOD) === 'pin'
+                        || ($user && $user->isStrictFloorStaff()))
+                    : ! $isAdminLogout;
+
+                if ($user) {
+                    \Illuminate\Support\Facades\Auth::guard('web')->logout();
+                    event(new \App\Domains\Identity\Events\UserLoggedOut($user));
+                }
+
+                if ($request->hasSession()) {
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                }
+
+                return ($isAdminLogout || ($user && ! $isFloorStaff))
+                    ? redirect('/admin/login')
+                    : redirect()->route('login');
+            }
+
+            $isForbidden403 = $e instanceof \Illuminate\Auth\Access\AuthorizationException
+                || $e instanceof \Spatie\Permission\Exceptions\UnauthorizedException
+                || ($e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $e->getStatusCode() === 403);
+
+            if ($isForbidden403) {
+                $deniedUser = \Illuminate\Support\Facades\Auth::guard('web')->user();
+                \App\Domains\Audit\Services\ActivityLogger::denied(
+                    category: 'security',
+                    event: 'access_denied',
+                    description: 'Denied (403) access to ' . $request->method() . ' /' . ltrim($request->path(), '/') . ': ' . ($e->getMessage() ?: 'Forbidden'),
+                    actor: $deniedUser,
+                    branchId: $deniedUser?->branch_id,
+                    metadata: ['path' => $request->path(), 'method' => $request->method(), 'status_code' => 403],
+                );
+            }
+
             if (! (app()->environment('production') || config('app.env') === 'production')) {
                 return null;
             }

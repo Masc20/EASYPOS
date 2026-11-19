@@ -2,6 +2,7 @@
 
 namespace App\Domains\Kitchen\Actions;
 
+use App\Domains\Kitchen\Actions\Concerns\AuthorizesKitchenActions;
 use App\Domains\Kitchen\Events\KitchenTicketStatusUpdated;
 use App\Domains\Kitchen\Models\KitchenTicket;
 use App\Support\Enums\KitchenTicketStatus;
@@ -10,14 +11,14 @@ use Illuminate\Support\Facades\DB;
 
 class RecallKitchenTicketAction
 {
+    use AuthorizesKitchenActions;
+
     /**
      * Recall a served ticket back to the ready queue.
      */
     public function execute(KitchenTicket $ticket): KitchenTicket
     {
-        if (auth()->check() && ! auth()->user()->can('kitchen.prepare')) {
-            abort(403, 'Unauthorized. Only kitchen staff can recall kitchen tickets.');
-        }
+        $this->authorizeKitchenAction($ticket, 'recall kitchen tickets');
 
         return DB::transaction(function () use ($ticket) {
             $previousStatus = $ticket->status;

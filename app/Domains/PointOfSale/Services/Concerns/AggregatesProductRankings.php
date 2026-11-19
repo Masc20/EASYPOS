@@ -91,13 +91,15 @@ trait AggregatesProductRankings
                         ->orWhere('orders.status', OrderStatus::COMPLETED->value);
                 });
 
-            if ($startDate) {
-                $query->where('orders.created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            $parsedStart = $this->parseSafeDate($startDate);
+            if ($parsedStart !== null) {
+                $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
             }
-            if ($endDate) {
-                $query->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            $parsedEnd = $this->parseSafeDate($endDate);
+            if ($parsedEnd !== null) {
+                $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
             }
-            if ($effectiveBranchId) {
+            if ($effectiveBranchId !== null) {
                 $query->where('orders.branch_id', $effectiveBranchId);
             }
             if ($cashierId) {
@@ -218,13 +220,15 @@ trait AggregatesProductRankings
                         ->orWhere('orders.status', OrderStatus::COMPLETED->value);
                 });
 
-            if ($startDate) {
-                $query->where('orders.created_at', '>=', Carbon::parse($startDate)->startOfDay());
+            $parsedStart = $this->parseSafeDate($startDate);
+            if ($parsedStart !== null) {
+                $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
             }
-            if ($endDate) {
-                $query->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
+            $parsedEnd = $this->parseSafeDate($endDate);
+            if ($parsedEnd !== null) {
+                $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
             }
-            if ($effectiveBranchId) {
+            if ($effectiveBranchId !== null) {
                 $query->where('orders.branch_id', $effectiveBranchId);
             }
             if ($cashierId) {

@@ -2,11 +2,22 @@
 
 namespace Tests;
 
+use Illuminate\Contracts\Auth\Authenticatable as UserContract;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 
 abstract class TestCase extends BaseTestCase
 {
+    public function be(UserContract $user, $guard = null)
+    {
+        if ($this->app && $this->app->bound('session')) {
+            $driver = $guard ?: $this->app['config']->get('auth.defaults.guard', 'web');
+            $this->app['session']->forget('password_hash_' . $driver);
+        }
+
+        return parent::be($user, $guard);
+    }
+
     public function createApplication()
     {
         $app = parent::createApplication();

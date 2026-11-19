@@ -20,15 +20,8 @@
         </svg>
         <span>Retry Operation</span>
     </button>
-    @auth
-        <a href="{{ auth()->user()->stationRoute() }}"
-            class="inline-flex items-center justify-center gap-2 rounded-md border border-brand-border bg-brand-card hover:bg-brand-muted text-brand-text px-4 py-2.5 text-sm font-medium transition cursor-pointer shadow-2xs">
-            <span>Return to Station</span>
-        </a>
-    @else
-        <a href="{{ url('/') }}"
-            class="inline-flex items-center justify-center gap-2 rounded-md border border-brand-border bg-brand-card hover:bg-brand-muted text-brand-text px-4 py-2.5 text-sm font-medium transition cursor-pointer shadow-2xs">
-            <span>Welcome Screen</span>
-        </a>
-    @endauth
+    <a href="{{ url('/') }}"
+        class="inline-flex items-center justify-center gap-2 rounded-md border border-brand-border bg-brand-card hover:bg-brand-muted text-brand-text px-4 py-2.5 text-sm font-medium transition cursor-pointer shadow-2xs">
+        <span>Welcome Screen</span>
+    </a>
 @endsection

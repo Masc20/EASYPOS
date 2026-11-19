@@ -6,12 +6,17 @@ use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Actions\CreateMealAction;
 use App\Domains\Menu\Actions\UpdateMealAction;
+use App\Domains\Menu\Livewire\CreateMealModal;
+use App\Domains\Menu\Livewire\EditMealModal;
+use App\Domains\Menu\Livewire\MealForm;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use App\Support\Enums\StaffRole;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class MealInputSanitizationTest extends TestCase
@@ -19,7 +24,9 @@ class MealInputSanitizationTest extends TestCase
     use RefreshDatabase;
 
     protected User $adminUser;
+
     protected Branch $branch;
+
     protected MealCategory $category;
 
     protected function setUp(): void
@@ -52,7 +59,7 @@ class MealInputSanitizationTest extends TestCase
     {
         $this->actingAs($this->adminUser);
 
-        $action = new CreateMealAction();
+        $action = new CreateMealAction;
         $meal = $action->handle([
             'name' => "<script>alert('xss')</script>Crispy Pata",
             'menu_code' => 'M-CP-01',
@@ -74,7 +81,7 @@ class MealInputSanitizationTest extends TestCase
     {
         $this->actingAs($this->adminUser);
 
-        $action = new CreateMealAction();
+        $action = new CreateMealAction;
         $meal = $action->handle([
             'name' => 'Pork Sisig',
             'menu_code' => 'M-PS-01',
@@ -107,7 +114,7 @@ class MealInputSanitizationTest extends TestCase
             'is_available' => true,
         ]);
 
-        $action = new UpdateMealAction();
+        $action = new UpdateMealAction;
         $updated = $action->handle($meal, [
             'name' => '<b>Gourmet</b> Beef Burger',
             'description' => '<iframe src="evil.com"></iframe>Flame-grilled patty',
@@ -125,7 +132,7 @@ class MealInputSanitizationTest extends TestCase
     {
         $this->actingAs($this->adminUser);
 
-        $action = new CreateMealAction();
+        $action = new CreateMealAction;
         $meal = $action->handle([
             'name' => 'Fish & Chips "Special" (100% Cod)',
             'menu_code' => 'M-FC-01',
@@ -143,7 +150,7 @@ class MealInputSanitizationTest extends TestCase
     {
         $this->actingAs($this->adminUser);
 
-        $action = new CreateMealAction();
+        $action = new CreateMealAction;
         $meal = $action->handle([
             'name' => 'Plain Water',
             'menu_code' => 'M-PW-01',
@@ -155,5 +162,105 @@ class MealInputSanitizationTest extends TestCase
 
         $this->assertSame('Plain Water', $meal->name);
         $this->assertNull($meal->description);
+    }
+
+    public function test_meal_actions_reject_pure_script_or_empty_dish_names_with_validation_error(): void
+    {
+        $this->actingAs($this->adminUser);
+        $initialCount = Meal::count();
+
+        try {
+            (new CreateMealAction)->handle([
+                'name' => '<script>alert(1)</script>   ',
+                'menu_code' => 'M-XSS-01',
+                'category_id' => $this->category->id,
+                'branch_id' => $this->branch->id,
+                'price' => 100.00,
+            ]);
+            $this->fail('Expected ValidationException when creating meal with pure-script name.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('name', $e->errors());
+        }
+
+        $this->assertSame($initialCount, Meal::count());
+
+        $meal = Meal::create([
+            'name' => 'Intact Dish',
+            'menu_code' => 'M-INT-01',
+            'category_id' => $this->category->id,
+            'branch_id' => $this->branch->id,
+            'price' => 120.00,
+        ]);
+
+        try {
+            (new UpdateMealAction)->handle($meal, [
+                'name' => '<style>body{display:none}</style>   ',
+            ]);
+            $this->fail('Expected ValidationException when updating meal with pure-script name.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('name', $e->errors());
+        }
+
+        $this->assertSame('Intact Dish', $meal->fresh()->name);
+    }
+
+    public function test_meal_livewire_forms_sanitize_and_reject_pure_script_dish_names(): void
+    {
+        $chef1 = User::where('emp_id', 'B01-CHF-001')->firstOrFail();
+
+        $meal = Meal::create([
+            'name' => 'Original Branch Dish',
+            'menu_code' => 'M-ORG-01',
+            'category_id' => $this->category->id,
+            'branch_id' => $this->branch->id,
+            'price' => 150.00,
+        ]);
+
+        $initialCount = Meal::count();
+
+        Livewire::actingAs($chef1)
+            ->test(CreateMealModal::class)
+            ->set('name', '<script>alert(1)</script>')
+            ->set('category_id', $this->category->id)
+            ->set('price', '180.00')
+            ->call('save')
+            ->assertHasErrors(['name']);
+
+        $this->assertSame($initialCount, Meal::count());
+
+        Livewire::actingAs($chef1)
+            ->test(EditMealModal::class)
+            ->dispatch('edit-meal', id: $meal->id)
+            ->set('name', '<iframe src="https://evil.test"></iframe>   ')
+            ->call('save')
+            ->assertHasErrors(['name']);
+
+        $this->assertSame('Original Branch Dish', $meal->fresh()->name);
+
+        Livewire::actingAs($chef1)
+            ->test(MealForm::class)
+            ->set('name', '<script>xss()</script>')
+            ->set('category_id', $this->category->id)
+            ->set('price', '190.00')
+            ->call('save')
+            ->assertHasErrors(['name']);
+
+        $this->assertSame($initialCount, Meal::count());
+
+        // Legitimate text mixed with script/HTML tags is cleaned before saving
+        Livewire::actingAs($chef1)
+            ->test(CreateMealModal::class)
+            ->set('name', '<script>alert(1)</script>Crispy Lechon')
+            ->set('description', '<p>Tender pork belly</p>')
+            ->set('category_id', $this->category->id)
+            ->set('price', '350.00')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('meals', [
+            'name' => 'Crispy Lechon',
+            'description' => 'Tender pork belly',
+            'branch_id' => $this->branch->id,
+        ]);
     }
 }

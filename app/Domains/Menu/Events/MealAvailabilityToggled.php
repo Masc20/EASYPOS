@@ -18,6 +18,13 @@ class MealAvailabilityToggled implements ShouldBroadcast
         public ?bool $effectiveAvailability = null,
     ) {}
 
+    public function broadcastWhen(): bool
+    {
+        $driver = (string) config('broadcasting.default', 'null');
+
+        return ! in_array($driver, ['', 'null', 'log'], true);
+    }
+
     /**
      * @return array<int, PrivateChannel>
      */

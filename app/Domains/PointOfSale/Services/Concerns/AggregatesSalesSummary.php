@@ -93,7 +93,7 @@ trait AggregatesSalesSummary
     protected function computeSummary(
         ?string $startDate = null,
         ?string $endDate = null,
-        ?int $branchId = null,
+        ?int $effectiveBranchId = null,
         ?int $cashierId = null,
         bool $includeDetails = true
     ): array {
@@ -102,14 +102,16 @@ trait AggregatesSalesSummary
 
         // Base query with date, branch, and cashier filtering
         $baseOrdersQuery = Order::query();
-        if ($startDate) {
-            $baseOrdersQuery->where('orders.created_at', '>=', Carbon::parse($startDate)->startOfDay());
+        $parsedStart = $this->parseSafeDate($startDate);
+        if ($parsedStart !== null) {
+            $baseOrdersQuery->where('orders.created_at', '>=', $parsedStart->startOfDay());
         }
-        if ($endDate) {
-            $baseOrdersQuery->where('orders.created_at', '<=', Carbon::parse($endDate)->endOfDay());
+        $parsedEnd = $this->parseSafeDate($endDate);
+        if ($parsedEnd !== null) {
+            $baseOrdersQuery->where('orders.created_at', '<=', $parsedEnd->endOfDay());
         }
-        if ($branchId) {
-            $baseOrdersQuery->where('orders.branch_id', $branchId);
+        if ($effectiveBranchId !== null) {
+            $baseOrdersQuery->where('orders.branch_id', $effectiveBranchId);
         }
         if ($cashierId) {
             $baseOrdersQuery->where('orders.cashier_id', $cashierId);
@@ -167,7 +169,7 @@ trait AggregatesSalesSummary
         ];
 
         // Consolidated Query 2: Payment method breakdown and cash drawer reconciliation on payments
-        $paymentsQuery = $this->buildFilteredPaymentsQuery($startDate, $endDate, $branchId, $cashierId);
+        $paymentsQuery = $this->buildFilteredPaymentsQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
         $paymentRows = (clone $paymentsQuery)
             ->selectRaw("
                 payment_method,
@@ -235,7 +237,7 @@ trait AggregatesSalesSummary
         $topSellingItems = $this->getBestSellingRankings(
             $startDate,
             $endDate,
-            $branchId,
+            $effectiveBranchId,
             $cashierId,
             null,
             5,
@@ -245,7 +247,7 @@ trait AggregatesSalesSummary
         );
 
         // Query 4: Cashier & Staff Performance
-        $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $branchId, $cashierId);
+        $ordersQuery = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
         $cashierStatsQuery = (clone $ordersQuery)
             ->join('users', 'orders.cashier_id', '=', 'users.id')
             ->select(

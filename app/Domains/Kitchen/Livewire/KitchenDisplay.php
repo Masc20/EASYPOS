@@ -2,6 +2,7 @@
 
 namespace App\Domains\Kitchen\Livewire;
 
+use App\Domains\Identity\Models\User;
 use App\Domains\Kitchen\Actions\ClaimKitchenTicketAction;
 use App\Domains\Kitchen\Actions\RecallKitchenTicketAction;
 use App\Domains\Kitchen\Actions\ToggleKitchenItemStatusAction;
@@ -10,23 +11,44 @@ use App\Domains\Kitchen\Actions\UpdateKitchenTicketStatusAction;
 use App\Domains\Kitchen\Models\KitchenTicket;
 use App\Domains\Kitchen\Models\KitchenTicketItem;
 use App\Support\Enums\KitchenTicketStatus;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Component;
 
 class KitchenDisplay extends Component
 {
     public string $diningFilter = 'all'; // all, dine_in, takeout, delivery
+
     public string $priorityFilter = 'all'; // all, rush
+
     public bool $showRecallDrawer = false;
+
     public bool $audioAlertEnabled = true;
+
     public int $lastKnownNewCount = 0;
+
     public ?string $lastTicketVersion = null;
+
+    private function resolveBranchId(): int
+    {
+        $user = Auth::user();
+        if (! $user instanceof User || (! $user->can('kitchen.view') && ! $user->can('kitchen.prepare'))) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $branchId = $user->effectiveBranchId();
+        if ($branchId === null || $branchId < 0) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
+
+        return $branchId;
+    }
 
     public function mount(): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $this->lastKnownNewCount = KitchenTicket::forBranch($branchId)
-            ->where('status', 'new')
+            ->where('status', KitchenTicketStatus::NEW->value)
             ->count();
         $this->lastTicketVersion = $this->getTicketSignatureVersion($branchId);
     }
@@ -49,46 +71,48 @@ class KitchenDisplay extends Component
 
     public function claimTicket(int $ticketId, ClaimKitchenTicketAction $action): void
     {
+        $branchId = $this->resolveBranchId();
+        /** @var User $user */
         $user = Auth::user();
-        if (! $user) {
-            return;
-        }
 
-        $ticket = KitchenTicket::forBranch($user->branch_id ?? 1)->findOrFail($ticketId);
+        $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket, $user);
     }
 
     public function markReady(int $ticketId, UpdateKitchenTicketStatusAction $action): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
-        $action->execute($ticket, 'ready');
+        $action->execute($ticket, KitchenTicketStatus::READY->value);
     }
 
     public function markServed(int $ticketId, UpdateKitchenTicketStatusAction $action): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
-        $action->execute($ticket, 'served');
+        $action->execute($ticket, KitchenTicketStatus::SERVED->value);
     }
 
     public function toggleItem(int $itemId, ToggleKitchenItemStatusAction $action): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
-        $item = KitchenTicketItem::whereHas('ticket', fn ($q) => $q->forBranch($branchId))->findOrFail($itemId);
+        $branchId = $this->resolveBranchId();
+        $item = KitchenTicketItem::whereHas('ticket', function (Builder $q) use ($branchId): void {
+            /** @var Builder<KitchenTicket> $q */
+            $q->forBranch($branchId);
+        })->findOrFail($itemId);
         $action->execute($item);
     }
 
     public function togglePriority(int $ticketId, ToggleKitchenTicketPriorityAction $action): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket);
     }
 
     public function recallTicket(int $ticketId, RecallKitchenTicketAction $action): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $ticket = KitchenTicket::forBranch($branchId)->findOrFail($ticketId);
         $action->execute($ticket);
     }
@@ -105,7 +129,7 @@ class KitchenDisplay extends Component
 
     public function pollUpdates(): void
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
         $version = $this->getTicketSignatureVersion($branchId);
 
         if ($this->lastTicketVersion !== null && $version === $this->lastTicketVersion) {
@@ -117,7 +141,7 @@ class KitchenDisplay extends Component
         $this->lastTicketVersion = $version;
 
         $currentNewCount = KitchenTicket::forBranch($branchId)
-            ->where('status', 'new')
+            ->where('status', KitchenTicketStatus::NEW->value)
             ->count();
 
         if ($this->audioAlertEnabled && $currentNewCount > $this->lastKnownNewCount) {
@@ -129,17 +153,12 @@ class KitchenDisplay extends Component
 
     public function render()
     {
-        $branchId = Auth::user()->branch_id ?? 1;
+        $branchId = $this->resolveBranchId();
 
         $baseQuery = KitchenTicket::query()
             ->forBranch($branchId)
-            ->where('status', '!=', 'cancelled')
-            ->where(function ($q) {
-                $q->whereNull('order_id')->orWhereHas('order', function ($oq) {
-                    $oq->where('status', '!=', 'cancelled')
-                        ->where('payment_status', '!=', 'refunded');
-                });
-            })
+            ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
+            ->whereOrderNotVoided()
             ->with(['items.orderItem.meal', 'order', 'cook'])
             ->rushFirst();
 
@@ -159,23 +178,22 @@ class KitchenDisplay extends Component
         $allTickets = (clone $baseQuery)->active()->limit(75)->get();
         $overflowCount = max(0, $totalActiveCount - 75);
 
-        $newTickets = $allTickets->where('status', 'new')->values();
-        $inPrepTickets = $allTickets->where('status', 'in_prep')->values();
-        $readyTickets = $allTickets->where('status', 'ready')->values();
+        $newTickets = $allTickets->where('status', KitchenTicketStatus::NEW->value)->values();
+        $inPrepTickets = $allTickets->where('status', KitchenTicketStatus::IN_PREP->value)->values();
+        $readyTickets = $allTickets->where('status', KitchenTicketStatus::READY->value)->values();
+
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
 
         $recentServedTickets = KitchenTicket::query()
             ->forBranch($branchId)
-            ->where('status', '!=', 'cancelled')
+            ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
             ->whereNotNull('served_at')
-            ->where(function ($q) {
-                $q->whereNull('order_id')->orWhereHas('order', function ($oq) {
-                    $oq->where('status', '!=', 'cancelled')
-                        ->where('payment_status', '!=', 'refunded');
-                });
-            })
+            ->whereBetween('served_at', [$todayStart, $todayEnd])
+            ->whereOrderNotVoided()
             ->with(['items.orderItem.meal', 'order', 'cook'])
             ->orderBy('served_at', 'desc')
-            ->limit(10)
+            ->limit(50)
             ->get();
 
         return view('livewire.kitchen.kitchen-display', [

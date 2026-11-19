@@ -34,6 +34,15 @@ class User extends Authenticatable implements FilamentUser
     protected ?bool $memoizedCanAccessAdmin = null;
 
     /**
+     * Default model attributes matching database schema defaults.
+     *
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
+    /**
      * The attributes that are mass assignable.
      *
      * @var list<string>
@@ -124,6 +133,10 @@ class User extends Authenticatable implements FilamentUser
         // Security gate: A 4-digit PIN terminal session can NEVER access the admin panel.
         // Full email + password authentication is strictly required for back-office administration.
         if (session(SystemConstants::SESSION_AUTH_METHOD) === 'pin') {
+            return $this->memoizedCanAccessAdmin = false;
+        }
+
+        if ($this->isBranchScoped() && ($this->branch_id === null || $this->hasInactiveBranch())) {
             return $this->memoizedCanAccessAdmin = false;
         }
 
@@ -259,11 +272,11 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Clear memoized flags when roles or permissions relations are modified or unset.
+     * Clear memoized flags when roles, permissions, or branch relations are modified or unset.
      */
     public function unsetRelation($relation)
     {
-        if ($relation === 'roles' || $relation === 'permissions') {
+        if ($relation === 'roles' || $relation === 'permissions' || $relation === 'branch') {
             $this->memoizedIsFloorStaff = null;
             $this->memoizedIsStrictFloorStaff = null;
             $this->memoizedIsOwner = null;
@@ -274,11 +287,27 @@ class User extends Authenticatable implements FilamentUser
     }
 
     /**
-     * Determine if the user is restricted to a single assigned branch.
+     * Determine if the user is assigned to an inactive or deleted branch.
+     */
+    public function hasInactiveBranch(): bool
+    {
+        if ($this->branch_id === null) {
+            return false;
+        }
+
+        $branch = $this->relationLoaded('branch')
+            ? $this->getRelation('branch')
+            : $this->branch()->first();
+
+        return ! ($branch?->is_active ?? false);
+    }
+
+    /**
+     * Determine if the user is restricted to an assigned branch (all non-executive roles).
      */
     public function isBranchScoped(): bool
     {
-        return ! $this->isOwner() && $this->branch_id !== null;
+        return ! $this->isOwner();
     }
 
     /**
@@ -287,7 +316,7 @@ class User extends Authenticatable implements FilamentUser
     public function effectiveBranchId(?int $requestedBranchId = null): ?int
     {
         if ($this->isBranchScoped()) {
-            return (int) $this->branch_id;
+            return $this->branch_id !== null ? (int) $this->branch_id : -1;
         }
 
         return $requestedBranchId;

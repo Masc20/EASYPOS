@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Auth\Access\Response;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use UnitEnum;
@@ -24,7 +25,15 @@ class UserResource extends Resource
     {
         $user = auth()->user();
 
-        return (bool) ($user && ($user->isOwner() || $user->can('users.manage') || $user->can('admin.access')));
+        return (bool) ($user
+            && $user->canAccessAdmin()
+            && ($user->isOwner() || $user->can('users.manage'))
+            && (! $user->isBranchScoped() || $user->branch_id !== null));
+    }
+
+    public static function shouldRegisterNavigation(): bool
+    {
+        return static::canAccess();
     }
 
     protected static ?string $model = User::class;
@@ -67,62 +76,80 @@ class UserResource extends Resource
 
         $user = auth()->user();
         if ($user && $user->isBranchScoped()) {
-            $query->where('branch_id', $user->branch_id)
+            $query->where('branch_id', $user->effectiveBranchId())
                 ->whereHas('roles', fn ($q) => $q->whereIn('name', StaffRole::floorValues()));
         }
 
         return $query;
     }
 
-    public static function canEdit(Model $record): bool
+    public static function getCreateAuthorizationResponse(): Response
     {
         $user = auth()->user();
-        if (! $user) {
-            return false;
+        if (! $user || (! $user->isOwner() && ! $user->can('users.manage'))) {
+            return Response::deny('Unauthorized.');
+        }
+
+        if ($user->isBranchScoped() && $user->branch_id === null) {
+            return Response::deny('Unauthorized.');
+        }
+
+        return Response::allow();
+    }
+
+    public static function getEditAuthorizationResponse(Model $record): Response
+    {
+        $user = auth()->user();
+        if (! $user || (! $user->isOwner() && ! $user->can('users.manage'))) {
+            return Response::deny('Unauthorized.');
         }
 
         if ($user->isOwner()) {
-            return true;
+            return Response::allow();
         }
 
         if ($user->isBranchScoped()) {
-            if ((int) $record->id === (int) $user->id) {
-                return false;
+            if ($user->branch_id === null || (int) $record->id === (int) $user->id) {
+                return Response::deny('Unauthorized.');
             }
-            if ((int) $record->branch_id !== (int) $user->branch_id) {
-                return false;
+            if ($record->branch_id === null || (int) $record->branch_id !== $user->effectiveBranchId()) {
+                return Response::deny('Unauthorized.');
             }
             if (! $record->hasAnyRole(StaffRole::floorValues())) {
-                return false;
+                return Response::deny('Unauthorized.');
             }
         }
 
-        return true;
+        return Response::allow();
+    }
+
+    public static function getDeleteAuthorizationResponse(Model $record): Response
+    {
+        return static::getEditAuthorizationResponse($record);
+    }
+
+    public static function getDeleteAnyAuthorizationResponse(): Response
+    {
+        return static::getCreateAuthorizationResponse();
+    }
+
+    public static function canCreate(): bool
+    {
+        return static::getCreateAuthorizationResponse()->allowed();
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return static::getEditAuthorizationResponse($record)->allowed();
     }
 
     public static function canDelete(Model $record): bool
     {
-        $user = auth()->user();
-        if (! $user) {
-            return false;
-        }
+        return static::getDeleteAuthorizationResponse($record)->allowed();
+    }
 
-        if ($user->isOwner()) {
-            return true;
-        }
-
-        if ($user->isBranchScoped()) {
-            if ((int) $record->id === (int) $user->id) {
-                return false;
-            }
-            if ((int) $record->branch_id !== (int) $user->branch_id) {
-                return false;
-            }
-            if (! $record->hasAnyRole(StaffRole::floorValues())) {
-                return false;
-            }
-        }
-
-        return true;
+    public static function canDeleteAny(): bool
+    {
+        return static::getDeleteAnyAuthorizationResponse()->allowed();
     }
 }

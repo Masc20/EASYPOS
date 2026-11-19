@@ -2,11 +2,14 @@
 
 namespace App\Domains\Menu\Livewire;
 
+use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Actions\DeleteMealAction;
 use App\Domains\Menu\Actions\ToggleMealAvailabilityAction;
 use App\Domains\Menu\Actions\UpdateBranchPortionsAction;
 use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
+use App\Support\Constants\SystemConstants;
+use Livewire\Attributes\Locked;
 use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -16,13 +19,27 @@ class MealCatalogTable extends Component
     use WithPagination;
 
     public ?string $selectedCategory = null;
+
     public string $search = '';
+
     public string $statusFilter = 'all'; // all, in_stock, sold_out
+
     public int $perPage = 24;
+
+    #[Locked]
     public ?int $portionsMealId = null;
+
     public string $portionsMealName = '';
+
     public bool $portionsTrackStock = false;
+
     public ?int $portionsQuantity = null;
+
+    public function updatedPerPage(): void
+    {
+        $this->perPage = max(1, min(100, (int) $this->perPage));
+        $this->resetPage();
+    }
 
     public function updatingSearch(): void
     {
@@ -72,12 +89,16 @@ class MealCatalogTable extends Component
     public function editMeal(int $mealId): void
     {
         $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
             abort(403, 'Unauthorized.');
         }
 
+        if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
+
         $meal = Meal::findOrFail($mealId);
-        if ($user && $user->isBranchScoped() && ($meal->branch_id === null || (int) $meal->branch_id !== (int) $user->branch_id)) {
+        if ($user->isBranchScoped() && ($meal->branch_id === null || (int) $meal->branch_id !== $user->effectiveBranchId())) {
             abort(403, 'Unauthorized. Global or other-branch menu dishes cannot be modified by branch staff.');
         }
 
@@ -90,8 +111,11 @@ class MealCatalogTable extends Component
     public function toggleAvailability(int $mealId, ToggleMealAvailabilityAction $action): void
     {
         $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
             abort(403, 'Unauthorized.');
+        }
+        if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
         }
 
         $action->handle($mealId);
@@ -104,13 +128,17 @@ class MealCatalogTable extends Component
     public function openPortionsModal(int $mealId): void
     {
         $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
             abort(403, 'Unauthorized.');
         }
 
+        $isBranchScoped = $user->isBranchScoped();
+        $branchId = $isBranchScoped ? $user->effectiveBranchId() : null;
+        if ($isBranchScoped && ($user->branch_id === null || $branchId < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
+
         $meal = Meal::findOrFail($mealId);
-        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
-        $branchId = $isBranchScoped ? (int) $user->branch_id : null;
 
         if ($isBranchScoped && $meal->branch_id !== null && (int) $meal->branch_id !== $branchId) {
             abort(403, 'Unauthorized. You cannot modify portions for a dish belonging to another branch.');
@@ -130,6 +158,14 @@ class MealCatalogTable extends Component
      */
     public function savePortions(UpdateBranchPortionsAction $action): void
     {
+        $user = auth()->user();
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+            abort(403, 'Unauthorized.');
+        }
+        if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
+
         if ($this->portionsMealId === null) {
             return;
         }
@@ -160,8 +196,11 @@ class MealCatalogTable extends Component
     public function deleteMeal(int $mealId, DeleteMealAction $action): void
     {
         $user = auth()->user();
-        if ($user && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
             abort(403, 'Unauthorized.');
+        }
+        if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
         }
 
         $action->handle($mealId);
@@ -171,12 +210,20 @@ class MealCatalogTable extends Component
     public function render()
     {
         $user = auth()->user();
-        $isBranchScoped = (bool) ($user && $user->isBranchScoped());
-        $branchId = $isBranchScoped ? (int) $user->branch_id : null;
+        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage') && ! $user->isOwner())) {
+            abort(403, 'Unauthorized.');
+        }
+
+        $isBranchScoped = $user->isBranchScoped();
+        $branchId = $isBranchScoped ? $user->effectiveBranchId() : null;
+        if ($isBranchScoped && ($user->branch_id === null || $branchId < 0)) {
+            abort(403, 'Unauthorized. Branch assignment required.');
+        }
 
         $categories = MealCategory::withCount([
             'meals' => fn ($query) => $isBranchScoped ? $query->forBranch($branchId) : $query,
         ])
+            ->when($isBranchScoped, fn ($q) => $q->forBranch($branchId))
             ->where('is_active', true)
             ->orderBy('display_order')
             ->get();
@@ -202,7 +249,7 @@ class MealCatalogTable extends Component
                 $query->eightSixForBranch($branchId);
             })
             ->when($this->search, function ($query) {
-                $term = '%' . trim($this->search) . '%';
+                $term = '%'.trim($this->search).'%';
                 $query->where(function ($q) use ($term) {
                     $q->where('name', 'like', $term)
                         ->orWhere('menu_code', 'like', $term);
@@ -210,13 +257,14 @@ class MealCatalogTable extends Component
             })
             ->orderBy('name');
 
+        $this->perPage = max(1, min(100, (int) $this->perPage));
         $meals = $query->simplePaginate($this->perPage);
 
         return view('livewire.menu.meal-catalog-table', [
             'categories' => $categories,
             'meals' => $meals,
             'totalDishesCount' => $totalDishesCount,
-            'currencySymbol' => config('pos.currency.symbol', '₱'),
+            'currencySymbol' => SystemConstants::CURRENCY_SYMBOL,
             'branchId' => $branchId,
             'isBranchScoped' => $isBranchScoped,
         ]);
