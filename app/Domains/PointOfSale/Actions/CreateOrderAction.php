@@ -108,7 +108,7 @@ class CreateOrderAction
 
                     // 3. Acquire pessimistic locks in deterministic ascending order
                     $meals = Meal::whereIn('id', $sortedMealIds)
-                        ->with(['branchAvailabilities' => fn ($q) => $q->where('branch_id', $branch->id)])
+                        ->with(['branchAvailabilities' => fn ($q) => $q->where('branch_id', $branch->id)->lockForUpdate()])
                         ->orderBy('id', 'asc')
                         ->lockForUpdate()
                         ->get()
@@ -138,37 +138,23 @@ class CreateOrderAction
                         }
                     }
 
-                    // 5. Batch stock update per distinct tracked dish in a single consolidated operation
+                    $stockChanged = false;
                     foreach ($sortedMealIds as $mealId) {
                         $meal = $meals->get($mealId);
-                        if ($meal && $meal->trackStockForBranch($branch->id)) {
-                            $requiredQty = $consolidatedQuantities[$mealId];
-                            $override = $meal->branch_id === null
-                                ? DB::table('meal_branch_availabilities')
-                                    ->where('meal_id', $meal->id)
-                                    ->where('branch_id', $branch->id)
-                                    ->whereNotNull('track_stock')
-                                    ->lockForUpdate()
-                                    ->first()
-                                : null;
-
-                            if ($override) {
-                                $newStock = max(0, (int) $override->stock_quantity - $requiredQty);
-                                DB::table('meal_branch_availabilities')
-                                    ->where('id', $override->id)
-                                    ->update([
-                                        'stock_quantity' => $newStock,
-                                        'is_available' => $newStock > 0,
-                                        'updated_at' => now(),
-                                    ]);
-                            } else {
-                                $newStock = $meal->stock_quantity - $requiredQty;
-                                $meal->update([
-                                    'stock_quantity' => $newStock,
-                                    'is_available' => $newStock > 0,
-                                ]);
-                            }
+                        if (! $meal->trackStockForBranch($branch->id)) {
+                            continue;
                         }
+
+                        $remaining = $meal->stockQuantityForBranch($branch->id) - $consolidatedQuantities[$mealId];
+                        $stock = ['stock_quantity' => $remaining, 'is_available' => $remaining > 0];
+                        if ($meal->branch_id === null) {
+                            $override = $meal->branchOverrideFor($branch->id)
+                                ?? $meal->branchAvailabilities()->make(['branch_id' => $branch->id]);
+                            $override->fill($stock + ['track_stock' => true])->save();
+                        } else {
+                            $meal->updateQuietly($stock);
+                        }
+                        $stockChanged = true;
                     }
 
                     // 6. Compute subtotals and format order item rows for batch insert
@@ -276,11 +262,14 @@ class CreateOrderAction
 
                     OrderItem::insert($orderItemsData);
 
-            DB::afterCommit(function () use ($order) {
-                event(new OrderCreated($order));
-            });
+                    DB::afterCommit(function () use ($order, $stockChanged) {
+                        if ($stockChanged) {
+                            Meal::bumpMenuVersionForSingleBranch($order->branch_id);
+                        }
+                        event(new OrderCreated($order));
+                    });
 
-            return $order;
+                    return $order;
                 });
             } catch (QueryException $e) {
                 $isOrderNumberCollision = str_contains(strtolower($e->getMessage()), 'order_number')

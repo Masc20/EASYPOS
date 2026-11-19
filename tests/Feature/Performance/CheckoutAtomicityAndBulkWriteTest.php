@@ -53,7 +53,7 @@ class CheckoutAtomicityAndBulkWriteTest extends TestCase
 
         $dishA = Meal::create([
             'category_id' => $this->category->id,
-            'branch_id' => 1,
+            'branch_id' => $this->cashier->branch_id,
             'menu_code' => 'TEST-STOCK-1',
             'name' => 'Atomic Stock Burger',
             'price' => 150.00,

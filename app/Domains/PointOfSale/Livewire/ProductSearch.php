@@ -33,7 +33,7 @@ class ProductSearch extends Component
                 'name' => $meal->name,
                 'code' => $meal->menu_code,
                 'price' => (float) $meal->price,
-                'maxQty' => $meal->track_stock ? $meal->stock_quantity : null,
+                'maxQty' => $meal->stockQuantityForBranch($branchId),
             ]);
             $this->dispatch('add-to-cart', mealId: $meal->id);
             $this->query = '';

@@ -1,5 +1,5 @@
 <x-ui.modal name="create-meal-modal" title="Add New Dish" maxWidth="lg">
-    <form wire:submit="save" x-data="{ isAvailable: @entangle('is_available'), trackStock: @entangle('track_stock') }"
+    <form wire:submit="save" x-data="{ isAvailable: @entangle('is_available') }"
         x-on:open-modal.window="if ($event.detail === 'create-meal-modal') { $wire.openCreateModal() }" class="space-y-4">
         @include('livewire.menu.partials.meal-form-fields')
 

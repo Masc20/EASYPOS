@@ -1,4 +1,4 @@
-<div class="rounded-md border border-brand-border bg-brand-card px-4 py-3 text-sm text-brand-text shadow-2xs">
+<div wire:poll.10s="syncAvailability" class="rounded-md border border-brand-border bg-brand-card px-4 py-3 text-sm text-brand-text shadow-2xs">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <!-- Title & Featured Icon (Star instead of Warning) -->
         <div class="flex items-center gap-2.5">

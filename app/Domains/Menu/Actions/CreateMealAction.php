@@ -51,7 +51,7 @@ class CreateMealAction
                 : null,
             'is_available' => (bool) ($data['is_available'] ?? true),
             'track_stock' => (bool) ($data['track_stock'] ?? false),
-            'stock_quantity' => ! empty($data['track_stock']) ? (int) ($data['stock_quantity'] ?? 0) : null,
+            'stock_quantity' => $this->validatedPortionQuantity($data),
             'created_by' => $data['created_by'] ?? $user->id,
         ]);
 

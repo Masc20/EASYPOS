@@ -9,6 +9,19 @@ use Illuminate\Validation\ValidationException;
 
 trait ValidatesMealInput
 {
+    protected function validatedPortionQuantity(array $data): ?int
+    {
+        if (empty($data['track_stock'])) {
+            return null;
+        }
+
+        validator($data, ['stock_quantity' => 'required|integer|min:0'], [
+            'stock_quantity.required' => 'Available Portions is required when Limited Portions is enabled.',
+        ])->validate();
+
+        return (int) $data['stock_quantity'];
+    }
+
     protected function validateCategoryForBranch(User $user, mixed $categoryId, ?int $targetBranchId): MealCategory
     {
         $category = is_numeric($categoryId) ? MealCategory::find((int) $categoryId) : null;

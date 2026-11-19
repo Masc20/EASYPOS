@@ -65,7 +65,10 @@ jobs:
       - name: Run test suite
         env:
           APP_NAME: EASYPOS
-        run: php artisan test --compact
+          APP_ENV: testing
+        run: |
+          touch .env.testing
+          php artisan test --compact
 
       - name: Audit Composer dependencies
         run: composer audit --no-interaction

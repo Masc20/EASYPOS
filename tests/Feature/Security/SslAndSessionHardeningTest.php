@@ -100,9 +100,9 @@ class SslAndSessionHardeningTest extends TestCase
         }
     }
 
-    public function test_env_production_and_env_example_enforce_cookie_bcrypt_and_cors_hardening(): void
+    public function test_environment_templates_enforce_cookie_bcrypt_and_cors_hardening(): void
     {
-        $envProd = file_get_contents(base_path('.env.production'));
+        $envProd = file_get_contents(base_path('.env.production.example'));
         $envExample = file_get_contents(base_path('.env.example'));
 
         $this->assertMatchesRegularExpression('/^BCRYPT_ROUNDS=13$/m', $envProd);

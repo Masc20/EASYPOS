@@ -22,7 +22,7 @@ trait InteractsWithMealForm
             'category_id.exists' => 'The selected category is invalid.',
             'price.required' => 'Selling price in Philippine Pesos ('.SystemConstants::CURRENCY_SYMBOL.') is required.',
             'price.numeric' => 'Selling price must be a valid number.',
-            'stock_quantity.required_if' => 'Please specify daily portion quantity when stock countdown is enabled.',
+            'stock_quantity.required_if' => 'Available Portions is required when Limited Portions is enabled.',
         ];
     }
 

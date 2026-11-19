@@ -110,13 +110,14 @@ class MealForm
                     ->default(true),
 
                 Toggle::make('track_stock')
-                    ->label('Track Limited Portions'),
+                    ->label('Track Limited Portions')
+                    ->live(),
 
                 TextInput::make('stock_quantity')
-                    ->label('Available Portions (If Tracked)')
-                    ->numeric()
-                    ->minValue(0)
-                    ->placeholder('Leave blank for unlimited'),
+                    ->label('Available Portions')
+                    ->required(fn ($get): bool => (bool) $get('track_stock'))
+                    ->integer()
+                    ->minValue(0),
 
                 Toggle::make('is_active')
                     ->label('Active in Menu')

@@ -5,11 +5,32 @@ namespace App\Domains\Menu\Livewire;
 use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Models\Meal;
 use App\Support\Constants\SystemConstants;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Attributes\On;
 use Livewire\Component;
 
 class DailySpecialsBoard extends Component
 {
+    public int $lastMenuVersion = 0;
+
+    private function menuVersion(): int
+    {
+        $user = auth()->user();
+        $key = $user?->isBranchScoped() ? 'branch_'.$user->effectiveBranchId().'_menu_version' : 'menu_version';
+
+        return (int) Cache::get($key, 0);
+    }
+
+    public function syncAvailability(): void
+    {
+        if ($this->lastMenuVersion === $this->menuVersion()) {
+            $this->skipRender();
+            return;
+        }
+
+        $this->dispatch('meal-saved')->to(MealCatalogTable::class);
+    }
+
     #[On('meal-saved')]
     public function refreshBoard(): void
     {
@@ -28,6 +49,8 @@ class DailySpecialsBoard extends Component
         if ($isBranchScoped && ($user->branch_id === null || $branchId < 0)) {
             abort(403, 'Unauthorized. Branch assignment required.');
         }
+
+        $this->lastMenuVersion = $this->menuVersion();
 
         $limitedSpecials = Meal::query()
             ->when($isBranchScoped, fn ($q) => $q->forBranch($branchId))

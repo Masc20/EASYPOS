@@ -162,6 +162,7 @@ class CheckoutModal extends Component
             $this->errorMessage = 'User not authenticated.';
             return;
         }
+        abort_unless($user->can('pos.checkout'), 403);
 
         if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() <= 0)) {
             $this->errorMessage = 'Unauthorized. Branch assignment required.';
@@ -227,6 +228,7 @@ class CheckoutModal extends Component
 
             // Notify Cart to reset
             $this->dispatch('cart-reset');
+            $this->dispatch('order-created');
 
             // Open receipt modal and dispatch receipt event with created Order ID
             $this->dispatch('open-modal', 'receipt-modal');
