@@ -213,8 +213,8 @@ class VoidCsvRecallAndOrderProgressTest extends TestCase
         $response = $this->actingAs($this->manager1)
             ->withSession([SystemConstants::SESSION_AUTH_METHOD => 'password'])
             ->get(route('sales-records.export-csv', [
-                'startDate' => now()->toDateString(),
-                'endDate' => now()->toDateString(),
+                'startDate' => now('Asia/Manila')->toDateString(),
+                'endDate' => now('Asia/Manila')->toDateString(),
                 'branchId' => $this->branch2->id, // tampered
             ]));
 

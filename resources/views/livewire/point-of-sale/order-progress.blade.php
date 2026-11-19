@@ -361,11 +361,11 @@
                             <div class="flex items-center gap-2.5">
                                 @if ($ticket->ready_at)
                                     <span class="text-emerald-600 dark:text-emerald-400 font-medium">
-                                        Ready since {{ $ticket->ready_at->format('g:i A') }}
+                                        Ready since {{ $ticket->ready_at->timezone(config('app.business_timezone'))->format('g:i A') }}
                                     </span>
                                 @elseif ($ticket->started_at)
                                     <span>
-                                        Started {{ $ticket->started_at->format('g:i A') }}
+                                        Started {{ $ticket->started_at->timezone(config('app.business_timezone'))->format('g:i A') }}
                                     </span>
                                 @endif
 

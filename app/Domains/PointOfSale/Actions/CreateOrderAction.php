@@ -228,17 +228,19 @@ class CreateOrderAction
                     // Sequential order number generation via atomic BranchDailySequence row-level counter
                     // Allocated right before order creation to minimize lock duration on branch_daily_sequences
                     $branchCode = $branch->code ?? 'B01';
-                    $dateStr = today()->format('Ymd');
-                    $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
+                    $businessDate = $now->copy()->timezone(config('app.business_timezone'));
+                    $dateStr = $businessDate->format('Ymd');
+                    $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', $businessDate->toDateString());
                     $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
 
                     while (Order::where('order_number', $orderNumber)->exists()) {
-                        $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', today()->toDateString());
+                        $nextSequence = BranchDailySequence::getNextSequence($branch->id, 'order', $businessDate->toDateString());
                         $orderNumber = sprintf('%s-%s-%04d', $branchCode, $dateStr, $nextSequence);
                     }
 
                     // Create Order
                     $order = Order::create([
+                        'created_at' => $now,
                         'order_number' => $orderNumber,
                         'branch_id' => $branch->id,
                         'cashier_id' => $data['cashier_id'],

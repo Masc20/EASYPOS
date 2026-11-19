@@ -55,7 +55,7 @@ class KitchenDisplay extends Component
 
     public function getTicketSignatureVersion(int $branchId): string
     {
-        $todayStart = now()->startOfDay();
+        $todayStart = now(config('app.business_timezone'))->startOfDay()->utc();
 
         $signature = KitchenTicket::forBranch($branchId)
             ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
@@ -182,14 +182,15 @@ class KitchenDisplay extends Component
         $inPrepTickets = $allTickets->where('status', KitchenTicketStatus::IN_PREP->value)->values();
         $readyTickets = $allTickets->where('status', KitchenTicketStatus::READY->value)->values();
 
-        $todayStart = now()->startOfDay();
-        $todayEnd = now()->endOfDay();
+        $todayStart = now(config('app.business_timezone'))->startOfDay()->utc();
+        $tomorrowStart = $todayStart->copy()->addDay();
 
         $recentServedTickets = KitchenTicket::query()
             ->forBranch($branchId)
             ->where('status', '!=', KitchenTicketStatus::CANCELLED->value)
             ->whereNotNull('served_at')
-            ->whereBetween('served_at', [$todayStart, $todayEnd])
+            ->where('served_at', '>=', $todayStart)
+            ->where('served_at', '<', $tomorrowStart)
             ->whereOrderNotVoided()
             ->with(['items.orderItem.meal', 'order', 'cook'])
             ->orderBy('served_at', 'desc')

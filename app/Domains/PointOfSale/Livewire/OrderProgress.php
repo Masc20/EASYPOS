@@ -174,8 +174,8 @@ class OrderProgress extends Component
      */
     private function baseTicketQuery(int $branchId): Builder
     {
-        $startOfDay = today()->startOfDay();
-        $startOfTomorrow = today()->addDay()->startOfDay();
+        $startOfDay = today(config('app.business_timezone'))->startOfDay()->utc();
+        $startOfTomorrow = $startOfDay->copy()->addDay();
 
         return KitchenTicket::query()
             ->where('branch_id', $branchId)

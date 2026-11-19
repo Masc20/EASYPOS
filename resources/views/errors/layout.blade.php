@@ -139,7 +139,7 @@
         class="w-full py-4 px-6 border-t border-brand-border bg-brand-card/40 text-center text-xs text-brand-text-muted">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
             <div>
-                <span>&copy; {{ date('Y') }} {{ config('app.name', 'EASYPOS') }} &bull; Multi-Branch Restaurant
+                <span>&copy; {{ now(config('app.business_timezone'))->year }} {{ config('app.name', 'EASYPOS') }} &bull; Multi-Branch Restaurant
                     POS Engine</span>
             </div>
             <div class="flex items-center gap-3 text-[11px]">
@@ -150,7 +150,7 @@
                     <span>Terminal: <strong class="text-brand-text">{{ auth()->user()->stationTitle() }}</strong></span>
                     <span>&bull;</span>
                 @endif
-                <span class="font-mono">{{ now()->format('Y-m-d H:i') }}</span>
+                <span class="font-mono">{{ now(config('app.business_timezone'))->format('Y-m-d H:i') }}</span>
             </div>
         </div>
     </footer>

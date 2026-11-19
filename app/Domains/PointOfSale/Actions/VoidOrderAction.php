@@ -199,7 +199,7 @@ class VoidOrderAction
                 throw new InvalidArgumentException("Manager does not belong to this branch.");
             }
             $previousStatus = $order->status;
-            $auditStamp = "[VOIDED by {$manager->name} ({$manager->emp_id}) on " . now()->toDateTimeString() . ": {$data['reason']}]";
+            $auditStamp = "[VOIDED by {$manager->name} ({$manager->emp_id}) on " . now(config('app.business_timezone'))->toIso8601String() . ": {$data['reason']}]";
             $updatedNotes = trim(($order->notes ? $order->notes . "\n" : '') . $auditStamp);
 
             // 1. Update Order status and append audit note
@@ -257,7 +257,7 @@ class VoidOrderAction
                 'ip' => request()->ip(),
                 'previous_status' => $previousStatus,
                 'reason' => $data['reason'],
-                'voided_at' => now()->toDateTimeString(),
+                'voided_at' => now(config('app.business_timezone'))->toIso8601String(),
             ];
 
             Log::info("ORDER_VOIDED", $voidContext);

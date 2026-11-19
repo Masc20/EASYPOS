@@ -472,16 +472,16 @@ class BranchIsolationMenuTest extends TestCase
         ]);
 
         $mgrChart = Livewire::actingAs($this->manager1)->test(DailySalesRevenueChart::class, [
-            'startDate' => now()->toDateString(),
-            'endDate' => now()->toDateString(),
+            'startDate' => now('Asia/Manila')->toDateString(),
+            'endDate' => now('Asia/Manila')->toDateString(),
             'branchId' => $this->branch2->id,
             'cashierId' => $this->cashier2->id,
         ]);
         $mgrChart->assertSuccessful()->assertSee('300')->assertDontSee('900');
 
         $ownerChart = Livewire::actingAs($this->owner)->test(DailySalesRevenueChart::class, [
-            'startDate' => now()->toDateString(),
-            'endDate' => now()->toDateString(),
+            'startDate' => now('Asia/Manila')->toDateString(),
+            'endDate' => now('Asia/Manila')->toDateString(),
             'branchId' => $this->branch2->id,
             'cashierId' => $this->cashier2->id,
         ]);

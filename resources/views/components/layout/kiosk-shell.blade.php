@@ -84,7 +84,7 @@
 
     <!-- Bottom Footer -->
     <footer class="w-full py-2 text-center text-[10px] sm:text-[11px] text-brand-text-muted relative z-20 shrink-0">
-        <span>&copy; {{ date('Y') }} {{ config('app.name', 'EASYPOS') }} &middot; Secure Multi-Branch POS System</span>
+        <span>&copy; {{ now(config('app.business_timezone'))->year }} {{ config('app.name', 'EASYPOS') }} &middot; Secure Multi-Branch POS System</span>
     </footer>
 
     @livewireScripts

@@ -254,12 +254,12 @@ class Sec01BranchManagerScopingTest extends TestCase
         $service = new SalesAggregationService();
 
         // Branch 1 aggregation
-        $reportB1 = $service->getPeriodicReport('day', now()->toDateString(), now()->toDateString(), $this->branch1->id);
+        $reportB1 = $service->getPeriodicReport('day', now('Asia/Manila')->toDateString(), now('Asia/Manila')->toDateString(), $this->branch1->id);
         $this->assertEquals(300.00, (float) $reportB1['totals']['gross_sales']);
         $this->assertEquals(1, $reportB1['totals']['orders_count']);
 
         // Branch 2 aggregation
-        $reportB2 = $service->getPeriodicReport('day', now()->toDateString(), now()->toDateString(), $this->branch2->id);
+        $reportB2 = $service->getPeriodicReport('day', now('Asia/Manila')->toDateString(), now('Asia/Manila')->toDateString(), $this->branch2->id);
         $this->assertEquals(700.00, (float) $reportB2['totals']['gross_sales']);
         $this->assertEquals(1, $reportB2['totals']['orders_count']);
     }

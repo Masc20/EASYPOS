@@ -21,13 +21,16 @@ class SqlDialect
 
     public static function periodExpression(string $column, string $interval = 'day', ?string $driver = null): string
     {
-        $column = self::validateColumn($column);
         $driver ??= self::driver();
+        $column = self::manilaTimestamp($column, $driver);
         $interval = strtolower($interval);
 
         if ($driver === 'sqlite') {
+            // An ISO week's year and number are determined by its Thursday.
+            $thursday = "date({$column}, '-3 days', 'weekday 4')";
+
             return match ($interval) {
-                'week' => "strftime('%Y-W%W', {$column})",
+                'week' => "printf('%s-W%02d', strftime('%Y', {$thursday}), 1 + (CAST(strftime('%j', {$thursday}) AS INTEGER) - 1) / 7)",
                 'month' => "strftime('%Y-%m', {$column})",
                 'year' => "strftime('%Y', {$column})",
                 default => "strftime('%Y-%m-%d', {$column})",
@@ -53,8 +56,8 @@ class SqlDialect
 
     public static function hourExpression(string $column, ?string $driver = null): string
     {
-        $column = self::validateColumn($column);
         $driver ??= self::driver();
+        $column = self::manilaTimestamp($column, $driver);
 
         if ($driver === 'sqlite') {
             return "CAST(strftime('%H', {$column}) AS INTEGER)";
@@ -65,6 +68,18 @@ class SqlDialect
         }
 
         return "HOUR({$column})";
+    }
+
+    // POS records are UTC. Philippine business time is UTC+08:00 year-round.
+    private static function manilaTimestamp(string $column, string $driver): string
+    {
+        $column = self::validateColumn($column);
+
+        return match ($driver) {
+            'sqlite' => "datetime({$column}, '+8 hours')",
+            'pgsql' => "({$column} + INTERVAL '8 hours')",
+            default => "DATE_ADD({$column}, INTERVAL 8 HOUR)",
+        };
     }
 
     private static function validateColumn(string $column): string

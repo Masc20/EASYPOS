@@ -60,7 +60,7 @@ class BranchDailySequence extends Model
      */
     public static function getNextSequence(int $branchId, string $type, ?string $date = null): int
     {
-        $date = $date ?? today()->toDateString();
+        $date = $date ?? today(config('app.business_timezone'))->toDateString();
 
         $allocate = function () use ($branchId, $type, $date) {
             $sequence = static::where('branch_id', $branchId)
@@ -112,8 +112,8 @@ class BranchDailySequence extends Model
      */
     protected static function resolvePreExistingCount(int $branchId, string $type, string $date): int
     {
-        $startOfDay = Carbon::parse($date)->startOfDay();
-        $endOfDay = Carbon::parse($date)->addDay()->startOfDay();
+        $startOfDay = Carbon::parse($date, config('app.business_timezone'))->startOfDay()->utc();
+        $endOfDay = Carbon::parse($date, config('app.business_timezone'))->addDay()->startOfDay()->utc();
 
         if ($type === 'order') {
             return Order::where('branch_id', $branchId)

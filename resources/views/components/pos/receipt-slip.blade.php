@@ -80,7 +80,7 @@
                 @endif
                 <div class="flex justify-between items-start mb-0.5">
                     <span class="text-zinc-500">Date/Time:</span>
-                    <span class="text-zinc-900">{{ $order->created_at?->format('M d, Y h:i A') }}</span>
+                    <span class="text-zinc-900">{{ $order->created_at?->timezone(config('app.business_timezone'))->format('M d, Y h:i A') }}</span>
                 </div>
                 <div class="flex justify-between items-start mb-0.5">
                     <span class="text-zinc-500">Cashier:</span>

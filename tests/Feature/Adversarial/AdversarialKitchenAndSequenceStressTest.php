@@ -140,7 +140,7 @@ class AdversarialKitchenAndSequenceStressTest extends TestCase
         $this->assertIsString($emptySignature);
 
         // Create 5 historical tickets served at various past intervals
-        $this->createTicketWithItem($this->branchA, 'served', Carbon::parse('2026-11-12 23:59:59'), Carbon::parse('2026-11-12 23:00:00'));
+        $this->createTicketWithItem($this->branchA, 'served', Carbon::parse('2026-11-12 15:59:59'), Carbon::parse('2026-11-12 15:00:00'));
         $this->createTicketWithItem($this->branchA, 'served', Carbon::parse('2026-11-12 12:00:00'), Carbon::parse('2026-11-12 11:00:00'));
         $this->createTicketWithItem($this->branchA, 'served', Carbon::parse('2026-11-11 18:00:00'), Carbon::parse('2026-11-11 17:00:00'));
         $this->createTicketWithItem($this->branchA, 'served', Carbon::parse('2026-10-13 10:00:00'), Carbon::parse('2026-10-13 09:00:00'));
@@ -200,7 +200,7 @@ class AdversarialKitchenAndSequenceStressTest extends TestCase
         );
 
         // Fast-forward to 23:59:59 tonight: ticket served today must STILL be included
-        Carbon::setTestNow('2026-11-13 23:59:59');
+        Carbon::setTestNow('2026-11-13 15:59:59');
         $preMidnightSignature = $this->kitchenDisplay->getTicketSignatureVersion($this->branchA->id);
         $this->assertSame(
             $todaySignature,
@@ -209,7 +209,7 @@ class AdversarialKitchenAndSequenceStressTest extends TestCase
         );
 
         // Step 2 seconds past midnight into 2026-11-14: ticket is now from yesterday!
-        Carbon::setTestNow('2026-11-14 00:00:01');
+        Carbon::setTestNow('2026-11-13 16:00:01');
         $postMidnightSignature = $this->kitchenDisplay->getTicketSignatureVersion($this->branchA->id);
 
         $this->assertSame(

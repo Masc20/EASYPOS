@@ -330,8 +330,8 @@ class Tier1TenancyAndSecurityTest extends TestCase
         Livewire::actingAs($this->owner)
             ->test(DailySalesRevenueChart::class, [
                 'branchId' => $this->branch2->id,
-                'startDate' => today()->toDateString(),
-                'endDate' => today()->toDateString(),
+                'startDate' => today('Asia/Manila')->toDateString(),
+                'endDate' => today('Asia/Manila')->toDateString(),
             ])
             ->assertOk()
             ->assertSee('585', false)

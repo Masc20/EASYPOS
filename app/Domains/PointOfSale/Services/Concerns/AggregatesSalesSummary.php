@@ -102,14 +102,7 @@ trait AggregatesSalesSummary
 
         // Base query with date, branch, and cashier filtering
         $baseOrdersQuery = Order::query();
-        $parsedStart = $this->parseSafeDate($startDate);
-        if ($parsedStart !== null) {
-            $baseOrdersQuery->where('orders.created_at', '>=', $parsedStart->startOfDay());
-        }
-        $parsedEnd = $this->parseSafeDate($endDate);
-        if ($parsedEnd !== null) {
-            $baseOrdersQuery->where('orders.created_at', '<=', $parsedEnd->endOfDay());
-        }
+        $this->applyBusinessDates($baseOrdersQuery, 'orders.created_at', $startDate, $endDate);
         if ($effectiveBranchId !== null) {
             $baseOrdersQuery->where('orders.branch_id', $effectiveBranchId);
         }

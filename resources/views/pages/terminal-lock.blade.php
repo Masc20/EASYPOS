@@ -73,7 +73,7 @@
                 </p>
                 @if ($lockedAt)
                     <p class="text-[11px] text-brand-text-muted mt-0.5">
-                        Since {{ \Illuminate\Support\Carbon::parse($lockedAt)->format('M j, Y g:i A') }}
+                        Since {{ \Illuminate\Support\Carbon::parse($lockedAt)->timezone(config('app.business_timezone'))->format('M j, Y g:i A') }}
                     </p>
                 @endif
             </div>
@@ -247,7 +247,7 @@
     </main>
 
     <footer class="w-full py-2 text-center text-[11px] text-brand-text-muted relative z-20 shrink-0">
-        <span>&copy; {{ date('Y') }} {{ config('app.name', 'EASYPOS') }} &middot; Protected Terminal Session</span>
+        <span>&copy; {{ now(config('app.business_timezone'))->year }} {{ config('app.name', 'EASYPOS') }} &middot; Protected Terminal Session</span>
     </footer>
 
     <script>

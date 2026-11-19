@@ -285,8 +285,8 @@ class Tier2TenancyAndSecurityBoundaryTest extends TestCase
             ->test(DailySalesRevenueChart::class, [
                 'branchId' => $this->branch2->id,
                 'cashierId' => $this->cashier2->id,
-                'startDate' => today()->toDateString(),
-                'endDate' => today()->toDateString(),
+                'startDate' => today('Asia/Manila')->toDateString(),
+                'endDate' => today('Asia/Manila')->toDateString(),
             ])
             ->assertOk()
             ->assertDontSee('755', false);

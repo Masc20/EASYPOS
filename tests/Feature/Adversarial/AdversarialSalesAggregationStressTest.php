@@ -140,6 +140,49 @@ class AdversarialSalesAggregationStressTest extends TestCase
         $this->service = app(SalesAggregationService::class);
     }
 
+    public function test_transactions_logs_and_reports_agree_at_manila_midnight(): void
+    {
+        $this->actingAs($this->owner);
+        foreach (['2026-12-31 15:59:59', '2026-12-31 16:00:00', '2027-01-01 16:00:00'] as $i => $utc) {
+            Order::create([
+                'order_number' => 'ROLLOVER-'.$i,
+                'branch_id' => $this->branchA->id,
+                'cashier_id' => $this->cashierA->id,
+                'order_type' => 'dine_in',
+                'subtotal' => 100,
+                'total_amount' => 100,
+                'status' => OrderStatus::COMPLETED->value,
+                'payment_status' => PaymentStatus::PAID->value,
+                'created_at' => $utc,
+            ]);
+        }
+        DB::table('activity_logs')->insert([
+            'category' => 'pos',
+            'event' => 'pos_checkout',
+            'description' => 'Midnight sale',
+            'created_at' => '2026-12-31 16:00:00',
+        ]);
+        Livewire::test(\App\Filament\Resources\Orders\Pages\ListOrders::class)->assertSee('Jan 01, 2027 12:00 AM');
+        Livewire::test(\App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs::class)->assertSee('2027-01-01 00:00:00');
+
+        $date = '2027-01-01';
+        $report = $this->service->getPeriodicReport('day', $date, $date, $this->branchA->id);
+        $this->assertSame(1, $report['totals']['orders_count']);
+        $this->assertSame($date, $report['items'][0]['period_key']);
+        $week = $this->service->getPeriodicReport('week', $date, $date, $this->branchA->id);
+        $this->assertSame('2026-W53', $week['items'][0]['period_key']);
+        $hourly = $this->service->getHourlySalesDistribution($date, $date, $this->branchA->id);
+        $this->assertSame(1, $hourly['hours'][0]['orders_count']);
+
+        $csv = fopen('php://temp', 'w+');
+        $this->service->streamOrdersCsv($csv, $date, $date, $this->branchA->id);
+        rewind($csv);
+        fgetcsv($csv);
+        $this->assertSame(['ROLLOVER-1', '2027-01-01 00:00:00'], array_slice(fgetcsv($csv), 0, 2));
+        $this->assertFalse(fgetcsv($csv));
+        fclose($csv);
+    }
+
     /**
      * EMPIRICAL CHALLENGE 1: Constant memory streaming under 1,200+ orders.
      * Peak memory delta must remain strictly bounded (O(1) memory < 20 MB).
@@ -285,7 +328,7 @@ class AdversarialSalesAggregationStressTest extends TestCase
 
         $this->assertEquals('Order #', $headers[0]);
         $this->assertEquals('ORD-PHIL-ñ-001', $row[0]);
-        $this->assertEquals('2026-11-10 13:45:00', $row[1]);
+        $this->assertEquals('2026-11-10 21:45:00', $row[1]);
         // Branch name with special characters (Parañaque, ₱)
         $this->assertEquals('Branch Parañaque ₱', $row[2]);
         // Cashier with quotes and ñ (Niño Cashier "The Pro")

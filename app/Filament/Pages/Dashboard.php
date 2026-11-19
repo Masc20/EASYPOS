@@ -60,26 +60,28 @@ class Dashboard extends BaseDashboard
     {
         $this->selectedPreset = $preset;
 
+        $today = Carbon::today(config('app.business_timezone'));
+
         switch ($preset) {
             case 'today':
-                $this->startDate = Carbon::today()->toDateString();
-                $this->endDate = Carbon::today()->toDateString();
+                $this->startDate = $today->toDateString();
+                $this->endDate = $today->toDateString();
                 break;
             case 'yesterday':
-                $this->startDate = Carbon::yesterday()->toDateString();
-                $this->endDate = Carbon::yesterday()->toDateString();
+                $this->startDate = $today->copy()->subDay()->toDateString();
+                $this->endDate = $today->copy()->subDay()->toDateString();
                 break;
             case 'this_week':
-                $this->startDate = Carbon::now()->startOfWeek()->toDateString();
-                $this->endDate = Carbon::now()->endOfWeek()->toDateString();
+                $this->startDate = $today->copy()->startOfWeek()->toDateString();
+                $this->endDate = $today->copy()->endOfWeek()->toDateString();
                 break;
             case 'this_month':
-                $this->startDate = Carbon::now()->startOfMonth()->toDateString();
-                $this->endDate = Carbon::now()->endOfMonth()->toDateString();
+                $this->startDate = $today->copy()->startOfMonth()->toDateString();
+                $this->endDate = $today->copy()->endOfMonth()->toDateString();
                 break;
             case 'this_year':
-                $this->startDate = Carbon::now()->startOfYear()->toDateString();
-                $this->endDate = Carbon::now()->endOfYear()->toDateString();
+                $this->startDate = $today->copy()->startOfYear()->toDateString();
+                $this->endDate = $today->copy()->endOfYear()->toDateString();
                 break;
             case 'all_time':
                 $this->startDate = '';

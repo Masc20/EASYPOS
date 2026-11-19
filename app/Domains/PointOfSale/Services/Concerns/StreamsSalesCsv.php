@@ -31,7 +31,7 @@ trait StreamsSalesCsv
         // Output CSV Headers
         fputcsv($output, [
             'Order #',
-            'Date & Time',
+            'Date & Time (PHT)',
             'Branch',
             'Cashier',
             'Dining Option',
@@ -65,15 +65,7 @@ trait StreamsSalesCsv
                 'users.name as cashier_name',
             ]);
 
-        $parsedStart = $this->parseSafeDate($startDate);
-        if ($parsedStart !== null) {
-            $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
-        }
-
-        $parsedEnd = $this->parseSafeDate($endDate);
-        if ($parsedEnd !== null) {
-            $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
-        }
+        $this->applyBusinessDates($query, 'orders.created_at', $startDate, $endDate);
 
         if ($effectiveBranchId !== null) {
             $query->where('orders.branch_id', $effectiveBranchId);
@@ -99,7 +91,7 @@ trait StreamsSalesCsv
                 $paymentMethod = $methods !== '' ? $methods : 'Unpaid';
 
                 $createdAt = $order->created_at
-                    ? Carbon::parse($order->created_at)->format('Y-m-d H:i:s')
+                    ? Carbon::parse($order->created_at)->timezone(config('app.business_timezone'))->format('Y-m-d H:i:s')
                     : '';
 
                 fputcsv($output, [

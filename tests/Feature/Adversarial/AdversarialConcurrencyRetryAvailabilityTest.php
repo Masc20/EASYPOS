@@ -113,7 +113,7 @@ class AdversarialConcurrencyRetryAvailabilityTest extends TestCase
         $this->actingAs($this->cashier);
 
         $attempts = 0;
-        $dateStr = now()->format('Ymd');
+        $dateStr = now('Asia/Manila')->format('Ymd');
         $conflictingNumber = "B01-{$dateStr}-0001";
 
         // Listen for the rollback of Attempt 1: simulate that the concurrent transaction
@@ -179,7 +179,7 @@ class AdversarialConcurrencyRetryAvailabilityTest extends TestCase
         $this->actingAs($this->cashier);
 
         $attempts = 0;
-        $dateStr = now()->format('Ymd');
+        $dateStr = now('Asia/Manila')->format('Ymd');
 
         // Two collisions injected:
         // Attempt 1 collides -> Process A inserts 0001
@@ -316,7 +316,7 @@ class AdversarialConcurrencyRetryAvailabilityTest extends TestCase
     {
         $this->actingAs($this->cashier);
         $action = new CreateOrderAction();
-        $dateStr = now()->format('Ymd');
+        $dateStr = now('Asia/Manila')->format('Ymd');
 
         $createdOrders = [];
         for ($i = 1; $i <= 10; $i++) {

@@ -181,7 +181,7 @@ class Sprint3AnalyticsTest extends TestCase
             'subtotal' => 1000.00,
         ]);
 
-        $todayStr = Carbon::today()->toDateString();
+        $todayStr = Carbon::today('Asia/Manila')->toDateString();
 
         // 1. Test Sort By Volume (Quantity desc):
         // Expected #1: Iced Cola (10 qty)
@@ -374,7 +374,7 @@ class Sprint3AnalyticsTest extends TestCase
                 'total_amount' => 500.00,
                 'status' => 'completed',
                 'payment_status' => 'paid',
-                'created_at' => Carbon::parse("{$targetDate} 12:15:00"),
+                'created_at' => Carbon::parse("{$targetDate} 12:15:00", 'Asia/Manila')->utc(),
             ]);
         }
 
@@ -390,7 +390,7 @@ class Sprint3AnalyticsTest extends TestCase
             'total_amount' => 800.00,
             'status' => 'completed',
             'payment_status' => 'paid',
-            'created_at' => Carbon::parse("{$targetDate} 18:30:00"),
+            'created_at' => Carbon::parse("{$targetDate} 18:30:00", 'Asia/Manila')->utc(),
         ]);
 
         $hourly = $service->getHourlySalesDistribution(
@@ -456,8 +456,8 @@ class Sprint3AnalyticsTest extends TestCase
         // Test Printable Audit Report route returns 200 with layout
         $response = $this->actingAs($this->owner)->get(route('sales-records.audit-report', [
             'interval' => 'day',
-            'startDate' => Carbon::today()->toDateString(),
-            'endDate' => Carbon::today()->toDateString(),
+            'startDate' => Carbon::today('Asia/Manila')->toDateString(),
+            'endDate' => Carbon::today('Asia/Manila')->toDateString(),
         ]));
 
         $response->assertStatus(200);

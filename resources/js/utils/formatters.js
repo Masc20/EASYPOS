@@ -61,10 +61,15 @@ export function formatQuantity(value, decimals = 0, locale = 'en-US') {
 export function formatDate(date, options = {}, locale = 'en-PH') {
     if (!date) return '';
 
-    const d = date instanceof Date ? date : new Date(date);
+    // Laravel's offset-free database timestamps represent UTC.
+    const input = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/.test(date)
+        ? date.replace(' ', 'T') + 'Z'
+        : date;
+    const d = input instanceof Date ? input : new Date(input);
     if (isNaN(d.getTime())) return '';
 
     const defaultOptions = {
+        timeZone: 'Asia/Manila',
         year: 'numeric',
         month: 'short',
         day: 'numeric',

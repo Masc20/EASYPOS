@@ -66,6 +66,32 @@ class SequenceConcurrencyTest extends TestCase
         ]);
     }
 
+    public function test_order_and_kitchen_numbers_restart_at_manila_midnight(): void
+    {
+        $this->actingAs($this->cashier1);
+        foreach ([
+            ['2026-12-31 15:59:59', 'B01-20261231-0001', 'K-001'],
+            ['2026-12-31 16:00:00', 'B01-20270101-0001', 'K-001'],
+            ['2027-01-01 00:00:00', 'B01-20270101-0002', 'K-002'],
+        ] as [$utc, $orderNumber, $ticketNumber]) {
+            $this->travelTo(\Illuminate\Support\Carbon::parse($utc, 'UTC'));
+            $order = app(CreateOrderAction::class)->execute([
+                'branch_id' => $this->branch1->id,
+                'cashier_id' => $this->cashier1->id,
+                'order_type' => OrderType::DINE_IN->value,
+                'items' => [['meal_id' => $this->mealBranch1->id, 'quantity' => 1]],
+            ]);
+            $result = app(ProcessPaymentAction::class)->execute($order, [
+                'cashier_id' => $this->cashier1->id,
+                'payment_method' => PaymentMethod::CASH->value,
+                'amount_tendered' => 150,
+            ]);
+            $this->assertSame($orderNumber, $order->order_number);
+            $this->assertSame($ticketNumber, $result['kitchen_ticket']->ticket_number);
+            $this->assertSame($utc, $order->fresh()->getRawOriginal('created_at'));
+        }
+    }
+
     /**
      * Test schema definitions for branch_daily_sequences table and kitchen_tickets covering index.
      */
@@ -101,7 +127,7 @@ class SequenceConcurrencyTest extends TestCase
     public function test_simulated_concurrent_order_number_generation_produces_gapless_unique_sequences(): void
     {
         $action = new CreateOrderAction();
-        $dateStr = today()->format('Ymd');
+        $dateStr = today('Asia/Manila')->format('Ymd');
         $branchCode = $this->branch1->code;
 
         $createdOrders = [];
@@ -126,7 +152,7 @@ class SequenceConcurrencyTest extends TestCase
 
         // Verify BranchDailySequence row state
         $seqRow = BranchDailySequence::where('branch_id', $this->branch1->id)
-            ->where('sequence_date', today()->toDateString())
+            ->where('sequence_date', today('Asia/Manila')->toDateString())
             ->where('sequence_type', 'order')
             ->first();
 
@@ -173,7 +199,7 @@ class SequenceConcurrencyTest extends TestCase
 
         // Verify BranchDailySequence state for kitchen_ticket
         $seqRow = BranchDailySequence::where('branch_id', $this->branch1->id)
-            ->where('sequence_date', today()->toDateString())
+            ->where('sequence_date', today('Asia/Manila')->toDateString())
             ->where('sequence_type', 'kitchen_ticket')
             ->first();
 
@@ -187,7 +213,7 @@ class SequenceConcurrencyTest extends TestCase
     public function test_multi_branch_daily_sequence_isolation(): void
     {
         $action = new CreateOrderAction();
-        $dateStr = today()->format('Ymd');
+        $dateStr = today('Asia/Manila')->format('Ymd');
 
         // Order 1 in Branch 1 -> B01-YYYYMMDD-0001
         $orderB1_1 = $action->execute([

@@ -53,12 +53,14 @@ return [
     'channels' => [
 
         'stack' => [
+            'tap' => [\App\Support\BusinessLogTime::class],
             'driver' => 'stack',
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
         ],
 
         'single' => [
+            'tap' => [\App\Support\BusinessLogTime::class],
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -66,6 +68,7 @@ return [
         ],
 
         'daily' => [
+            'tap' => [\App\Support\BusinessLogTime::class],
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
@@ -74,6 +77,7 @@ return [
         ],
 
         'security' => [
+            'tap' => [\App\Support\BusinessLogTime::class],
             'driver' => 'daily',
             'path' => env('APP_ENV') === 'testing'
                 ? sys_get_temp_dir().DIRECTORY_SEPARATOR.'security.log'

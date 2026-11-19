@@ -91,14 +91,7 @@ trait AggregatesProductRankings
                         ->orWhere('orders.status', OrderStatus::COMPLETED->value);
                 });
 
-            $parsedStart = $this->parseSafeDate($startDate);
-            if ($parsedStart !== null) {
-                $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
-            }
-            $parsedEnd = $this->parseSafeDate($endDate);
-            if ($parsedEnd !== null) {
-                $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
-            }
+            $this->applyBusinessDates($query, 'orders.created_at', $startDate, $endDate);
             if ($effectiveBranchId !== null) {
                 $query->where('orders.branch_id', $effectiveBranchId);
             }
@@ -220,14 +213,7 @@ trait AggregatesProductRankings
                         ->orWhere('orders.status', OrderStatus::COMPLETED->value);
                 });
 
-            $parsedStart = $this->parseSafeDate($startDate);
-            if ($parsedStart !== null) {
-                $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
-            }
-            $parsedEnd = $this->parseSafeDate($endDate);
-            if ($parsedEnd !== null) {
-                $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
-            }
+            $this->applyBusinessDates($query, 'orders.created_at', $startDate, $endDate);
             if ($effectiveBranchId !== null) {
                 $query->where('orders.branch_id', $effectiveBranchId);
             }

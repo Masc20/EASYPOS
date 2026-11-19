@@ -82,7 +82,9 @@ class Order extends Model
      */
     public function scopeToday($query)
     {
-        return $query->whereDate('created_at', today());
+        $start = today(config('app.business_timezone'));
+        return $query->where('created_at', '>=', $start->copy()->utc())
+            ->where('created_at', '<', $start->addDay()->utc());
     }
 
     /**

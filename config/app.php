@@ -67,6 +67,9 @@ return [
 
     'timezone' => 'UTC',
 
+    // Local clock for staff-facing timestamps and Philippine business dates.
+    'business_timezone' => 'Asia/Manila',
+
     /*
     |--------------------------------------------------------------------------
     | Application Locale Configuration

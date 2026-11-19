@@ -59,19 +59,18 @@ class SupportHelpersTest extends TestCase
         $this->assertSame('INTEGER', SqlDialect::castType('pgsql'));
         $this->assertSame('UNSIGNED', SqlDialect::castType('mysql'));
 
-        $this->assertSame("strftime('%Y-%m-%d', orders.created_at)", SqlDialect::periodExpression('orders.created_at', 'day', 'sqlite'));
-        $this->assertSame("strftime('%Y-W%W', orders.created_at)", SqlDialect::periodExpression('orders.created_at', 'week', 'sqlite'));
-        $this->assertSame("strftime('%Y-%m', orders.created_at)", SqlDialect::periodExpression('orders.created_at', 'month', 'sqlite'));
-        $this->assertSame("strftime('%Y', orders.created_at)", SqlDialect::periodExpression('orders.created_at', 'year', 'sqlite'));
+        $this->assertSame("strftime('%Y-%m-%d', datetime(orders.created_at, '+8 hours'))", SqlDialect::periodExpression('orders.created_at', 'day', 'sqlite'));
+        $this->assertSame("strftime('%Y-%m', datetime(orders.created_at, '+8 hours'))", SqlDialect::periodExpression('orders.created_at', 'month', 'sqlite'));
+        $this->assertSame("strftime('%Y', datetime(orders.created_at, '+8 hours'))", SqlDialect::periodExpression('orders.created_at', 'year', 'sqlite'));
 
-        $this->assertSame("TO_CHAR(orders.created_at, 'YYYY-MM-DD')", SqlDialect::periodExpression('orders.created_at', 'day', 'pgsql'));
-        $this->assertSame("TO_CHAR(orders.created_at, 'IYYY-\"W\"IW')", SqlDialect::periodExpression('orders.created_at', 'week', 'pgsql'));
-        $this->assertSame("DATE_FORMAT(orders.created_at, '%Y-%m')", SqlDialect::periodExpression('orders.created_at', 'month', 'mysql'));
-        $this->assertSame('DATE(orders.created_at)', SqlDialect::periodExpression('orders.created_at', 'day', 'mysql'));
+        $this->assertSame("TO_CHAR((orders.created_at + INTERVAL '8 hours'), 'YYYY-MM-DD')", SqlDialect::periodExpression('orders.created_at', 'day', 'pgsql'));
+        $this->assertSame("TO_CHAR((orders.created_at + INTERVAL '8 hours'), 'IYYY-\"W\"IW')", SqlDialect::periodExpression('orders.created_at', 'week', 'pgsql'));
+        $this->assertSame("DATE_FORMAT(DATE_ADD(orders.created_at, INTERVAL 8 HOUR), '%Y-%m')", SqlDialect::periodExpression('orders.created_at', 'month', 'mysql'));
+        $this->assertSame("DATE(DATE_ADD(orders.created_at, INTERVAL 8 HOUR))", SqlDialect::periodExpression('orders.created_at', 'day', 'mysql'));
 
-        $this->assertSame("CAST(strftime('%H', created_at) AS INTEGER)", SqlDialect::hourExpression('created_at', 'sqlite'));
-        $this->assertSame('EXTRACT(HOUR FROM orders.created_at)::INTEGER', SqlDialect::hourExpression('orders.created_at', 'pgsql'));
-        $this->assertSame('HOUR(orders.created_at)', SqlDialect::hourExpression('orders.created_at', 'mysql'));
+        $this->assertSame("CAST(strftime('%H', datetime(created_at, '+8 hours')) AS INTEGER)", SqlDialect::hourExpression('created_at', 'sqlite'));
+        $this->assertSame("EXTRACT(HOUR FROM (orders.created_at + INTERVAL '8 hours'))::INTEGER", SqlDialect::hourExpression('orders.created_at', 'pgsql'));
+        $this->assertSame("HOUR(DATE_ADD(orders.created_at, INTERVAL 8 HOUR))", SqlDialect::hourExpression('orders.created_at', 'mysql'));
 
         $invalidColumns = [
             'created_at); DROP TABLE orders;--',

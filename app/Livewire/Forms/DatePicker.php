@@ -37,10 +37,10 @@ class DatePicker extends Component
         $this->preset = $preset;
 
         $date = match ($preset) {
-            'yesterday' => Carbon::yesterday()->toDateString(),
-            'last_week' => Carbon::now()->subWeek()->toDateString(),
-            'first_of_month' => Carbon::now()->startOfMonth()->toDateString(),
-            default => Carbon::today()->toDateString(),
+            'yesterday' => Carbon::yesterday(config('app.business_timezone'))->toDateString(),
+            'last_week' => Carbon::now(config('app.business_timezone'))->subWeek()->toDateString(),
+            'first_of_month' => Carbon::now(config('app.business_timezone'))->startOfMonth()->toDateString(),
+            default => Carbon::today(config('app.business_timezone'))->toDateString(),
         };
 
         $this->selectedDate = $date;

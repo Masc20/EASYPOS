@@ -30,7 +30,7 @@ class OrdersTable
                     ->copyable(),
 
                 TextColumn::make('created_at')
-                    ->label('Date & Time')
+                    ->label('Date & Time (PHT)')
                     ->dateTime('M d, Y h:i A')
                     ->sortable(),
 

@@ -98,7 +98,7 @@ class ActivityLogResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('created_at')
-                    ->label('Timestamp')
+                    ->label('Timestamp (PHT)')
                     ->dateTime('Y-m-d H:i:s')
                     ->sortable(),
                 TextColumn::make('actor_name')

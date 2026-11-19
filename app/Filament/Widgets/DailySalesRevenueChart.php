@@ -41,7 +41,7 @@ class DailySalesRevenueChart extends ChartWidget
         $service = app(SalesAggregationService::class);
 
         if ($user && $user->isBranchScoped() && $effectiveBranchId < 0) {
-            $fallbackDate = $service->parseSafeDate($this->startDate) ?? now();
+            $fallbackDate = $service->parseSafeDate($this->startDate) ?? now(config('app.business_timezone'));
 
             return [
                 'datasets' => [

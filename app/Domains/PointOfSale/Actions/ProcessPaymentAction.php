@@ -108,21 +108,23 @@ class ProcessPaymentAction
             ]);
 
             // 3. Generate Sequential Kitchen Ticket via atomic BranchDailySequence row-level counter
-            $nextTicketSeq = BranchDailySequence::getNextSequence($order->branch_id, 'kitchen_ticket', today()->toDateString());
+            $businessDate = $payment->created_at->copy()->timezone(config('app.business_timezone'))->startOfDay();
+            $nextTicketSeq = BranchDailySequence::getNextSequence($order->branch_id, 'kitchen_ticket', $businessDate->toDateString());
             $ticketNumber = sprintf('K-%03d', $nextTicketSeq);
 
-            $startOfDay = today()->startOfDay();
-            $endOfDay = today()->addDay()->startOfDay();
+            $startOfDay = $businessDate->copy()->utc();
+            $endOfDay = $businessDate->copy()->addDay()->utc();
             while (KitchenTicket::where('branch_id', $order->branch_id)
                 ->where('created_at', '>=', $startOfDay)
                 ->where('created_at', '<', $endOfDay)
                 ->where('ticket_number', $ticketNumber)
                 ->exists()) {
-                $nextTicketSeq = BranchDailySequence::getNextSequence($order->branch_id, 'kitchen_ticket', today()->toDateString());
+                $nextTicketSeq = BranchDailySequence::getNextSequence($order->branch_id, 'kitchen_ticket', $businessDate->toDateString());
                 $ticketNumber = sprintf('K-%03d', $nextTicketSeq);
             }
 
             $kitchenTicket = KitchenTicket::create([
+                'created_at' => $payment->created_at,
                 'ticket_number' => $ticketNumber,
                 'order_id' => $order->id,
                 'branch_id' => $order->branch_id,

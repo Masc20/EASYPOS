@@ -160,8 +160,8 @@ class CodeGenerationPerformanceTest extends TestCase
         $now = Carbon::parse('2026-11-10 14:00:00');
         Carbon::setTestNow($now);
 
-        $startOfDay = today()->startOfDay();     // 2026-11-10 00:00:00
-        $endOfDay = today()->addDay()->startOfDay(); // 2026-11-11 00:00:00
+        $startOfDay = Carbon::parse('2026-11-09 16:00:00', 'UTC');
+        $endOfDay = $startOfDay->copy()->addDay();
 
         // 1. Order created yesterday at 23:59:59 (outside range)
         Order::create([
@@ -223,10 +223,7 @@ class CodeGenerationPerformanceTest extends TestCase
             'updated_at' => $endOfDay,
         ]);
 
-        $count = Order::where('branch_id', $branch->id)
-            ->where('created_at', '>=', $startOfDay)
-            ->where('created_at', '<', $endOfDay)
-            ->count();
+        $count = Order::where('branch_id', $branch->id)->today()->count();
 
         // Exactly 3 orders fall within today's half-open range
         $this->assertEquals(3, $count);
@@ -237,7 +234,7 @@ class CodeGenerationPerformanceTest extends TestCase
     public function test_create_order_action_retries_and_resolves_order_number_collision(): void
     {
         $action = new CreateOrderAction();
-        $dateStr = now()->format('Ymd');
+        $dateStr = now('Asia/Manila')->format('Ymd');
         $branchCode = $this->branch->code;
 
         // Pre-create an order with sequence 0001 manually to cause a conflict

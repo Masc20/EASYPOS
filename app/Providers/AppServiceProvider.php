@@ -13,6 +13,7 @@ use App\Domains\PointOfSale\Events\OrderCreated;
 use App\Domains\PointOfSale\Events\OrderVoided;
 use App\Support\Constants\SystemConstants;
 use App\Support\LivewireRequests;
+use Filament\Support\Facades\FilamentTimezone;
 use Illuminate\Auth\Events\Failed as AuthFailed;
 use Illuminate\Auth\Events\Login as AuthLogin;
 use Illuminate\Auth\Events\Logout as AuthLogout;
@@ -38,6 +39,7 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        FilamentTimezone::set(config('app.business_timezone'));
         Vite::usePreloadTagAttributes(false);
 
         if ($this->app->environment('production')) {

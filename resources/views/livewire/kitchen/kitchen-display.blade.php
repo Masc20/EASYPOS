@@ -101,7 +101,7 @@
                                     ⏱ {{ $ticket->elapsed_minutes }}m ago
                                 </span>
                                 <div class="text-[10px] text-brand-text-muted mt-0.5 font-mono">
-                                    {{ $ticket->created_at->format('h:i A') }}
+                                    {{ $ticket->created_at->timezone(config('app.business_timezone'))->format('h:i A') }}
                                 </div>
                             </div>
                         </div>
@@ -221,7 +221,7 @@
                                     🍳 {{ $ticket->elapsed_minutes }}m
                                 </span>
                                 <div class="text-[10px] text-brand-text-muted mt-0.5 font-mono">
-                                    Started: {{ $ticket->started_at ? $ticket->started_at->format('h:i A') : '--:--' }}
+                                    Started: {{ $ticket->started_at ? $ticket->started_at->timezone(config('app.business_timezone'))->format('h:i A') : '--:--' }}
                                 </div>
                             </div>
                         </div>
@@ -368,7 +368,7 @@
 
                             <div class="text-right">
                                 <span class="text-[10px] font-mono text-brand-text-muted block">
-                                    Ready at {{ $ticket->ready_at ? $ticket->ready_at->format('h:i A') : '--:--' }}
+                                    Ready at {{ $ticket->ready_at ? $ticket->ready_at->timezone(config('app.business_timezone'))->format('h:i A') : '--:--' }}
                                 </span>
                             </div>
                         </div>

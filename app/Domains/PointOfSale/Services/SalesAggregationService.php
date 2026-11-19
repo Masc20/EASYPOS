@@ -13,6 +13,7 @@ use App\Support\Enums\PaymentMethod;
 use App\Support\Enums\PaymentStatus;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 
 class SalesAggregationService
 {
@@ -64,7 +65,7 @@ class SalesAggregationService
         }
 
         try {
-            return Carbon::parse($dateString);
+            return Carbon::parse($dateString, config('app.business_timezone'))->timezone(config('app.business_timezone'));
         } catch (\Throwable) {
             return null;
         }
@@ -76,6 +77,19 @@ class SalesAggregationService
     public function normalizeDateString(?string $dateString): string
     {
         return $this->parseSafeDate($dateString)?->toDateString() ?? '';
+    }
+
+    protected function applyBusinessDates(Builder|QueryBuilder $query, string $column, ?string $startDate, ?string $endDate): void
+    {
+        $start = $this->parseSafeDate($startDate);
+        $end = $this->parseSafeDate($endDate);
+
+        if ($start !== null) {
+            $query->where($column, '>=', $start->startOfDay()->utc());
+        }
+        if ($end !== null) {
+            $query->where($column, '<', $end->addDay()->startOfDay()->utc());
+        }
     }
 
     /**
@@ -93,15 +107,7 @@ class SalesAggregationService
                     ->orWhere('orders.status', OrderStatus::COMPLETED->value);
             });
 
-        $parsedStart = $this->parseSafeDate($startDate);
-        if ($parsedStart !== null) {
-            $query->where('orders.created_at', '>=', $parsedStart->startOfDay());
-        }
-
-        $parsedEnd = $this->parseSafeDate($endDate);
-        if ($parsedEnd !== null) {
-            $query->where('orders.created_at', '<=', $parsedEnd->endOfDay());
-        }
+        $this->applyBusinessDates($query, 'orders.created_at', $startDate, $endDate);
 
         if ($effectiveBranchId !== null) {
             $query->where('orders.branch_id', $effectiveBranchId);
@@ -125,15 +131,7 @@ class SalesAggregationService
     ): Builder {
         $query = Payment::query()->where('status', 'successful');
 
-        $parsedStart = $this->parseSafeDate($startDate);
-        if ($parsedStart !== null) {
-            $query->where('created_at', '>=', $parsedStart->startOfDay());
-        }
-
-        $parsedEnd = $this->parseSafeDate($endDate);
-        if ($parsedEnd !== null) {
-            $query->where('created_at', '<=', $parsedEnd->endOfDay());
-        }
+        $this->applyBusinessDates($query, 'created_at', $startDate, $endDate);
 
         if ($effectiveBranchId !== null) {
             $query->where('branch_id', $effectiveBranchId);

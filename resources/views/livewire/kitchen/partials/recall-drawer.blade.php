@@ -47,7 +47,7 @@
                         </div>
                         <div class="text-[11px] text-brand-text-muted">
                             Served at:
-                            {{ $servedTicket->served_at ? $servedTicket->served_at->format('h:i A') : '--:--' }}
+                            {{ $servedTicket->served_at ? $servedTicket->served_at->timezone(config('app.business_timezone'))->format('h:i A') : '--:--' }}
                             • Cook: {{ $servedTicket->cook->name ?? 'Chef' }}
                         </div>
                         <div class="text-xs text-brand-text font-medium pt-1 border-t border-brand-border/40">

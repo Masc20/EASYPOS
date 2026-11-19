@@ -36,7 +36,7 @@ trait AggregatesPeriodicTrends
         $effectiveBranchId = $this->resolveBranchScope($branchId);
 
         $orders = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId)
-            ->selectRaw('DATE(orders.created_at) as sale_date, SUM(orders.total_amount) as total')
+            ->selectRaw(SqlDialect::periodExpression('orders.created_at').' as sale_date, SUM(orders.total_amount) as total')
             ->groupBy('sale_date')
             ->orderBy('sale_date', 'asc')
             ->get();
@@ -50,7 +50,7 @@ trait AggregatesPeriodicTrends
         }
 
         if (empty($labels)) {
-            $fallbackDate = $this->parseSafeDate($startDate) ?? now();
+            $fallbackDate = $this->parseSafeDate($startDate) ?? now(config('app.business_timezone'));
             $labels[] = $fallbackDate->format('M d');
             $values[] = 0.00;
         }
@@ -154,7 +154,7 @@ trait AggregatesPeriodicTrends
                     ? 'Week ' . substr($key, strpos($key, '-W') + 2) . ', ' . substr($key, 0, 4)
                     : 'Week ' . $key,
                 'month' => strlen($key) === 7
-                    ? Carbon::createFromFormat('Y-m', $key)->format('F Y')
+                    ? Carbon::createFromFormat('!Y-m', $key)->format('F Y')
                     : $key,
                 'year' => 'Year ' . $key,
                 default => Carbon::parse($key)->format('M d, Y'),
