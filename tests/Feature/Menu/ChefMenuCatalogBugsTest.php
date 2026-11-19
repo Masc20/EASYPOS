@@ -15,9 +15,11 @@ use App\Domains\Menu\Models\MealBranchAvailability;
 use App\Domains\Menu\Models\MealCategory;
 use App\Domains\PointOfSale\Actions\CreateOrderAction;
 use App\Domains\PointOfSale\Livewire\Checkout\CheckoutCart;
+use App\Domains\PointOfSale\Livewire\Checkout\CheckoutModal;
 use App\Domains\PointOfSale\Livewire\MealCatalog as PosMealCatalog;
 use App\Domains\PointOfSale\Livewire\ProductSearch;
 use App\Filament\Resources\Meals\MealResource;
+use App\Filament\Resources\Meals\Pages\CreateMeal;
 use App\Support\Enums\StaffRole;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -696,6 +698,67 @@ class ChefMenuCatalogBugsTest extends TestCase
             fn ($q) => str_contains(strtolower($q['query']), 'meal_branch_availabilities')
         );
         $this->assertLessThanOrEqual(1, $posOverrideQueries->count(), 'POS MealCatalog must eager-load branchAvailabilities in a single query.');
+    }
+
+    public function test_checkout_counts_down_inherited_portions_and_refreshes_the_branch_board(): void
+    {
+        $this->globalMeal->update(['stock_quantity' => 10]);
+        $board = Livewire::actingAs($this->chef1)->test(DailySpecialsBoard::class);
+        $catalog = Livewire::actingAs($this->cashier1)->test(PosMealCatalog::class);
+        foreach ([3, 5, 2] as $quantity) {
+            Livewire::actingAs($this->cashier1)->test(CheckoutModal::class)->call('processCheckoutFromClient', [
+                'items' => [['meal_id' => $this->globalMeal->id, 'quantity' => $quantity]],
+                'amount_tendered' => 1000,
+            ])->assertSet('errorMessage', null)->assertDispatched('order-created');
+            if ($quantity === 3) {
+                $catalog->call('syncAvailability')->assertSee('7 left');
+                $this->actingAs($this->chef1);
+                $board->call('syncAvailability')->assertSee('7 left');
+            }
+        }
+
+        $meal = $this->globalMeal->fresh();
+        $this->assertSame(0, $meal->stockQuantityForBranch($this->branch1->id));
+        $this->assertFalse($meal->isAvailableForBranch($this->branch1->id));
+        $this->assertSame(10, $meal->stockQuantityForBranch($this->branch2->id));
+        $this->assertTrue($meal->isAvailableForBranch($this->branch2->id));
+        $catalog->call('syncAvailability')->assertSee('Sold Out');
+        $this->actingAs($this->chef1);
+        $board->call('syncAvailability')->assertSee("1 dish 86'd", false)->assertDontSee($meal->name);
+    }
+
+    public function test_limited_meal_requires_portions_before_creation(): void
+    {
+        Livewire::actingAs($this->chef1)->test(CreateMealModal::class)
+            ->set('name', 'Limited Special')
+            ->set('category_id', $this->mainsCategory->id)
+            ->set('price', '125.00')
+            ->set('track_stock', true)
+            ->call('save')
+            ->assertHasErrors(['stock_quantity']);
+        $this->assertDatabaseMissing('meals', ['name' => 'Limited Special']);
+    }
+
+    public function test_back_office_limited_meal_requires_portions_before_creation(): void
+    {
+        Livewire::actingAs($this->owner)->test(CreateMeal::class)->fillForm([
+            'category_id' => $this->mainsCategory->id,
+            'name' => 'Limited Special',
+            'price' => 125,
+            'track_stock' => true,
+            'stock_quantity' => null,
+        ])->call('create')->assertHasFormErrors(['stock_quantity' => 'required']);
+        $this->assertDatabaseMissing('meals', ['name' => 'Limited Special']);
+    }
+
+    public function test_chef_cannot_consume_portions_through_checkout(): void
+    {
+        Livewire::actingAs($this->chef1)->test(CheckoutModal::class)->call('processCheckoutFromClient', [
+            'items' => [['meal_id' => $this->globalMeal->id, 'quantity' => 1]],
+            'amount_tendered' => 1000,
+        ])->assertForbidden();
+        $this->assertDatabaseCount('orders', 0);
+        $this->assertDatabaseCount('meal_branch_availabilities', 0);
     }
 
     public function test_chef_can_modify_portions_on_shared_dish_scoped_to_own_branch_only(): void

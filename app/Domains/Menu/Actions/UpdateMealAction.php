@@ -74,7 +74,7 @@ class UpdateMealAction
 
         if (array_key_exists('track_stock', $data)) {
             $payload['track_stock'] = (bool) $data['track_stock'];
-            $payload['stock_quantity'] = $payload['track_stock'] ? (int) ($data['stock_quantity'] ?? 0) : null;
+            $payload['stock_quantity'] = $this->validatedPortionQuantity($data);
         }
 
         $instance->update($payload);

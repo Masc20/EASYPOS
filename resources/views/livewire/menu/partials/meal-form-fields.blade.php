@@ -78,15 +78,15 @@
     <div class="flex items-center justify-between">
         <span class="text-xs font-medium text-brand-text">Track Daily Limited Portions</span>
         <label class="relative inline-flex items-center cursor-pointer">
-            <input type="checkbox" x-model="trackStock" class="sr-only peer">
+            <input type="checkbox" wire:model="track_stock" class="sr-only peer">
             <div
                 class="w-8 h-4.5 bg-brand-border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-border after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-brand-secondary">
             </div>
         </label>
     </div>
-    <div x-show="trackStock" x-cloak class="pt-2 border-t border-brand-border/60 flex items-center gap-3">
-        <label class="text-xs text-brand-text-muted shrink-0">Portions Today:</label>
-        <input type="number" min="0" wire:model="stock_quantity" placeholder="e.g. 15"
+    <div x-show="$wire.track_stock" x-cloak class="pt-2 border-t border-brand-border/60 flex items-center gap-3">
+        <label for="portions-{{ $this->getId() }}" class="text-xs text-brand-text-muted shrink-0">Available Portions</label>
+        <input id="portions-{{ $this->getId() }}" type="number" min="0" wire:model="stock_quantity" x-bind:required="$wire.track_stock" placeholder="e.g. 15"
             class="w-28 rounded-md border border-brand-border bg-brand-card px-2.5 py-1 text-xs text-brand-text font-mono font-bold focus:border-brand-primary dark:focus:border-brand-secondary focus:outline-none">
         @error('stock_quantity')
             <span class="text-xs font-medium text-brand-error">{{ $message }}</span>
