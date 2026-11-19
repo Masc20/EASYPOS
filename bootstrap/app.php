@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\SetLivewireAssetUrl::class);
         $middleware->trustProxies(
             at: ['10.0.0.0/8', '172.16.0.0/12', '172.31.0.0/16', '192.168.0.0/16'],
             headers: Request::HEADER_X_FORWARDED_AWS_ELB,

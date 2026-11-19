@@ -12,6 +12,7 @@ use App\Domains\Menu\Events\MealAvailabilityToggled;
 use App\Domains\PointOfSale\Events\OrderCreated;
 use App\Domains\PointOfSale\Events\OrderVoided;
 use App\Support\Constants\SystemConstants;
+use App\Support\LivewireRequests;
 use Illuminate\Auth\Events\Failed as AuthFailed;
 use Illuminate\Auth\Events\Login as AuthLogin;
 use Illuminate\Auth\Events\Logout as AuthLogout;
@@ -24,11 +25,14 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use Livewire\Livewire;
+use Livewire\Mechanisms\HandleRequests\HandleRequests;
 
 class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
+        $this->app->singleton(LivewireRequests::class);
+        $this->app->alias(LivewireRequests::class, HandleRequests::class);
         $this->app->singleton(\App\Domains\PointOfSale\Services\SalesAggregationService::class);
     }
 

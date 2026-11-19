@@ -25,6 +25,23 @@ class FilamentPanelTest extends TestCase
         $response->assertRedirect('/admin/login');
     }
 
+    #[\PHPUnit\Framework\Attributes\DataProvider('loginPaths')]
+    public function test_login_forms_use_the_application_mount_path_for_livewire(string $path): void
+    {
+        $this->withServerVariables([
+            'SCRIPT_NAME' => '/EASYPOS/public/index.php',
+            'SCRIPT_FILENAME' => public_path('index.php'),
+        ])->get('/EASYPOS/public'.$path)
+            ->assertOk()
+            ->assertSee('src="/EASYPOS/public/livewire/livewire', false)
+            ->assertSee('data-update-uri="/EASYPOS/public/livewire/update"', false);
+    }
+
+    public static function loginPaths(): array
+    {
+        return [['/login'], ['/admin/login']];
+    }
+
     public function test_filament_login_page_renders_with_link_to_floor_staff_terminal(): void
     {
         $response = $this->get('/admin/login');
