@@ -8,6 +8,7 @@ use App\Domains\Menu\Livewire\CreateMealModal;
 use App\Domains\Menu\Livewire\EditMealModal;
 use App\Domains\Menu\Livewire\MealCatalogTable;
 use App\Domains\Menu\Livewire\MealForm as MenuMealForm;
+use App\Domains\Menu\Models\Meal;
 use App\Domains\Menu\Models\MealCategory;
 use App\Domains\PointOfSale\Livewire\MealCatalog as PosMealCatalog;
 use App\Filament\Pages\SalesRecords;
@@ -67,13 +68,13 @@ class Tier2TenancyAndSecurityBoundaryTest extends TestCase
         $this->assertSoftDeleted('meals', ['id' => $b2Trashed->id]);
     }
 
-    public function test_f1_boundary_branch_manager_cannot_edit_or_delete_global_meal(): void
+    public function test_f1_boundary_branch_manager_cannot_edit_global_meal_but_can_hide_it_in_own_branch(): void
     {
         ['meal' => $globalMeal] = $this->createBranchCategoryAndMeal(null, ['name' => 'Global Protected Soup', 'price' => 120.00]);
 
         $this->actingAs($this->manager1);
         $this->assertFalse(MealResource::canEdit($globalMeal));
-        $this->assertFalse(MealResource::canDelete($globalMeal));
+        $this->assertTrue(MealResource::canDelete($globalMeal));
 
         Livewire::actingAs($this->manager1)
             ->test(EditMealModal::class)
@@ -83,10 +84,12 @@ class Tier2TenancyAndSecurityBoundaryTest extends TestCase
         Livewire::actingAs($this->manager1)
             ->test(MealCatalogTable::class)
             ->call('deleteMeal', $globalMeal->id)
-            ->assertStatus(403);
+            ->assertSuccessful();
 
         $this->assertSame('Global Protected Soup', $globalMeal->fresh()->name);
         $this->assertNotSoftDeleted('meals', ['id' => $globalMeal->id]);
+        $this->assertFalse(Meal::forBranch($this->branch1->id)->whereKey($globalMeal->id)->exists());
+        $this->assertTrue(Meal::forBranch($this->branch2->id)->whereKey($globalMeal->id)->exists());
     }
 
     public function test_f1_boundary_branch_manager_forging_branch_id_cannot_write_meal_to_other_branch(): void

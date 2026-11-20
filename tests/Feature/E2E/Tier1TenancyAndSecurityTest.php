@@ -87,7 +87,7 @@ class Tier1TenancyAndSecurityTest extends TestCase
         $this->assertDatabaseHas('meals', ['name' => 'Manila Kare-Kare', 'branch_id' => $this->branch1->id]);
     }
 
-    public function test_f1_branch_manager_edits_and_deletes_own_branch_meal(): void
+    public function test_f1_branch_manager_edits_and_removes_own_branch_meal_from_catalog(): void
     {
         ['meal' => $b1Meal] = $this->createBranchCategoryAndMeal($this->branch1, ['name' => 'B1 Original Pasta', 'price' => 210.00]);
         ['meal' => $b2Meal] = $this->createBranchCategoryAndMeal($this->branch2, ['name' => 'B2 Untouched Pasta', 'price' => 240.00]);
@@ -113,8 +113,10 @@ class Tier1TenancyAndSecurityTest extends TestCase
         $this->assertTrue(MealResource::canDelete($b1Meal));
 
         Livewire::actingAs($this->manager1)->test(MealCatalogTable::class)->call('deleteMeal', $b1Meal->id);
-        $this->assertSoftDeleted('meals', ['id' => $b1Meal->id]);
+        $this->assertNotSoftDeleted('meals', ['id' => $b1Meal->id]);
+        $this->assertFalse(Meal::forBranch($this->branch1->id)->whereKey($b1Meal->id)->exists());
         $this->assertNotSoftDeleted('meals', ['id' => $b2Meal->id]);
+        $this->assertTrue(Meal::forBranch($this->branch2->id)->whereKey($b2Meal->id)->exists());
     }
 
     public function test_f1_owner_and_super_admin_view_and_manage_meals_across_all_branches(): void

@@ -191,12 +191,18 @@ class AdversarialCrossBranchTest extends TestCase
         }
     }
 
-    public function test_manager_a_cannot_edit_or_delete_global_meal(): void
+    public function test_manager_a_cannot_edit_global_meal_but_can_remove_it_only_from_own_branch(): void
     {
         $this->actingAs($this->managerA);
 
         $this->assertFalse(MealResource::canEdit($this->globalMeal), 'Branch Manager A cannot edit global meal');
-        $this->assertFalse(MealResource::canDelete($this->globalMeal), 'Branch Manager A cannot delete global meal');
+        $this->assertTrue(MealResource::canDelete($this->globalMeal), 'Branch Manager A can remove the shared meal from their branch');
+
+        (new DeleteMealAction())->handle($this->globalMeal);
+
+        $this->assertNotSoftDeleted('meals', ['id' => $this->globalMeal->id]);
+        $this->assertFalse(Meal::forBranch($this->branchA->id)->whereKey($this->globalMeal->id)->exists());
+        $this->assertTrue(Meal::forBranch($this->branchB->id)->whereKey($this->globalMeal->id)->exists());
     }
 
     public function test_manager_a_cannot_toggle_branch_b_cashier_active_status(): void
