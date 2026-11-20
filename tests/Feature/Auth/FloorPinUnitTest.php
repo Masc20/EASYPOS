@@ -11,7 +11,7 @@ use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
-class FloorPinAcceptanceTest extends TestCase
+class FloorPinUnitTest extends TestCase
 {
     use RefreshDatabase;
 

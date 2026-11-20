@@ -259,6 +259,32 @@ class SalesRecordsTest extends TestCase
             ->assertSet('selectedPreset', 'yesterday');
     }
 
+    public function test_periodic_report_renders_peso_amounts_with_tabular_numerals(): void
+    {
+        $this->travelTo(\Illuminate\Support\Carbon::parse('2026-11-20 12:00', 'Asia/Manila'));
+        Order::create([
+            'order_number' => 'PERIODIC-FORMAT-001',
+            'branch_id' => 1,
+            'cashier_id' => $this->cashier->id,
+            'order_type' => 'takeout',
+            'subtotal' => 1234.56,
+            'discount_amount' => 34.56,
+            'tax_amount' => 0,
+            'total_amount' => 1200,
+            'status' => 'completed',
+            'payment_status' => 'paid',
+            'completed_at' => now(),
+        ]);
+
+        $html = Livewire::actingAs($this->admin)->test(SalesRecords::class)->html();
+
+        $this->assertStringContainsString('tabular-nums', $html);
+        $this->assertStringContainsString('₱1,234.56', $html);
+        $this->assertStringContainsString('₱34.56', $html);
+        $this->assertStringContainsString('₱1,200.00', $html);
+        $this->assertStringNotContainsString('â‚±', $html);
+    }
+
     public function test_owner_can_render_sales_records_and_embedded_chart_widgets(): void
     {
         Livewire::actingAs($this->owner)

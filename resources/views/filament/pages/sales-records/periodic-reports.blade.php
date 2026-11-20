@@ -75,7 +75,7 @@
         </div>
     @else
         <div class="w-full overflow-x-auto pb-0.5">
-            <table class="w-full border-separate border-spacing-0 text-left text-xs">
+            <table class="w-full border-separate border-spacing-0 text-left text-xs" style="font-variant-numeric: tabular-nums;">
                 <thead>
                     <tr class="border-b-2 border-gray-200 dark:border-white/10">
                         <th
@@ -155,31 +155,31 @@
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-medium text-gray-600 dark:text-gray-400 font-mono">
-                                â‚±{{ number_format($pItem['gross_sales'], 2) }}
+                                ₱{{ number_format($pItem['gross_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-medium text-amber-600 dark:text-amber-400 font-mono">
-                                â‚±{{ number_format($pItem['total_discounts'], 2) }}
+                                ₱{{ number_format($pItem['total_discounts'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-black text-gray-900 dark:text-white font-mono">
-                                â‚±{{ number_format($pItem['net_sales'], 2) }}
+                                ₱{{ number_format($pItem['net_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-gray-700 dark:text-gray-300">
-                                â‚±{{ number_format($pItem['vatable_sales'], 2) }}
+                                ₱{{ number_format($pItem['vatable_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono font-semibold text-[#960D10] dark:text-[#DE9A9D]">
-                                â‚±{{ number_format($pItem['vat_amount'], 2) }}
+                                ₱{{ number_format($pItem['vat_amount'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-gray-700 dark:text-gray-300">
-                                â‚±{{ number_format($pItem['vat_exempt_sales'], 2) }}
+                                ₱{{ number_format($pItem['vat_exempt_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-purple-700 dark:text-purple-400 font-semibold last:pr-2">
-                                â‚±{{ number_format($pItem['average_order_value'], 2) }}
+                                ₱{{ number_format($pItem['average_order_value'], 2) }}
                             </td>
                         </tr>
                     @endforeach
@@ -196,29 +196,29 @@
                             {{ number_format($pTotals['orders_count']) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            â‚±{{ number_format($pTotals['gross_sales'], 2) }}
+                            ₱{{ number_format($pTotals['gross_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-amber-600 dark:text-amber-400">
-                            -â‚±{{ number_format($pTotals['total_discounts'], 2) }}
+                            ₱{{ number_format($pTotals['total_discounts'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-[#960D10] dark:text-[#DE9A9D] text-sm">
-                            â‚±{{ number_format($pTotals['net_sales'], 2) }}
+                            ₱{{ number_format($pTotals['net_sales'], 2) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            â‚±{{ number_format($pTotals['vatable_sales'], 2) }}
+                            ₱{{ number_format($pTotals['vatable_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-[#960D10] dark:text-[#DE9A9D]">
-                            â‚±{{ number_format($pTotals['vat_amount'], 2) }}
+                            ₱{{ number_format($pTotals['vat_amount'], 2) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            â‚±{{ number_format($pTotals['vat_exempt_sales'], 2) }}
+                            ₱{{ number_format($pTotals['vat_exempt_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-purple-700 dark:text-purple-400 last:pr-2">
-                            â‚±{{ number_format($pTotals['average_order_value'], 2) }}
+                            ₱{{ number_format($pTotals['average_order_value'], 2) }}
                         </td>
                     </tr>
                 </tfoot>
