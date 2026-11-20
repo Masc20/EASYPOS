@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Filament\Resources\Users\UserResource;
+
 use App\Domains\Identity\Actions\ToggleUserActiveStatusAction;
 use App\Domains\Identity\Models\User;
 use App\Support\Constants\SystemConstants;
@@ -127,6 +129,7 @@ class UsersTable
                     }),
 
                 EditAction::make()
+                    ->databaseTransaction()
                     ->modal()
                     ->modalWidth('lg')
                     ->visible(fn (User $record): bool => self::canActorEditTarget($record))
@@ -135,6 +138,7 @@ class UsersTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     BulkAction::make('deactivate_selected')
+                        ->authorize(fn (): bool => UserResource::canDeleteAny())
                         ->label('Deactivate Selected')
                         ->icon('heroicon-o-user-minus')
                         ->color('danger')
@@ -142,6 +146,7 @@ class UsersTable
                         ->modalHeading('Deactivate Selected Accounts')
                         ->modalDescription('Are you sure you want to deactivate the selected staff accounts? Active sessions will be terminated.')
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            abort_unless(UserResource::canDeleteAny(), 403);
                             $toggleService = app(ToggleUserActiveStatusAction::class);
                             $count = 0;
                             $actor = auth()->user();
@@ -165,6 +170,7 @@ class UsersTable
                         }),
 
                     BulkAction::make('reactivate_selected')
+                        ->authorize(fn (): bool => UserResource::canDeleteAny())
                         ->label('Reactivate Selected')
                         ->icon('heroicon-o-user-plus')
                         ->color('success')
@@ -172,6 +178,7 @@ class UsersTable
                         ->modalHeading('Reactivate Selected Accounts')
                         ->modalDescription('Are you sure you want to reactivate the selected staff accounts?')
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            abort_unless(UserResource::canDeleteAny(), 403);
                             $toggleService = app(ToggleUserActiveStatusAction::class);
                             $count = 0;
                             $actor = auth()->user();
@@ -196,6 +203,7 @@ class UsersTable
 
                     DeleteBulkAction::make()
                         ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            abort_unless(UserResource::canDeleteAny(), 403);
                             foreach ($records as $record) {
                                 if (! $record instanceof User || ! self::canActorManageTarget($record)) {
                                     continue;
@@ -210,7 +218,11 @@ class UsersTable
     private static function canActorManageTarget(User $record): bool
     {
         $actor = auth()->user();
-        if (! $actor || (int) $record->id === (int) $actor->id) {
+        if (! UserResource::canAccess() || ! $actor || (int) $record->id === (int) $actor->id) {
+            return false;
+        }
+
+        if ($record->hasAnyRole(StaffRole::executiveValues()) && ! $actor->hasRole(StaffRole::OWNER->value)) {
             return false;
         }
 
@@ -232,15 +244,6 @@ class UsersTable
 
     private static function canActorEditTarget(User $record): bool
     {
-        $actor = auth()->user();
-        if (! $actor) {
-            return false;
-        }
-
-        if ($actor->isOwner()) {
-            return true;
-        }
-
-        return self::canActorManageTarget($record);
+        return UserResource::canEdit($record);
     }
 }

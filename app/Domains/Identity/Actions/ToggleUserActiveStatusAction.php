@@ -17,6 +17,8 @@ class ToggleUserActiveStatusAction
     public function execute(User $user, ?User $actor = null): User
     {
         $actor = $actor ?? auth()->user();
+        abort_unless($actor && $actor->is_active && $actor->can('users.manage'), 403);
+
         $actorId = $actor?->id;
 
         // Prevent modifying own account active status (neither deactivate nor reactivate self)
@@ -26,15 +28,17 @@ class ToggleUserActiveStatusAction
             ]);
         }
 
+        abort_if($user->hasAnyRole(StaffRole::executiveValues()) && ! $actor->hasRole(StaffRole::OWNER->value), 403);
+
         // Branch-scoped user restrictions (Branch Managers)
         if ($actor && $actor->isBranchScoped()) {
-            if ((int) $user->branch_id !== (int) $actor->branch_id) {
+            if ($actor->branch_id === null || (int) $user->branch_id !== (int) $actor->branch_id) {
                 throw ValidationException::withMessages([
                     'user' => 'Unauthorized. You cannot modify staff from another branch.',
                 ]);
             }
 
-            if (! $user->hasAnyRole(StaffRole::floorValues())) {
+            if (! $user->hasAnyRole(StaffRole::floorValues()) || $user->hasAnyRole(StaffRole::managementValues())) {
                 throw ValidationException::withMessages([
                     'user' => 'Unauthorized. You can only toggle floor staff (Cashier, Cook, Chef).',
                 ]);

@@ -11,16 +11,21 @@ use Spatie\Permission\Models\Role;
 
 class ListRoles extends ListRecords
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = RoleResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
             CreateAction::make()
+                ->databaseTransaction()
+                ->authorize(fn (): bool => RoleResource::canCreate())
                 ->label('New Role')
                 ->modal()
                 ->modalWidth('4xl')
                 ->using(function (array $data, string $model): Role {
+                    abort_unless(RoleResource::canCreate(), 403);
                     [$cleanData, $permissions] = RoleForm::extractPermissions($data);
                     $record = $model::create($cleanData);
                     $record->syncPermissions($permissions);

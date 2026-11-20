@@ -10,6 +10,8 @@ use Filament\Resources\Pages\EditRecord;
 
 class EditMeal extends EditRecord
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = MealResource::class;
 
     protected function getHeaderActions(): array

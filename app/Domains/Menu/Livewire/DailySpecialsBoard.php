@@ -23,6 +23,11 @@ class DailySpecialsBoard extends Component
 
     public function syncAvailability(): void
     {
+        $user = auth()->user();
+        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage'))) {
+            abort(403, 'Unauthorized.');
+        }
+
         if ($this->lastMenuVersion === $this->menuVersion()) {
             $this->skipRender();
             return;
@@ -40,7 +45,7 @@ class DailySpecialsBoard extends Component
     public function render()
     {
         $user = auth()->user();
-        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage'))) {
             abort(403, 'Unauthorized.');
         }
 

@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateMeal extends CreateRecord
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = MealResource::class;
 }

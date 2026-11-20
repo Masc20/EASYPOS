@@ -8,6 +8,8 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListBranches extends ListRecords
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = BranchResource::class;
 
     protected function getHeaderActions(): array

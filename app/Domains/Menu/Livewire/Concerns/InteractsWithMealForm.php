@@ -11,6 +11,11 @@ use Illuminate\Validation\Rule;
 
 trait InteractsWithMealForm
 {
+    public function boot(): void
+    {
+        $this->requireAuthenticatedMenuUser();
+    }
+
     /**
      * @return array<string, string>
      */
@@ -88,7 +93,7 @@ trait InteractsWithMealForm
             abort(403, 'Unauthorized.');
         }
 
-        if (! $user->can('menu.view') && ! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user->can('menu.view') && ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
 
@@ -102,7 +107,7 @@ trait InteractsWithMealForm
     protected function requireMenuManageUser(): User
     {
         $user = $this->requireAuthenticatedMenuUser();
-        if (! $user->can('menu.manage') && ! $user->isOwner()) {
+        if (! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
 

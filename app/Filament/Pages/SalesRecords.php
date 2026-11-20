@@ -20,7 +20,7 @@ class SalesRecords extends Page
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('reports.view'))
+            && $user->can('reports.view')
             && (! $user->isBranchScoped() || $user->branch_id !== null));
     }
 
@@ -56,6 +56,11 @@ class SalesRecords extends Page
     public string $periodicInterval = 'day';
     public string $periodicSortColumn = 'period_key';
     public string $periodicSortDirection = 'desc';
+
+    public function boot(): void
+    {
+        abort_unless(static::canAccess(), 403);
+    }
 
     public function mount(): void
     {

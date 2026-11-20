@@ -8,6 +8,8 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListMealCategories extends ListRecords
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = MealCategoryResource::class;
 
     protected function getHeaderActions(): array

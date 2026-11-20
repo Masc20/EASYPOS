@@ -301,10 +301,16 @@ class MenuHardeningTest extends TestCase
             }
         }
 
-        foreach ([$owner, $superAdmin, $manager1, $this->chef1] as $allowedUser) {
+        foreach ([$owner, $manager1, $this->chef1] as $allowedUser) {
             foreach ($components as $component) {
                 Livewire::actingAs($allowedUser)->test($component)->assertOk();
             }
+        }
+
+        // HQ menu management does not grant the separate floor catalog permission.
+        Livewire::actingAs($superAdmin)->test(MealCatalogTable::class)->assertForbidden();
+        foreach ([DailySpecialsBoard::class, CreateMealModal::class, EditMealModal::class, MealForm::class] as $component) {
+            Livewire::actingAs($superAdmin)->test($component)->assertOk();
         }
     }
 

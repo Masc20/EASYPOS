@@ -17,6 +17,11 @@ use Livewire\Component;
 
 class KitchenDisplay extends Component
 {
+    public function boot(): void
+    {
+        $this->resolveBranchId();
+    }
+
     public string $diningFilter = 'all'; // all, dine_in, takeout, delivery
 
     public string $priorityFilter = 'all'; // all, rush
@@ -32,7 +37,7 @@ class KitchenDisplay extends Component
     private function resolveBranchId(): int
     {
         $user = Auth::user();
-        if (! $user instanceof User || (! $user->can('kitchen.view') && ! $user->can('kitchen.prepare'))) {
+        if (! $user instanceof User || ! $user->can('kitchen.view')) {
             abort(403, 'Unauthorized.');
         }
 
@@ -55,6 +60,13 @@ class KitchenDisplay extends Component
 
     public function getTicketSignatureVersion(int $branchId): string
     {
+        $user = Auth::user();
+        if ($user instanceof User) {
+            abort_unless($user->can('kitchen.view'), 403);
+            if (! $branchId && $user->isBranchScoped()) {
+                $branchId = $this->resolveBranchId();
+            }
+        }
         $todayStart = now(config('app.business_timezone'))->startOfDay()->utc();
 
         $signature = KitchenTicket::forBranch($branchId)

@@ -9,6 +9,7 @@ use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Domains\Identity\Models\User;
 use App\Support\Enums\StaffRole;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,13 +22,15 @@ use UnitEnum;
 
 class UserResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('users.manage'))
+            && $user->can('users.manage')
             && (! $user->isBranchScoped() || $user->branch_id !== null));
     }
 
@@ -86,7 +89,7 @@ class UserResource extends Resource
     public static function getCreateAuthorizationResponse(): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('users.manage'))) {
+        if (! static::canAccess()) {
             return Response::deny('Unauthorized.');
         }
 
@@ -100,7 +103,11 @@ class UserResource extends Resource
     public static function getEditAuthorizationResponse(Model $record): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('users.manage'))) {
+        if (! static::canAccess()) {
+            return Response::deny('Unauthorized.');
+        }
+
+        if ($record->hasAnyRole(StaffRole::executiveValues()) && ! $user->hasRole(StaffRole::OWNER->value)) {
             return Response::deny('Unauthorized.');
         }
 
@@ -115,7 +122,7 @@ class UserResource extends Resource
             if ($record->branch_id === null || (int) $record->branch_id !== $user->effectiveBranchId()) {
                 return Response::deny('Unauthorized.');
             }
-            if (! $record->hasAnyRole(StaffRole::floorValues())) {
+            if (! $record->hasAnyRole(StaffRole::floorValues()) || $record->hasAnyRole(StaffRole::managementValues())) {
                 return Response::deny('Unauthorized.');
             }
         }

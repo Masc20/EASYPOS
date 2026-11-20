@@ -9,6 +9,7 @@ use App\Filament\Resources\Branches\Pages\ListBranches;
 use App\Filament\Resources\Branches\Schemas\BranchForm;
 use App\Filament\Resources\Branches\Tables\BranchesTable;
 use App\Support\Enums\StaffRole;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -18,11 +19,13 @@ use UnitEnum;
 
 class BranchResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
-        return (bool) ($user && ($user->isOwner() || $user->hasRole(StaffRole::SUPER_ADMIN->value)));
+        return (bool) ($user && $user->canAccessAdmin() && $user->can('branch.manage') && ! $user->isBranchScoped() && $user->hasAnyRole(StaffRole::executiveValues()));
     }
 
     public static function shouldRegisterNavigation(): bool

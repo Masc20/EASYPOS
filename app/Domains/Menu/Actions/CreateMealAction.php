@@ -15,7 +15,7 @@ class CreateMealAction
     public function handle(array $data): Meal
     {
         $user = auth()->user();
-        if (! $user instanceof User || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! $user instanceof User || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized. You do not have permission to create menu items.');
         }
 

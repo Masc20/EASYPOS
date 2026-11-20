@@ -10,6 +10,11 @@ use Livewire\Component;
 
 class CheckoutCart extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     /**
      * @var array<int, array{
      *     meal_id: int,

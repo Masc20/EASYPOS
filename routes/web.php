@@ -40,7 +40,7 @@ Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->get(
         abort(403, 'Back-office reports cannot be accessed from a floor PIN session.');
     }
 
-    if (! $user->isOwner() && ! $user->can('reports.view')) {
+    if (! $user->canAccessAdmin() || ! $user->can('reports.view')) {
         abort(403);
     }
 
@@ -82,7 +82,7 @@ $exportSalesRecords = function (\Illuminate\Http\Request $request, \App\Domains\
         abort(403, 'Back-office exports cannot be accessed from a floor PIN session.');
     }
 
-    if (! $user->isOwner() && ! $user->can('reports.view')) {
+    if (! $user->canAccessAdmin() || ! $user->can('reports.view')) {
         abort(403);
     }
 

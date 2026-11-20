@@ -12,7 +12,7 @@ class ToggleMealAvailabilityAction
     public function handle(Meal|int $meal): Meal
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized. Only Kitchen and Managers can toggle dish availability.');
         }
 

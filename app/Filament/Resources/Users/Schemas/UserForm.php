@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Users\Schemas;
 
 use App\Support\Enums\StaffRole;
+use App\Filament\Resources\Users\UserResource;
 use App\Support\Services\CodeGeneratorService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Hidden;
@@ -22,7 +23,7 @@ class UserForm
         $isBranchScoped = $user && $user->isBranchScoped();
 
         // Determine if user can manage passwords (admins/owners only)
-        $canManagePassword = $user && ($user->isOwner() || $user->can('users.manage'));
+        $canManagePassword = $user && $user->can('users.manage');
 
         return $schema
             ->components([
@@ -67,16 +68,16 @@ class UserForm
                     ->relationship(
                         'roles',
                         'name',
-                        modifyQueryUsing: $isBranchScoped
-                            ? fn (Builder $query) => $query->whereIn('name', StaffRole::floorValues())
-                            : null
+                        modifyQueryUsing: fn (Builder $query) => $query->where('guard_name', 'web')
+                            ->when($isBranchScoped, fn (Builder $query) => $query->whereIn('name', StaffRole::floorValues()))
                     )
                     ->saveRelationshipsUsing(function ($component, $record, $state) {
+                        abort_unless(UserResource::canAccess(), 403);
                         $actor = auth()->user();
                         $roleIds = array_map('intval', (array) ($state ?? []));
 
                         if ($actor && $actor->isBranchScoped()) {
-                            $allowedFloorRoleIds = Role::query()
+                            $allowedFloorRoleIds = Role::query()->where('guard_name', 'web')
                                 ->whereIn('name', StaffRole::floorValues())
                                 ->pluck('id')
                                 ->map(fn ($id) => (int) $id)
@@ -89,7 +90,10 @@ class UserForm
                             }
                         }
 
-                        $record->roles()->sync($roleIds);
+                        $roles = Role::query()->where('guard_name', 'web')->whereIn('id', $roleIds)->get();
+                        abort_unless($roles->count() === count(array_unique($roleIds)), 403);
+                        abort_if($roles->contains('name', StaffRole::OWNER->value) && ! $actor->hasRole(StaffRole::OWNER->value), 403);
+                        $record->syncRoles($roles);
                         $record->unsetRelation('roles');
                     })
                     ->multiple()
@@ -160,7 +164,7 @@ class UserForm
                         ->rule(Password::min(12)->letters()->mixedCase()->numbers()->symbols()->uncompromised())
                         ->placeholder('Password')
                         ->dehydrated(fn ($state) => filled($state))
-                        ->visible($user->isOwner() || $user->can('users.manage'))
+                        ->visible($user->can('users.manage'))
                         ->suffixAction(
                             Action::make('generate_password')
                                 ->icon('heroicon-o-arrow-path')

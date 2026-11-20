@@ -6,6 +6,7 @@ use App\Domains\Audit\Models\ActivityLog;
 use App\Domains\Branches\Models\Branch;
 use App\Filament\Resources\ActivityLogs\Pages\ListActivityLogs;
 use App\Support\Enums\StaffRole;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class ActivityLogResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     protected static ?string $model = ActivityLog::class;
 
     protected static ?string $slug = 'activity-logs';
@@ -42,17 +45,14 @@ class ActivityLogResource extends Resource
             return false;
         }
 
-        if ($user->isOwner() || $user->hasRole(StaffRole::SUPER_ADMIN->value)) {
-            return true;
-        }
+        return ($user->can('reports.view') || $user->can('users.manage'))
+            && $user->hasAnyRole(StaffRole::managementValues())
+            && (! $user->isBranchScoped() || $user->branch_id !== null);
+    }
 
-        if ($user->isBranchScoped() && $user->branch_id === null) {
-            return false;
-        }
-
-        return $user->hasRole(StaffRole::BRANCH_MANAGER->value)
-            || $user->can('reports.view')
-            || $user->can('users.manage');
+    protected static function allowedResourceActions(): array
+    {
+        return ['viewAny', 'view'];
     }
 
     public static function shouldRegisterNavigation(): bool

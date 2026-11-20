@@ -7,5 +7,7 @@ use Filament\Resources\Pages\ListRecords;
 
 class ListActivityLogs extends ListRecords
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = ActivityLogResource::class;
 }

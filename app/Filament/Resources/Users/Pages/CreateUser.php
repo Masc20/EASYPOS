@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateUser extends CreateRecord
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = UserResource::class;
 }

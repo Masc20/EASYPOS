@@ -7,5 +7,7 @@ use Filament\Resources\Pages\CreateRecord;
 
 class CreateBranch extends CreateRecord
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = BranchResource::class;
 }

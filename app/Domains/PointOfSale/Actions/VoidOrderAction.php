@@ -10,7 +10,6 @@ use App\Support\Constants\SystemConstants;
 use App\Support\Enums\KitchenTicketStatus;
 use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
-use App\Support\Enums\StaffRole;
 use App\Support\SecurityLogger;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
@@ -104,7 +103,7 @@ class VoidOrderAction
             }
 
             // Reject untrusted callers when authenticated user cannot approve refunds
-            if (! Auth::user()->isOwner() && ! Auth::user()->hasRole(StaffRole::SUPER_ADMIN->value) && ! Auth::user()->can('pos.refund')) {
+            if (! Auth::user()->can('pos.refund')) {
                 SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHORIZED_BACKOFFICE_ATTEMPT', [
                     'event' => 'void_order_unauthorized_backoffice_attempt',
                     'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',
@@ -169,8 +168,8 @@ class VoidOrderAction
             }
         }
 
-        // Permission check: must possess pos.refund permission or be an Owner / Super-Admin
-        if (! $manager->isOwner() && ! $manager->hasRole(StaffRole::SUPER_ADMIN->value) && ! $manager->can('pos.refund')) {
+        // Approval requires the current refund permission, including executive roles.
+        if (! $manager->can('pos.refund')) {
             SecurityLogger::log('warning', 'VOID_ORDER_UNAUTHORIZED_REFUND_PERMISSION', [
                 'event' => 'void_order_unauthorized_refund_permission',
                 'actor' => Auth::user()?->emp_id ?? (string) Auth::id() ?? 'guest',

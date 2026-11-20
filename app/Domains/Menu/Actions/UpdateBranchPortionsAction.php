@@ -17,7 +17,7 @@ class UpdateBranchPortionsAction
     public function handle(int $mealId, bool $trackStock, ?int $stockQuantity): Meal
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
 

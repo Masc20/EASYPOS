@@ -16,6 +16,11 @@ use Livewire\WithPagination;
 
 class MealCatalogTable extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('menu.view'), 403);
+    }
+
     use WithPagination;
 
     public ?string $selectedCategory = null;
@@ -89,7 +94,7 @@ class MealCatalogTable extends Component
     public function editMeal(int $mealId): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
 
@@ -111,7 +116,7 @@ class MealCatalogTable extends Component
     public function toggleAvailability(int $mealId, ToggleMealAvailabilityAction $action): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
         if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
@@ -128,7 +133,7 @@ class MealCatalogTable extends Component
     public function openPortionsModal(int $mealId): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
 
@@ -159,7 +164,7 @@ class MealCatalogTable extends Component
     public function savePortions(UpdateBranchPortionsAction $action): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
         if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
@@ -196,7 +201,7 @@ class MealCatalogTable extends Component
     public function deleteMeal(int $mealId, DeleteMealAction $action): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized.');
         }
         if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() < 0)) {
@@ -210,7 +215,7 @@ class MealCatalogTable extends Component
     public function render()
     {
         $user = auth()->user();
-        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage') && ! $user->isOwner())) {
+        if (! $user instanceof User || (! $user->can('menu.view') && ! $user->can('menu.manage'))) {
             abort(403, 'Unauthorized.');
         }
 

@@ -260,6 +260,7 @@ class ChefMenuCatalogBugsTest extends TestCase
             ->assertDontSee('Branch One Sisig');
 
         // Browser Tab 2 (/pos MealCatalog) polls syncAvailability and updates the dish pill with wire:key & 86'd alert
+        $this->actingAs($this->cashier1);
         $posCatalog->call('syncAvailability')
             ->assertDispatched('meal-availability-synced')
             ->assertSeeHtml('wire:key="pos-meal-'.$this->globalMeal->id.'"')
@@ -753,10 +754,7 @@ class ChefMenuCatalogBugsTest extends TestCase
 
     public function test_chef_cannot_consume_portions_through_checkout(): void
     {
-        Livewire::actingAs($this->chef1)->test(CheckoutModal::class)->call('processCheckoutFromClient', [
-            'items' => [['meal_id' => $this->globalMeal->id, 'quantity' => 1]],
-            'amount_tendered' => 1000,
-        ])->assertForbidden();
+        Livewire::actingAs($this->chef1)->test(CheckoutModal::class)->assertForbidden();
         $this->assertDatabaseCount('orders', 0);
         $this->assertDatabaseCount('meal_branch_availabilities', 0);
     }

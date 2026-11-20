@@ -8,6 +8,7 @@ use App\Filament\Resources\Meals\Pages\EditMeal;
 use App\Filament\Resources\Meals\Pages\ListMeals;
 use App\Filament\Resources\Meals\Schemas\MealForm;
 use App\Filament\Resources\Meals\Tables\MealsTable;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -21,13 +22,15 @@ use UnitEnum;
 
 class MealResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('menu.manage'))
+            && $user->can('menu.manage')
             && (! $user->isBranchScoped() || $user->branch_id !== null));
     }
 
@@ -92,7 +95,7 @@ class MealResource extends Resource
     public static function getCreateAuthorizationResponse(): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! static::canAccess()) {
             return Response::deny('Unauthorized.');
         }
 
@@ -106,7 +109,7 @@ class MealResource extends Resource
     public static function getEditAuthorizationResponse(Model $record): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! static::canAccess()) {
             return Response::deny('Unauthorized.');
         }
 
@@ -136,7 +139,7 @@ class MealResource extends Resource
     public static function getRestoreAuthorizationResponse(Model $record): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage')) || $user->isBranchScoped()) {
+        if (! static::canAccess() || $user->isBranchScoped()) {
             return Response::deny('Unauthorized.');
         }
 
@@ -146,7 +149,7 @@ class MealResource extends Resource
     public static function getRestoreAnyAuthorizationResponse(): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage')) || $user->isBranchScoped()) {
+        if (! static::canAccess() || $user->isBranchScoped()) {
             return Response::deny('Unauthorized.');
         }
 

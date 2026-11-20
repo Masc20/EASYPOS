@@ -14,6 +14,11 @@ use Livewire\Component;
 
 class OrderProgress extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     public bool $isOpen = false;
     public string $statusFilter = 'all'; // all, new, in_prep, ready, served
     public string $search = '';
@@ -35,20 +40,14 @@ class OrderProgress extends Component
 
     private function resolveBranchId(?int $branchId = null): int
     {
-        if ($branchId !== null) {
-            return $branchId;
-        }
-
         $user = Auth::user();
-        if (! $user) {
-            return -1;
-        }
+        abort_unless($user?->can('pos.access'), 403);
 
         if ($user->isBranchScoped()) {
             return $user->effectiveBranchId() ?? -1;
         }
 
-        return $user->branch_id !== null ? (int) $user->branch_id : 1;
+        return $branchId ?? ($user->branch_id !== null ? (int) $user->branch_id : 1);
     }
 
     #[On('open-order-progress')]

@@ -203,7 +203,7 @@ class CreateOrderAction
                             break;
 
                         case 'custom':
-                            if (! $user || (! $user->isOwner() && ! $user->can('pos.discount') && ! $user->canManageBranchRoles())) {
+                            if (! $user || ! $user->can('pos.discount')) {
                                 throw new InvalidArgumentException('User is not authorized to apply custom discounts.');
                             }
                             $requestedCustom = (float) ($data['custom_discount'] ?? $data['discount_amount'] ?? 0);

@@ -14,17 +14,17 @@ class AccessControlSeeder extends Seeder
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
         foreach ([
-            'admin.access', 'pos.access', 'pos.checkout', 'pos.refund',
+            'admin.access', 'pos.access', 'pos.checkout', 'pos.refund', 'pos.discount',
             'kitchen.view', 'kitchen.prepare', 'menu.view', 'menu.manage',
-            'branch.manage', 'users.manage', 'reports.view', 'financial.control',
+            'branch.manage', 'roles.manage', 'users.manage', 'reports.view', 'financial.control',
         ] as $permission) {
             Permission::firstOrCreate(['name' => $permission, 'guard_name' => 'web']);
         }
 
         $roles = [
-            'owner' => ['admin.access', 'pos.access', 'pos.checkout', 'pos.refund', 'menu.view', 'menu.manage', 'branch.manage', 'users.manage', 'reports.view', 'financial.control'],
-            'super-admin' => ['admin.access', 'pos.refund', 'menu.manage', 'branch.manage', 'users.manage', 'reports.view', 'financial.control'],
-            'branch-manager' => ['admin.access', 'pos.access', 'pos.checkout', 'pos.refund', 'kitchen.view', 'kitchen.prepare', 'menu.view', 'menu.manage', 'users.manage', 'reports.view'],
+            'owner' => ['admin.access', 'pos.access', 'pos.checkout', 'pos.refund', 'pos.discount', 'menu.view', 'menu.manage', 'branch.manage', 'roles.manage', 'users.manage', 'reports.view', 'financial.control'],
+            'super-admin' => ['admin.access', 'pos.refund', 'pos.discount', 'menu.manage', 'branch.manage', 'roles.manage', 'users.manage', 'reports.view', 'financial.control'],
+            'branch-manager' => ['admin.access', 'pos.access', 'pos.checkout', 'pos.refund', 'pos.discount', 'kitchen.view', 'kitchen.prepare', 'menu.view', 'menu.manage', 'users.manage', 'reports.view'],
             'cashier' => ['pos.access', 'pos.checkout'],
             'cook' => ['kitchen.view', 'kitchen.prepare'],
             'chef' => ['kitchen.view', 'kitchen.prepare', 'menu.view', 'menu.manage'],

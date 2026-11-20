@@ -10,13 +10,15 @@ class PreloadAuthenticatedUserPermissions
 {
     /**
      * Handle an incoming request.
-     * Eagerly loads roles and permissions for authenticated users to eliminate
-     * lazy-loading query cascades during authorization and Blade view rendering.
+     * Refresh authorization relations at the request boundary so an existing
+     * authenticated session observes role and direct-permission revocations.
      */
     public function handle(Request $request, Closure $next): Response
     {
         if ($user = $request->user()) {
-            $user->loadMissing(['roles', 'permissions']);
+            $user->unsetRelation('roles');
+            $user->unsetRelation('permissions');
+            $user->load(['roles.permissions', 'permissions']);
         }
 
         return $next($request);

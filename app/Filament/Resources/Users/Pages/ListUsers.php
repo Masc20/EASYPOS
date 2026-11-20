@@ -18,6 +18,8 @@ use Illuminate\Validation\Rules\Password;
 
 class ListUsers extends ListRecords
 {
+    use \App\Filament\Concerns\AuthorizesResourcePage;
+
     protected static string $resource = UserResource::class;
 
     protected function getHeaderActions(): array
@@ -25,6 +27,7 @@ class ListUsers extends ListRecords
         return [
             // 1. Dedicated Modal for Floor Staff (PIN-Based Terminal Access)
             Action::make('create_floor_staff')
+                ->authorize(fn (): bool => UserResource::canCreate())
                 ->label('Add Floor Staff (PIN)')
                 ->color('primary')
                 ->modalHeading('Add Floor Staff (Terminal PIN)')
@@ -104,6 +107,7 @@ class ListUsers extends ListRecords
                     ];
                 })
                 ->action(function (array $data) {
+                    abort_unless(UserResource::canCreate(), 403);
                     $currentUser = auth()->user();
                     if ($currentUser && $currentUser->isBranchScoped()) {
                         $data['branch_id'] = $currentUser->branch_id;
@@ -135,11 +139,12 @@ class ListUsers extends ListRecords
 
             // 2. Dedicated Modal for Back-Office Admin / Manager (Email & Password)
             Action::make('create_admin_user')
+                ->authorize(fn (): bool => UserResource::canCreate() && ! auth()->user()->isBranchScoped() && auth()->user()->hasAnyRole(StaffRole::executiveValues()))
                 ->label('Add Admin / Manager')
                 ->color('gray')
                 ->modalHeading('Add Back-Office Admin / Manager')
                 ->modalWidth('md')
-                ->visible(fn (): bool => (bool) (auth()->user()?->isOwner() || auth()->user()?->hasRole(StaffRole::SUPER_ADMIN->value)))
+                ->visible(fn (): bool => (bool) (UserResource::canCreate() && ! auth()->user()->isBranchScoped() && auth()->user()->hasAnyRole(StaffRole::executiveValues())))
                 ->schema(function () {
                     $branches = Branch::where('is_active', true)->pluck('name', 'id')->toArray();
                     $defaultCode = CodeGeneratorService::generateEmpId(null, StaffRole::BRANCH_MANAGER->value);
@@ -185,7 +190,9 @@ class ListUsers extends ListRecords
 
                         Select::make('role')
                             ->label('Administrative Role')
-                            ->options(StaffRole::managementOptions())
+                            ->options(fn (): array => auth()->user()?->hasRole(StaffRole::OWNER->value)
+                                ? StaffRole::managementOptions()
+                                : array_diff_key(StaffRole::managementOptions(), [StaffRole::OWNER->value => true]))
                             ->default(StaffRole::BRANCH_MANAGER->value)
                             ->required()
                             ->live(debounce: 300)
@@ -226,10 +233,13 @@ class ListUsers extends ListRecords
                     ];
                 })
                 ->action(function (array $data) {
+                    abort_unless(UserResource::canCreate(), 403);
                     $currentUser = auth()->user();
-                    if (! $currentUser || (! $currentUser->isOwner() && ! $currentUser->hasRole(StaffRole::SUPER_ADMIN->value))) {
+                    if (! $currentUser || $currentUser->isBranchScoped() || ! $currentUser->hasAnyRole(StaffRole::executiveValues())) {
                         abort(403, 'Unauthorized to create administrative users.');
                     }
+
+                    abort_if(($data['role'] ?? null) === StaffRole::OWNER->value && ! $currentUser->hasRole(StaffRole::OWNER->value), 403);
 
                     $branchId = filled($data['branch_id'] ?? null) ? (int) $data['branch_id'] : null;
                     $empId = filled($data['emp_id'] ?? null)

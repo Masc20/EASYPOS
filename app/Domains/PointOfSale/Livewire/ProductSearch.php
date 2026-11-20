@@ -7,6 +7,11 @@ use Livewire\Component;
 
 class ProductSearch extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     public string $query = '';
 
     /**

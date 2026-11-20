@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Orders;
 use App\Domains\PointOfSale\Models\Order;
 use App\Filament\Resources\Orders\Pages\ListOrders;
 use App\Filament\Resources\Orders\Tables\OrdersTable;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Support\Icons\Heroicon;
@@ -14,14 +15,21 @@ use UnitEnum;
 
 class OrderResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('reports.view') || $user->can('pos.refund'))
+            && ($user->can('reports.view') || $user->can('pos.refund'))
             && (! $user->isBranchScoped() || $user->branch_id !== null));
+    }
+
+    protected static function allowedResourceActions(): array
+    {
+        return ['viewAny', 'view'];
     }
 
     public static function shouldRegisterNavigation(): bool

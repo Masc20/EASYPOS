@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Roles\Tables;
 
 use App\Domains\Audit\Services\ActivityLogger;
+use App\Filament\Resources\Roles\RoleResource;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Support\Enums\PermissionEnum;
 use App\Support\Enums\StaffRole;
@@ -50,12 +51,14 @@ class RolesTable
             ->recordAction(null)
             ->recordActions([
                 EditAction::make()
+                    ->databaseTransaction()
                     ->modal()
                     ->modalWidth('4xl')
-                    ->visible(fn (Role $record): bool => (bool) (auth()->user()?->hasRole(StaffRole::OWNER->value) || ! in_array($record->name, StaffRole::executiveValues(), true)))
-                    ->authorize(fn (Role $record): bool => (bool) (auth()->user()?->hasRole(StaffRole::OWNER->value) || ! in_array($record->name, StaffRole::executiveValues(), true)))
+                    ->visible(fn (Role $record): bool => (bool) (RoleResource::canAccess() && (auth()->user()?->hasRole(StaffRole::OWNER->value) || ! in_array($record->name, StaffRole::executiveValues(), true))))
+                    ->authorize(fn (Role $record): bool => (bool) (RoleResource::canAccess() && (auth()->user()?->hasRole(StaffRole::OWNER->value) || ! in_array($record->name, StaffRole::executiveValues(), true))))
                     ->mutateRecordDataUsing(fn (array $data, Role $record): array => RoleForm::fillPermissionTabs($data, $record))
                     ->using(function (Role $record, array $data): Role {
+                        abort_unless(RoleResource::canAccess(), 403);
                         if (in_array($record->name, StaffRole::executiveValues(), true) && ! auth()->user()?->hasRole(StaffRole::OWNER->value)) {
                             abort(403, 'Only the System Owner can modify executive system roles.');
                         }
@@ -81,7 +84,9 @@ class RolesTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->authorize(fn (): bool => RoleResource::canDeleteAny())
                         ->action(function (Collection $records): void {
+                            abort_unless(RoleResource::canDeleteAny(), 403);
                             foreach ($records as $record) {
                                 if (! $record instanceof Role) {
                                     continue;

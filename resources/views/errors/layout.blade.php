@@ -101,7 +101,7 @@
                                 </svg>
                             </a>
 
-                            @if (auth()->user()->isOwner() || auth()->user()->can('admin.access'))
+                            @if (auth()->user()->canAccessAdmin())
                                 <a href="{{ url('/admin') }}"
                                     class="inline-flex items-center justify-center gap-2 rounded-md border border-brand-border bg-brand-card hover:border-brand-secondary text-brand-text px-4 py-2.5 text-sm font-medium transition cursor-pointer shadow-2xs">
                                     <span>Admin Panel</span>

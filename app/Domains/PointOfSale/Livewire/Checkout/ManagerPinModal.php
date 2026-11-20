@@ -16,6 +16,11 @@ use Throwable;
 
 class ManagerPinModal extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     public ?int $orderId = null;
     public ?string $errorMessage = null;
 

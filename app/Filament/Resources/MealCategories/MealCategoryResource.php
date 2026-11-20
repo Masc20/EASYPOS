@@ -8,6 +8,7 @@ use App\Filament\Resources\MealCategories\Pages\EditMealCategory;
 use App\Filament\Resources\MealCategories\Pages\ListMealCategories;
 use App\Filament\Resources\MealCategories\Schemas\MealCategoryForm;
 use App\Filament\Resources\MealCategories\Tables\MealCategoriesTable;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -20,13 +21,15 @@ use UnitEnum;
 
 class MealCategoryResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('menu.manage'))
+            && $user->can('menu.manage')
             && (! $user->isBranchScoped() || $user->branch_id !== null));
     }
 
@@ -101,7 +104,7 @@ class MealCategoryResource extends Resource
     public static function getCreateAuthorizationResponse(): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! static::canAccess()) {
             return Response::deny('Unauthorized.');
         }
 
@@ -115,7 +118,7 @@ class MealCategoryResource extends Resource
     public static function getEditAuthorizationResponse(Model $record): Response
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! static::canAccess()) {
             return Response::deny('Unauthorized.');
         }
 

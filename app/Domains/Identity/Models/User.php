@@ -31,7 +31,6 @@ class User extends Authenticatable implements FilamentUser
     protected ?bool $memoizedIsFloorStaff = null;
     protected ?bool $memoizedIsStrictFloorStaff = null;
     protected ?bool $memoizedIsOwner = null;
-    protected ?bool $memoizedCanAccessAdmin = null;
 
     /**
      * Default model attributes matching database schema defaults.
@@ -118,34 +117,24 @@ class User extends Authenticatable implements FilamentUser
 
     /**
      * Determine if user has access to the admin back-office panel.
-     * Memoized per-request to avoid redundant role/permission lookups across Blade navigation components.
      */
     public function canAccessAdmin(): bool
     {
-        if ($this->memoizedCanAccessAdmin !== null) {
-            return $this->memoizedCanAccessAdmin;
-        }
-
         if (! $this->is_active) {
-            return $this->memoizedCanAccessAdmin = false;
+            return false;
         }
 
         // Security gate: A 4-digit PIN terminal session can NEVER access the admin panel.
         // Full email + password authentication is strictly required for back-office administration.
         if (session(SystemConstants::SESSION_AUTH_METHOD) === 'pin') {
-            return $this->memoizedCanAccessAdmin = false;
+            return false;
         }
 
         if ($this->isBranchScoped() && ($this->branch_id === null || $this->hasInactiveBranch())) {
-            return $this->memoizedCanAccessAdmin = false;
+            return false;
         }
 
-        // Branch managers get branch-level access only (not full admin privileges)
-        if ($this->hasRole(StaffRole::BRANCH_MANAGER->value)) {
-            return $this->memoizedCanAccessAdmin = true;
-        }
-
-        return $this->memoizedCanAccessAdmin = ($this->hasRole(StaffRole::managementValues()) || $this->can('admin.access'));
+        return $this->can('admin.access');
     }
 
     /**
@@ -280,7 +269,6 @@ class User extends Authenticatable implements FilamentUser
             $this->memoizedIsFloorStaff = null;
             $this->memoizedIsStrictFloorStaff = null;
             $this->memoizedIsOwner = null;
-            $this->memoizedCanAccessAdmin = null;
         }
 
         return parent::unsetRelation($relation);

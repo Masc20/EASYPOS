@@ -10,7 +10,7 @@ class DeleteMealAction
     public function handle(Meal|int $meal): bool
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('menu.manage'))) {
+        if (! $user || ! $user->can('menu.manage')) {
             abort(403, 'Unauthorized. You do not have permission to delete menu items.');
         }
 

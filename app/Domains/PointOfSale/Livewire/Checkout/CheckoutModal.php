@@ -13,6 +13,11 @@ use Livewire\Component;
 
 class CheckoutModal extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     public bool $isOpen = false;
 
     public array $items = [];
@@ -162,7 +167,7 @@ class CheckoutModal extends Component
             $this->errorMessage = 'User not authenticated.';
             return;
         }
-        abort_unless($user->can('pos.checkout'), 403);
+        abort_unless($user->can('pos.access') && $user->can('pos.checkout'), 403);
 
         if ($user->isBranchScoped() && ($user->branch_id === null || $user->effectiveBranchId() <= 0)) {
             $this->errorMessage = 'Unauthorized. Branch assignment required.';

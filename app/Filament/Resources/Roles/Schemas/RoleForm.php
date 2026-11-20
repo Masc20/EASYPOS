@@ -95,6 +95,8 @@ class RoleForm
             $data[$field] = array_values(array_intersect($rolePermissions, $tabPermissions));
         }
 
+        $data['permissions_other'] = array_values(array_diff($rolePermissions, array_merge(...array_values(self::PERMISSION_TABS))));
+
         return $data;
     }
 
@@ -105,7 +107,8 @@ class RoleForm
      */
     public static function extractPermissions(array $data): array
     {
-        $permissions = [];
+        $permissions = $data['permissions_other'] ?? [];
+        unset($data['permissions_other']);
 
         foreach (array_keys(self::PERMISSION_TABS) as $field) {
             $permissions = array_merge($permissions, $data[$field] ?? []);
@@ -115,7 +118,7 @@ class RoleForm
         $unique = array_values(array_unique($permissions));
         $valid = empty($unique)
             ? []
-            : Permission::query()->whereIn('name', $unique)->pluck('name')->all();
+            : Permission::query()->where('guard_name', 'web')->whereIn('name', $unique)->pluck('name')->all();
 
         return [$data, $valid];
     }
@@ -134,6 +137,7 @@ class RoleForm
                     ->hiddenLabel()
                     ->options(function () use ($permissions): array {
                         $existing = Permission::query()
+                            ->where('guard_name', 'web')
                             ->whereIn('name', $permissions)
                             ->pluck('name')
                             ->all();

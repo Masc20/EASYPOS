@@ -42,6 +42,13 @@ class AppServiceProvider extends ServiceProvider
         FilamentTimezone::set(config('app.business_timezone'));
         Vite::usePreloadTagAttributes(false);
 
+        Livewire::addPersistentMiddleware([
+            \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            \Spatie\Permission\Middleware\RoleMiddleware::class,
+            \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            \App\Http\Middleware\PreloadAuthenticatedUserPermissions::class,
+        ]);
+
         if ($this->app->environment('production')) {
             URL::forceScheme('https');
         }

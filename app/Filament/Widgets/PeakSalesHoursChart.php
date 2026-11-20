@@ -22,7 +22,12 @@ class PeakSalesHoursChart extends ChartWidget
 
     public static function canView(): bool
     {
-        return true;
+        return \App\Filament\Pages\SalesRecords::canAccess();
+    }
+
+    public function boot(): void
+    {
+        abort_unless(static::canView(), 403);
     }
 
     protected function getType(): string

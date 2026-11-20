@@ -19,7 +19,7 @@ class Dashboard extends BaseDashboard
 
         return (bool) ($user
             && $user->canAccessAdmin()
-            && ($user->isOwner() || $user->can('reports.view'))
+            && $user->can('reports.view')
             && (! $user->isBranchScoped() || $user->branch_id !== null));
     }
 
@@ -47,6 +47,11 @@ class Dashboard extends BaseDashboard
     public string $bestSellerSortBy = 'quantity';
     public ?int $bestSellerCategoryId = null;
     public int $bestSellerLimit = 10;
+
+    public function boot(): void
+    {
+        abort_unless(static::canAccess(), 403);
+    }
 
     public function mount(): void
     {

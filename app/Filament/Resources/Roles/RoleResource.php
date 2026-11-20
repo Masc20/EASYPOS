@@ -6,6 +6,7 @@ use App\Filament\Resources\Roles\Pages\ListRoles as ListRolesPage;
 use App\Filament\Resources\Roles\Schemas\RoleForm;
 use App\Filament\Resources\Roles\Tables\RolesTable;
 use App\Support\Enums\StaffRole;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -16,11 +17,22 @@ use UnitEnum;
 
 class RoleResource extends Resource
 {
+    use AuthorizesResourcePermissions;
+
     public static function canAccess(): bool
     {
         $user = auth()->user();
 
-        return (bool) ($user && ($user->isOwner() || $user->hasRole(StaffRole::SUPER_ADMIN->value)));
+        return (bool) ($user && $user->canAccessAdmin() && $user->can('roles.manage') && ! $user->isBranchScoped() && $user->hasAnyRole(StaffRole::executiveValues()));
+    }
+
+    public static function getEditAuthorizationResponse(\Illuminate\Database\Eloquent\Model $record): \Illuminate\Auth\Access\Response
+    {
+        if (! static::canAccess() || (in_array($record->name, StaffRole::executiveValues(), true) && ! auth()->user()->hasRole(StaffRole::OWNER->value))) {
+            return \Illuminate\Auth\Access\Response::deny('Unauthorized.');
+        }
+
+        return static::getAuthorizationResponse('update', $record);
     }
 
     public static function shouldRegisterNavigation(): bool
@@ -63,6 +75,7 @@ class RoleResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()
+            ->where('guard_name', 'web')
             ->with(['permissions']);
     }
 }

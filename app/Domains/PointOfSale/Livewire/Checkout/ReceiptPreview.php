@@ -18,7 +18,7 @@ class ReceiptPreview extends Component
     public function loadOrder(int $orderId): void
     {
         $user = auth()->user();
-        if (! $user || (! $user->isOwner() && ! $user->can('pos.access') && ! $user->can('reports.view'))) {
+        if (! $user || (! $user->can('pos.access') && ! $user->can('reports.view'))) {
             abort(403, 'Unauthorized.');
         }
 
@@ -48,7 +48,7 @@ class ReceiptPreview extends Component
         $order = null;
         if ($this->orderId) {
             $user = auth()->user();
-            if ($user && ($user->isOwner() || $user->can('pos.access') || $user->can('reports.view'))) {
+            if ($user && ($user->can('pos.access') || $user->can('reports.view'))) {
                 if (! $user->isBranchScoped() || ($user->branch_id !== null && $user->effectiveBranchId() > 0)) {
                     $query = Order::with(['items', 'payments', 'cashier', 'branch', 'kitchenTicket']);
                     if ($user->isBranchScoped()) {

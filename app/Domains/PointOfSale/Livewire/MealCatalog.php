@@ -10,6 +10,11 @@ use Livewire\Component;
 
 class MealCatalog extends Component
 {
+    public function boot(): void
+    {
+        abort_unless(auth()->user()?->can('pos.access'), 403);
+    }
+
     public ?int $selectedCategoryId = null;
 
     public string $search = '';
@@ -42,6 +47,9 @@ class MealCatalog extends Component
 
     public function syncAvailability(): void
     {
+        $user = auth()->user();
+        abort_unless($user?->can('pos.access'), 403);
+
         $branchId = $this->resolveBranchId();
         $currentVersion = $this->getCurrentMenuVersion($branchId);
 

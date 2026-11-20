@@ -94,6 +94,7 @@ class OrdersTable
             ->recordAction(null)
             ->recordActions([
                 Action::make('view_receipt')
+                    ->authorize(fn (): bool => \App\Filament\Resources\Orders\OrderResource::canAccess())
                     ->label('View Receipt')
                     ->icon(Heroicon::OutlinedReceiptPercent)
                     ->color('primary')
@@ -111,7 +112,7 @@ class OrdersTable
                     ->color('danger')
                     ->visible(function (Order $record): bool {
                         $user = auth()->user();
-                        if (! $user || $record->status === OrderStatus::CANCELLED->value) {
+                        if (! \App\Filament\Resources\Orders\OrderResource::canAccess() || ! $user || ! $user->can('pos.refund') || $record->status === OrderStatus::CANCELLED->value) {
                             return false;
                         }
 
@@ -131,7 +132,7 @@ class OrdersTable
                     })
                     ->authorize(function (Order $record): bool {
                         $user = auth()->user();
-                        if (! $user || $record->status === OrderStatus::CANCELLED->value) {
+                        if (! \App\Filament\Resources\Orders\OrderResource::canAccess() || ! $user || ! $user->can('pos.refund') || $record->status === OrderStatus::CANCELLED->value) {
                             return false;
                         }
 
@@ -160,6 +161,7 @@ class OrdersTable
                             ->rows(3),
                     ])
                     ->action(function (Order $record, array $data) {
+                        abort_unless(\App\Filament\Resources\Orders\OrderResource::canAccess() && auth()->user()?->can('pos.refund'), 403);
                         $user = auth()->user();
                         if ($user && $user->isBranchScoped() && (int) $record->branch_id !== (int) $user->branch_id) {
                             Notification::make()
