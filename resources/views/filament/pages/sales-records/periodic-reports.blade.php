@@ -29,11 +29,34 @@
                     </button>
                 </div>
 
-                <!-- Export CSV Trigger -->
-                <x-filament::button color="gray" size="xs" icon="heroicon-m-arrow-down-tray"
-                    wire:click="exportPeriodicCsv">
-                    Export Periodic CSV
-                </x-filament::button>
+                @php
+                    $periodicExportFilters = array_filter([
+                        'interval' => $periodicInterval,
+                        'startDate' => $startDate,
+                        'endDate' => $endDate,
+                        'branchId' => $branchId,
+                        'cashierId' => $cashierId,
+                        'status' => $exportStatus,
+                    ], fn ($value) => filled($value));
+                @endphp
+                <x-filament::dropdown placement="bottom-end">
+                    <x-slot name="trigger">
+                        <x-filament::button color="gray" size="xs" icon="heroicon-m-arrow-down-tray"
+                            wire:loading.attr="disabled" wire:target="exportStatus,startDate,endDate,branchId,cashierId,setPeriodicInterval,resetFilters,setPreset">
+                            Export Periodic
+                        </x-filament::button>
+                    </x-slot>
+                    <x-filament::dropdown.list>
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
+                            :href="route('sales-records.export-periodic-csv', $periodicExportFilters)" x-on:click="close()">
+                            CSV
+                        </x-filament::dropdown.list.item>
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
+                            :href="route('sales-records.export-periodic-excel', $periodicExportFilters)" x-on:click="close()">
+                            Excel
+                        </x-filament::dropdown.list.item>
+                    </x-filament::dropdown.list>
+                </x-filament::dropdown>
 
                 <!-- Printable Report Trigger -->
                 <a href="{{ route('sales-records.audit-report', ['interval' => $periodicInterval, 'startDate' => $startDate, 'endDate' => $endDate, 'branchId' => $branchId, 'cashierId' => $cashierId]) }}"
@@ -132,31 +155,31 @@
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-medium text-gray-600 dark:text-gray-400 font-mono">
-                                ₱{{ number_format($pItem['gross_sales'], 2) }}
+                                â‚±{{ number_format($pItem['gross_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-medium text-amber-600 dark:text-amber-400 font-mono">
-                                ₱{{ number_format($pItem['total_discounts'], 2) }}
+                                â‚±{{ number_format($pItem['total_discounts'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-black text-gray-900 dark:text-white font-mono">
-                                ₱{{ number_format($pItem['net_sales'], 2) }}
+                                â‚±{{ number_format($pItem['net_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-gray-700 dark:text-gray-300">
-                                ₱{{ number_format($pItem['vatable_sales'], 2) }}
+                                â‚±{{ number_format($pItem['vatable_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono font-semibold text-[#960D10] dark:text-[#DE9A9D]">
-                                ₱{{ number_format($pItem['vat_amount'], 2) }}
+                                â‚±{{ number_format($pItem['vat_amount'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-gray-700 dark:text-gray-300">
-                                ₱{{ number_format($pItem['vat_exempt_sales'], 2) }}
+                                â‚±{{ number_format($pItem['vat_exempt_sales'], 2) }}
                             </td>
                             <td
                                 class="px-3 py-2.5 align-middle whitespace-nowrap text-right font-mono text-purple-700 dark:text-purple-400 font-semibold last:pr-2">
-                                ₱{{ number_format($pItem['average_order_value'], 2) }}
+                                â‚±{{ number_format($pItem['average_order_value'], 2) }}
                             </td>
                         </tr>
                     @endforeach
@@ -173,29 +196,29 @@
                             {{ number_format($pTotals['orders_count']) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            ₱{{ number_format($pTotals['gross_sales'], 2) }}
+                            â‚±{{ number_format($pTotals['gross_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-amber-600 dark:text-amber-400">
-                            -₱{{ number_format($pTotals['total_discounts'], 2) }}
+                            -â‚±{{ number_format($pTotals['total_discounts'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-[#960D10] dark:text-[#DE9A9D] text-sm">
-                            ₱{{ number_format($pTotals['net_sales'], 2) }}
+                            â‚±{{ number_format($pTotals['net_sales'], 2) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            ₱{{ number_format($pTotals['vatable_sales'], 2) }}
+                            â‚±{{ number_format($pTotals['vatable_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-[#960D10] dark:text-[#DE9A9D]">
-                            ₱{{ number_format($pTotals['vat_amount'], 2) }}
+                            â‚±{{ number_format($pTotals['vat_amount'], 2) }}
                         </td>
                         <td class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono">
-                            ₱{{ number_format($pTotals['vat_exempt_sales'], 2) }}
+                            â‚±{{ number_format($pTotals['vat_exempt_sales'], 2) }}
                         </td>
                         <td
                             class="px-3 py-3 align-middle whitespace-nowrap text-right font-mono text-purple-700 dark:text-purple-400 last:pr-2">
-                            ₱{{ number_format($pTotals['average_order_value'], 2) }}
+                            â‚±{{ number_format($pTotals['average_order_value'], 2) }}
                         </td>
                     </tr>
                 </tfoot>

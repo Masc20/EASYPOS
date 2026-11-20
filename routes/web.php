@@ -86,6 +86,14 @@ $exportSalesRecords = function (\Illuminate\Http\Request $request, \App\Domains\
         abort(403);
     }
 
+    $validated = $request->validate([
+        'status' => ['sometimes', 'string', \Illuminate\Validation\Rule::in(array_keys($service::EXPORT_STATUSES))],
+        'interval' => ['sometimes', 'string', \Illuminate\Validation\Rule::in(['day', 'week', 'month', 'year'])],
+    ]);
+    $status = $validated['status'] ?? 'paid_or_completed';
+    $interval = $validated['interval'] ?? 'day';
+    $periodic = str_contains($request->route()->getName(), 'periodic');
+
     $startDate = $request->filled('startDate') ? $service->normalizeDateString((string) $request->query('startDate')) : '';
     $endDate = $request->filled('endDate') ? $service->normalizeDateString((string) $request->query('endDate')) : '';
     $requestedBranchId = $request->filled('branchId') ? (int) $request->query('branchId') : null;
@@ -103,30 +111,34 @@ $exportSalesRecords = function (\Illuminate\Http\Request $request, \App\Domains\
 
     $safeStart = $service->sanitizeFilenameSegment($startDate);
     $safeEnd = $service->sanitizeFilenameSegment($endDate);
-    $format = $request->route()->getName() === 'sales-records.export-excel' ? 'xlsx' : 'csv';
-    $filename = 'sales-records-' . $safeStart . '-to-' . $safeEnd . '.' . $format;
+    $format = str_ends_with($request->route()->getName(), 'excel') ? 'xlsx' : 'csv';
+    $prefix = $periodic ? 'periodic-sales-' . $interval : 'sales-records';
+    $statusSuffix = $status === 'paid_or_completed' ? '' : '-' . $status;
+    $filename = $prefix . '-' . $safeStart . '-to-' . $safeEnd . $statusSuffix . '.' . $format;
 
-    if ($format === 'xlsx') {
-        return response()->streamDownload(function () use ($service, $startDate, $endDate, $effectiveBranchId, $cashierId) {
-            $service->streamOrdersExcel($startDate, $endDate, $effectiveBranchId, $cashierId);
-        }, $filename, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'X-Accel-Buffering' => 'no',
-        ]);
-    }
-
-    return response()->streamDownload(function () use ($service, $startDate, $endDate, $effectiveBranchId, $cashierId) {
+    return response()->streamDownload(function () use ($service, $startDate, $endDate, $effectiveBranchId, $cashierId, $status, $interval, $periodic, $format) {
+        if ($format === 'xlsx') {
+            if ($periodic) {
+                $service->streamPeriodicExcel($interval, $startDate, $endDate, $effectiveBranchId, $cashierId, $status);
+            } else {
+                $service->streamOrdersExcel($startDate, $endDate, $effectiveBranchId, $cashierId, $status);
+            }
+            return;
+        }
         $handle = fopen('php://output', 'w');
-        $service->streamOrdersCsv(
-            $handle,
-            $startDate,
-            $endDate,
-            $effectiveBranchId,
-            $cashierId
-        );
-        fclose($handle);
+        try {
+            if ($periodic) {
+                $service->streamPeriodicCsv($handle, $interval, $startDate, $endDate, $effectiveBranchId, $cashierId, $status);
+            } else {
+                $service->streamOrdersCsv($handle, $startDate, $endDate, $effectiveBranchId, $cashierId, $status);
+            }
+        } finally {
+            fclose($handle);
+        }
     }, $filename, [
-        'Content-Type' => 'text/csv; charset=UTF-8',
+        'Content-Type' => $format === 'xlsx'
+            ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            : 'text/csv; charset=UTF-8',
         'X-Accel-Buffering' => 'no',
     ]);
 };
@@ -134,6 +146,8 @@ $exportSalesRecords = function (\Illuminate\Http\Request $request, \App\Domains\
 Route::middleware(['auth', 'permission:reports.view', 'throttle:reports'])->group(function () use ($exportSalesRecords) {
     Route::get('/admin/sales-records/export-csv', $exportSalesRecords)->name('sales-records.export-csv');
     Route::get('/admin/sales-records/export-excel', $exportSalesRecords)->name('sales-records.export-excel');
+    Route::get('/admin/sales-records/export-periodic-csv', $exportSalesRecords)->name('sales-records.export-periodic-csv');
+    Route::get('/admin/sales-records/export-periodic-excel', $exportSalesRecords)->name('sales-records.export-periodic-excel');
 });
 
 Route::middleware('auth')->group(function () {

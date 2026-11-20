@@ -6,7 +6,10 @@ use App\Support\Constants\SystemConstants;
 use App\Support\Enums\OrderStatus;
 use App\Support\Enums\PaymentStatus;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use OpenSpout\Common\Entity\Cell;
 use OpenSpout\Common\Entity\Cell\StringCell;
 use OpenSpout\Common\Entity\Row;
@@ -16,6 +19,30 @@ use OpenSpout\Writer\XLSX\Writer;
 
 trait StreamsSalesCsv
 {
+    public const EXPORT_STATUSES = [
+        'paid_or_completed' => 'Paid or Completed',
+        'paid' => 'Paid only',
+        'completed' => 'Completed only',
+    ];
+
+    protected function applyOrderExportStatus(Builder|QueryBuilder $query, string $status): void
+    {
+        if (! array_key_exists($status, self::EXPORT_STATUSES)) {
+            throw ValidationException::withMessages(['status' => 'Choose Paid or Completed, Paid only, or Completed only.']);
+        }
+        $query->whereNotIn('orders.status', [OrderStatus::PENDING->value, OrderStatus::CANCELLED->value]);
+        if ($status === 'paid') {
+            $query->where('orders.payment_status', PaymentStatus::PAID->value);
+        } elseif ($status === 'completed') {
+            $query->where('orders.status', OrderStatus::COMPLETED->value);
+        } else {
+            $query->where(function ($query) {
+                $query->where('orders.payment_status', PaymentStatus::PAID->value)
+                    ->orWhere('orders.status', OrderStatus::COMPLETED->value);
+            });
+        }
+    }
+
     /**
      * Stream filtered orders directly to an output resource (e.g. php://output) in chunks
      * using lightweight stdClass queries (zero Eloquent model hydration, O(1) memory, bounded SQL).
@@ -27,17 +54,18 @@ trait StreamsSalesCsv
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
-        ?int $cashierId = null
+        ?int $cashierId = null,
+        string $status = 'paid_or_completed'
     ): void {
         fwrite($output, "\xEF\xBB\xBF");
         fputcsv($output, $this->orderExportHeaders());
         $this->writeOrderExportRows(function (array $row) use ($output): void {
-            foreach ([0, 1, 2, 3, 4, 5, 9, 10] as $index) {
+            foreach ([0, 1, 2, 3, 4, 5, 9, 10, 11] as $index) {
                 $row[$index] = $this->sanitizeCsvCell($row[$index]);
             }
             fputcsv($output, $row);
             fflush($output);
-        }, $startDate, $endDate, $branchId, $cashierId);
+        }, $startDate, $endDate, $branchId, $cashierId, $status);
         fflush($output);
     }
 
@@ -45,7 +73,8 @@ trait StreamsSalesCsv
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
-        ?int $cashierId = null
+        ?int $cashierId = null,
+        string $status = 'paid_or_completed'
     ): void {
         $options = new Options();
         $options->DEFAULT_COLUMN_WIDTH = 22;
@@ -69,7 +98,7 @@ trait StreamsSalesCsv
                     $cells[1] = Cell::fromValue(Carbon::parse($values[1], config('app.business_timezone')), $dateStyle);
                 }
                 $writer->addRow(new Row($cells));
-            }, $startDate, $endDate, $branchId, $cashierId);
+            }, $startDate, $endDate, $branchId, $cashierId, $status);
         } finally {
             $writer->close();
         }
@@ -89,6 +118,7 @@ trait StreamsSalesCsv
             'Net Total (PHP)',
             'Payment Method',
             'Status',
+            'Payment Status',
         ];
     }
 
@@ -97,7 +127,8 @@ trait StreamsSalesCsv
         ?string $startDate,
         ?string $endDate,
         ?int $branchId,
-        ?int $cashierId
+        ?int $cashierId,
+        string $status
     ): void {
         $effectiveBranchId = $this->resolveBranchScope($branchId);
 
@@ -105,10 +136,6 @@ trait StreamsSalesCsv
             ->leftJoin('branches', 'orders.branch_id', '=', 'branches.id')
             ->leftJoin('users', 'orders.cashier_id', '=', 'users.id')
             ->whereNull('orders.deleted_at')
-            ->where(function ($q) {
-                $q->where('orders.payment_status', PaymentStatus::PAID->value)
-                    ->orWhere('orders.status', OrderStatus::COMPLETED->value);
-            })
             ->select([
                 'orders.id',
                 'orders.order_number',
@@ -119,10 +146,12 @@ trait StreamsSalesCsv
                 'orders.discount_amount',
                 'orders.total_amount',
                 'orders.status',
+                'orders.payment_status',
                 'branches.name as branch_name',
                 'users.name as cashier_name',
             ]);
 
+        $this->applyOrderExportStatus($query, $status);
         $this->applyBusinessDates($query, 'orders.created_at', $startDate, $endDate);
 
         if ($effectiveBranchId !== null) {
@@ -158,12 +187,13 @@ trait StreamsSalesCsv
                     (string) ($order->branch_name ?? 'Global'),
                     (string) ($order->cashier_name ?? 'Staff'),
                     strtoupper(str_replace('_', ' ', (string) $order->order_type)),
-                    (string) ($order->table_number ?? '—'),
+                    (string) ($order->table_number ?? 'â€”'),
                     number_format((float) $order->subtotal, 2, '.', ''),
                     number_format((float) $order->discount_amount, 2, '.', ''),
                     number_format((float) $order->total_amount, 2, '.', ''),
                     ucwords(str_replace('_', ' ', $paymentMethod)),
                     ucfirst((string) $order->status),
+                    ucwords(str_replace('_', ' ', (string) $order->payment_status)),
                 ]);
             }
         }, 'orders.id', 'id');
@@ -198,10 +228,11 @@ trait StreamsSalesCsv
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
-        ?int $cashierId = null
+        ?int $cashierId = null,
+        string $status = 'paid_or_completed'
     ): void {
         $effectiveBranchId = $this->resolveBranchScope($branchId);
-        $report = $this->getPeriodicReport($interval, $startDate, $endDate, $effectiveBranchId, $cashierId);
+        $report = $this->getPeriodicReport($interval, $startDate, $endDate, $effectiveBranchId, $cashierId, $status);
 
         // Emit UTF-8 BOM for Microsoft Excel compatibility
         fwrite($output, "\xEF\xBB\xBF");
@@ -257,6 +288,41 @@ trait StreamsSalesCsv
                 @ob_flush();
             }
             @flush();
+        }
+    }
+
+    public function streamPeriodicExcel(
+        string $interval = 'day',
+        ?string $startDate = null,
+        ?string $endDate = null,
+        ?int $branchId = null,
+        ?int $cashierId = null,
+        string $status = 'paid_or_completed'
+    ): void {
+        $csv = fopen('php://temp', 'w+');
+        $options = new Options();
+        $options->DEFAULT_COLUMN_WIDTH = 24;
+        $writer = new Writer($options);
+        try {
+            $this->streamPeriodicCsv($csv, $interval, $startDate, $endDate, $branchId, $cashierId, $status);
+            rewind($csv);
+            // Skip the CSV BOM before reading the header.
+            fread($csv, 3);
+            $writer->openToFile('php://output');
+            $writer->getCurrentSheet()->setName('Periodic Sales');
+            $headerStyle = (new Style())->setFontBold()->setFontColor('FFFFFF')->setBackgroundColor('166534');
+            $writer->addRow(Row::fromValues(fgetcsv($csv), $headerStyle));
+            $moneyStyle = (new Style())->setFormat('#,##0.00');
+            while (($values = fgetcsv($csv)) !== false) {
+                $cells = [new StringCell($values[0], null), Cell::fromValue((int) $values[1])];
+                foreach (array_slice($values, 2) as $value) {
+                    $cells[] = Cell::fromValue((float) $value, $moneyStyle);
+                }
+                $writer->addRow(new Row($cells));
+            }
+        } finally {
+            $writer->close();
+            fclose($csv);
         }
     }
 

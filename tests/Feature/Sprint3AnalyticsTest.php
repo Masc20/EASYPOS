@@ -444,7 +444,9 @@ class Sprint3AnalyticsTest extends TestCase
             ->test(SalesRecords::class)
             ->assertSuccessful()
             ->assertSee('Periodic Sales Reports (Daily / Weekly / Monthly / Yearly)')
-            ->assertSee('Export Periodic CSV')
+            ->assertSee('Export Periodic')
+            ->assertSee('export-periodic-csv')
+            ->assertSee('export-periodic-excel')
             ->assertSee('Print Audit Report')
             // Test switching intervals
             ->call('setPeriodicInterval', 'monthly')

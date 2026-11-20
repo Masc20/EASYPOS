@@ -95,13 +95,18 @@ trait AggregatesPeriodicTrends
         ?string $startDate = null,
         ?string $endDate = null,
         ?int $branchId = null,
-        ?int $cashierId = null
+        ?int $cashierId = null,
+        ?string $exportStatus = null
     ): array {
         $effectiveBranchId = $this->resolveBranchScope($branchId);
         $interval = in_array(strtolower($interval), ['day', 'week', 'month', 'year']) ? strtolower($interval) : 'day';
         $periodSql = SqlDialect::periodExpression('orders.created_at', $interval);
 
         $query = $this->buildFilteredOrdersQuery($startDate, $endDate, $effectiveBranchId, $cashierId);
+
+        if ($exportStatus !== null) {
+            $this->applyOrderExportStatus($query, $exportStatus);
+        }
 
         $vatDivisor = SystemConstants::VAT_DIVISOR;
         $vatRate = SystemConstants::VAT_RATE;

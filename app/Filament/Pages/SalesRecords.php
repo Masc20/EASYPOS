@@ -41,6 +41,8 @@ class SalesRecords extends Page
 
     protected string $view = 'filament.pages.sales-records';
 
+    public string $exportStatus = 'paid_or_completed';
+
     public string $startDate = '';
     public string $endDate = '';
     public string $selectedPreset = 'today';
@@ -143,6 +145,7 @@ class SalesRecords extends Page
 
     public function resetFilters(): void
     {
+        $this->exportStatus = 'paid_or_completed';
         $this->branchId = auth()->user()?->isBranchScoped()
             ? auth()->user()->effectiveBranchId()
             : null;
@@ -158,6 +161,8 @@ class SalesRecords extends Page
 
     public function exportCsv(SalesAggregationService $service): StreamedResponse
     {
+        abort_unless(static::canAccess(), 403);
+        $this->validate(['exportStatus' => ['required', \Illuminate\Validation\Rule::in(array_keys(SalesAggregationService::EXPORT_STATUSES))]]);
         $this->skipRender();
 
         $user = auth()->user();
@@ -182,7 +187,8 @@ class SalesRecords extends Page
                 $this->startDate,
                 $this->endDate,
                 $effectiveBranchId,
-                $cashierId
+                $cashierId,
+                $this->exportStatus
             );
             fclose($handle);
         }, $filename, [
@@ -193,6 +199,8 @@ class SalesRecords extends Page
 
     public function exportPeriodicCsv(SalesAggregationService $service): StreamedResponse
     {
+        abort_unless(static::canAccess(), 403);
+        $this->validate(['exportStatus' => ['required', \Illuminate\Validation\Rule::in(array_keys(SalesAggregationService::EXPORT_STATUSES))]]);
         $this->skipRender();
 
         $user = auth()->user();
@@ -221,7 +229,8 @@ class SalesRecords extends Page
                 $this->startDate,
                 $this->endDate,
                 $effectiveBranchId,
-                $cashierId
+                $cashierId,
+                $this->exportStatus
             );
             fclose($output);
         }, $filename, [

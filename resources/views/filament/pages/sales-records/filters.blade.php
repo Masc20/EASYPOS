@@ -7,19 +7,34 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center gap-2">
-                <x-filament::button color="gray" size="sm" icon="heroicon-m-arrow-path"
-                    wire:click="resetFilters" tooltip="Reset filters to today">
+            <div class="flex flex-wrap items-end gap-2">
+                <x-filament::button color="gray" size="sm" icon="heroicon-m-arrow-path" wire:click="resetFilters"
+                    tooltip="Reset filters to today">
                     Reset
                 </x-filament::button>
 
+                <div>
+                    <x-filament::input.wrapper prefix="Export:" :valid="!$errors->has('exportStatus')">
+                        <x-filament::input.select id="sales-export-status" aria-label="Export order status"
+                            wire:model.live="exportStatus" class="text-xs py-1">
+                            @foreach (\App\Domains\PointOfSale\Services\SalesAggregationService::EXPORT_STATUSES as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
+                        </x-filament::input.select>
+                    </x-filament::input.wrapper>
+                </div>
+
                 @php
-                    $exportFilters = array_filter([
-                        'startDate' => $startDate,
-                        'endDate' => $endDate,
-                        'branchId' => $branchId,
-                        'cashierId' => $cashierId,
-                    ], fn ($value) => filled($value));
+                    $exportFilters = array_filter(
+                        [
+                            'startDate' => $startDate,
+                            'endDate' => $endDate,
+                            'branchId' => $branchId,
+                            'cashierId' => $cashierId,
+                            'status' => $exportStatus,
+                        ],
+                        fn($value) => filled($value),
+                    );
                 @endphp
                 <x-filament::dropdown placement="bottom-end">
                     <x-slot name="trigger">
@@ -28,12 +43,12 @@
                         </x-filament::button>
                     </x-slot>
                     <x-filament::dropdown.list>
-                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
-                            :href="route('sales-records.export-csv', $exportFilters)" x-on:click="close()">
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false" :href="route('sales-records.export-csv', $exportFilters)"
+                            x-on:click="close()">
                             CSV
                         </x-filament::dropdown.list.item>
-                        <x-filament::dropdown.list.item tag="a" :spa-mode="false"
-                            :href="route('sales-records.export-excel', $exportFilters)" x-on:click="close()">
+                        <x-filament::dropdown.list.item tag="a" :spa-mode="false" :href="route('sales-records.export-excel', $exportFilters)"
+                            x-on:click="close()">
                             Excel
                         </x-filament::dropdown.list.item>
                     </x-filament::dropdown.list>
@@ -86,7 +101,8 @@
 
             @if (!($isBranchScoped ?? false))
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Branch Location</label>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Branch
+                        Location</label>
                     <x-filament::input.wrapper prefixIcon="heroicon-m-building-storefront">
                         <x-filament::input.select wire:model.live="branchId">
                             <option value="">All Branches</option>
@@ -98,7 +114,8 @@
                 </div>
             @else
                 <div>
-                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned Branch</label>
+                    <label class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Assigned
+                        Branch</label>
                     <div
                         class="px-3 py-2 text-xs font-semibold rounded-lg bg-gray-100 dark:bg-white/10 text-gray-900 dark:text-white">
                         {{ auth()->user()->branch?->name ?? 'Branch #' . auth()->user()->branch_id }}
