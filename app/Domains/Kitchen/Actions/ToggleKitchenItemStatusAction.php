@@ -5,8 +5,11 @@ namespace App\Domains\Kitchen\Actions;
 use App\Domains\Kitchen\Actions\Concerns\AuthorizesKitchenActions;
 use App\Domains\Kitchen\Events\KitchenTicketItemStatusUpdated;
 use App\Domains\Kitchen\Models\KitchenTicketItem;
+use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Domains\PointOfSale\Models\Order;
 use App\Support\Enums\KitchenTicketItemStatus;
 use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -26,6 +29,13 @@ class ToggleKitchenItemStatusAction
         }
 
         return DB::transaction(function () use ($item, $forceStatus) {
+            $order = Order::whereKey($item->ticket->order_id)->lockForUpdate()->firstOrFail();
+            $ticket = KitchenTicket::whereKey($item->ticket_id)->lockForUpdate()->firstOrFail();
+            $item = KitchenTicketItem::whereKey($item->id)->lockForUpdate()->firstOrFail();
+            if ($order->status === OrderStatus::CANCELLED->value || $ticket->status === KitchenTicketStatus::CANCELLED->value) {
+                throw new InvalidArgumentException('Cancelled orders cannot change preparation status.');
+            }
+            $item->setRelation('ticket', $ticket);
             if ($forceStatus) {
                 $newStatus = $forceStatus;
             } else {

@@ -197,6 +197,11 @@ class VoidOrderAction
             if ($manager->isBranchScoped() && ($manager->branch_id === null || ($order->branch_id && (int) $manager->branch_id !== (int) $order->branch_id))) {
                 throw new InvalidArgumentException("Manager does not belong to this branch.");
             }
+            // Use the same order -> ticket lock order as kitchen status transitions.
+            $tickets = DB::table('kitchen_tickets')->where('order_id', $order->id)->lockForUpdate()->get();
+            $wasConsumed = $order->stock_consumed_at !== null || $order->completed_at !== null
+                || $order->status === OrderStatus::COMPLETED->value
+                || $tickets->contains(fn ($ticket) => $ticket->status === KitchenTicketStatus::SERVED->value || $ticket->served_at !== null);
             $previousStatus = $order->status;
             $auditStamp = "[VOIDED by {$manager->name} ({$manager->emp_id}) on " . now(config('app.business_timezone'))->toIso8601String() . ": {$data['reason']}]";
             $updatedNotes = trim(($order->notes ? $order->notes . "\n" : '') . $auditStamp);
@@ -222,28 +227,16 @@ class VoidOrderAction
                 'updated_at' => now(),
             ]);
 
-            // 4. Return inventory stock for trackable items
-            $items = DB::table('order_items')->where('order_id', $order->id)->get(['meal_id', 'quantity']);
-            foreach ($items as $item) {
-                if ($item->meal_id) {
-                    $branchOverride = DB::table('meal_branch_availabilities')
-                        ->where('meal_id', $item->meal_id)
-                        ->where('branch_id', $order->branch_id)
-                        ->where('track_stock', true)
-                        ->first();
-
-                    if ($branchOverride) {
-                        DB::table('meal_branch_availabilities')
-                            ->where('id', $branchOverride->id)
-                            ->increment('stock_quantity', $item->quantity);
-                    } else {
-                        DB::table('meals')
-                            ->where('id', $item->meal_id)
-                            ->where('track_stock', true)
-                            ->increment('stock_quantity', $item->quantity);
-                    }
+            // Return only reserved portions. Served meals remain physically consumed.
+            $globalStockChanged = ! $wasConsumed && $this->restoreReservedPortions($order);
+            DB::afterCommit(function () use ($order, $globalStockChanged): void {
+                Cache::forget("branch_{$order->branch_id}_order_progress_counts");
+                if ($globalStockChanged) {
+                    Meal::bumpMenuVersionForBranch(null);
+                } elseif ($order->branch_id !== null) {
+                    Meal::bumpMenuVersionForSingleBranch((int) $order->branch_id);
                 }
-            }
+            });
 
             $voidContext = [
                 'event' => 'ORDER_VOIDED',
@@ -262,18 +255,63 @@ class VoidOrderAction
             Log::info("ORDER_VOIDED", $voidContext);
             SecurityLogger::log('warning', 'ORDER_VOID_AUTHORIZED', $voidContext);
 
-            event(new OrderVoided($order, $manager, $data['reason']));
-
             $order->refresh();
+
+            event(new OrderVoided($order, $manager, $data['reason']));
 
             return $order;
         });
 
-        if ($voidedOrder->branch_id) {
-            Cache::forget("branch_{$voidedOrder->branch_id}_order_progress_counts");
-            Meal::bumpMenuVersionForSingleBranch((int) $voidedOrder->branch_id);
-        }
-
         return $voidedOrder;
     }
+
+    private function restoreReservedPortions(Order $order): bool
+    {
+        $globalStockChanged = false;
+        $items = DB::table('order_items')->where('order_id', $order->id)->whereNotNull('meal_id')
+            ->selectRaw('meal_id, stock_source, SUM(quantity) AS quantity')
+            ->groupBy('meal_id', 'stock_source')->orderBy('meal_id')->get();
+
+        foreach ($items as $item) {
+            if ($item->stock_source === 'none' || $item->quantity <= 0) {
+                continue;
+            }
+            // Match checkout's deterministic meal -> branch-override lock order.
+            $meal = Meal::withTrashed()->whereKey($item->meal_id)->lockForUpdate()->first();
+            if (! $meal || ($meal->branch_id !== null && (int) $meal->branch_id !== (int) $order->branch_id)) {
+                continue;
+            }
+            $override = DB::table('meal_branch_availabilities')->where('meal_id', $item->meal_id)
+                ->where('branch_id', $order->branch_id)->lockForUpdate()->first();
+            $source = $item->stock_source;
+            if ($source === null) {
+                // Historical orders predate deduction snapshots. Honor an explicit unlimited override.
+                if ($meal->branch_id === null && $override !== null && $override->track_stock !== null) {
+                    $source = $override->track_stock ? 'branch' : 'none';
+                } else {
+                    $source = $meal->track_stock ? 'meal' : 'none';
+                }
+            }
+            if ($source === 'branch' && $override !== null) {
+                $stock = $override;
+                $query = DB::table('meal_branch_availabilities')->where('id', $override->id);
+            } elseif ($source === 'meal') {
+                $stock = $meal;
+                $query = DB::table('meals')->where('id', $meal->id);
+                $globalStockChanged = $globalStockChanged || $meal->branch_id === null;
+            } else {
+                continue;
+            }
+            $remaining = (int) $stock->stock_quantity + (int) $item->quantity;
+            $changes = ['stock_quantity' => $remaining, 'updated_at' => now()];
+            // Preserve manual 86 holds on dishes that still had positive portions.
+            if ($stock->track_stock && (int) $stock->stock_quantity <= 0 && $remaining > 0) {
+                $changes['is_available'] = true;
+            }
+            $query->update($changes);
+        }
+
+        return $globalStockChanged;
+    }
+
 }

@@ -5,6 +5,7 @@ namespace App\Domains\Kitchen\Actions;
 use App\Domains\Kitchen\Actions\Concerns\AuthorizesKitchenActions;
 use App\Domains\Kitchen\Events\KitchenTicketStatusUpdated;
 use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Domains\PointOfSale\Models\Order;
 use App\Support\Enums\KitchenTicketItemStatus;
 use App\Support\Enums\KitchenTicketStatus;
 use App\Support\Enums\OrderStatus;
@@ -27,6 +28,12 @@ class UpdateKitchenTicketStatusAction
         }
 
         return DB::transaction(function () use ($ticket, $newStatus) {
+            $order = Order::whereKey($ticket->order_id)->lockForUpdate()->firstOrFail();
+            $ticket = KitchenTicket::whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            if ($order->status === OrderStatus::CANCELLED->value || $ticket->status === KitchenTicketStatus::CANCELLED->value) {
+                throw new InvalidArgumentException('Cancelled orders cannot change kitchen status.');
+            }
+            $ticket->setRelation('order', $order);
             $previousStatus = $ticket->status;
             $updates = ['status' => $newStatus];
 
@@ -46,6 +53,7 @@ class UpdateKitchenTicketStatusAction
                     $ticket->order->update([
                         'status' => OrderStatus::COMPLETED->value,
                         'completed_at' => now(),
+                        'stock_consumed_at' => $order->stock_consumed_at ?? now(),
                     ]);
                 }
             } elseif ($newStatus === KitchenTicketStatus::CANCELLED->value) {

@@ -177,6 +177,9 @@ class CreateOrderAction
 
                         $orderItemsData[] = [
                             'meal_id' => $meal->id,
+                            'stock_source' => $meal->trackStockForBranch($branch->id)
+                                ? ($meal->branch_id === null ? 'branch' : 'meal')
+                                : 'none',
                             'meal_name' => $meal->name,
                             'unit_price' => $unitPrice,
                             'quantity' => $quantity,

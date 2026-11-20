@@ -7,8 +7,10 @@ use App\Domains\Kitchen\Actions\Concerns\AuthorizesKitchenActions;
 use App\Domains\Kitchen\Events\KitchenTicketClaimed;
 use App\Domains\Kitchen\Events\KitchenTicketStatusUpdated;
 use App\Domains\Kitchen\Models\KitchenTicket;
+use App\Domains\PointOfSale\Models\Order;
 use App\Support\Enums\KitchenTicketItemStatus;
 use App\Support\Enums\KitchenTicketStatus;
+use App\Support\Enums\OrderStatus;
 use Illuminate\Support\Facades\DB;
 
 class ClaimKitchenTicketAction
@@ -23,6 +25,11 @@ class ClaimKitchenTicketAction
         $this->authorizeKitchenAction($ticket, 'claim kitchen tickets');
 
         return DB::transaction(function () use ($ticket, $cook) {
+            $order = Order::whereKey($ticket->order_id)->lockForUpdate()->firstOrFail();
+            $ticket = KitchenTicket::whereKey($ticket->id)->lockForUpdate()->firstOrFail();
+            if ($order->status === OrderStatus::CANCELLED->value || $ticket->status === KitchenTicketStatus::CANCELLED->value) {
+                throw new \InvalidArgumentException('Cancelled orders cannot be claimed.');
+            }
             $previousStatus = $ticket->status;
 
             $ticket->update([

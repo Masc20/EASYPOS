@@ -104,7 +104,9 @@ class AdversarialM3SalesRecordsRegressionTest extends TestCase
             ->assertSee('Cash Register Reconciliation')
             ->assertSee('BIR Tax Compliance Breakdown')
             ->assertSee('Periodic Sales Reports')
-            ->assertSee('Export Periodic CSV');
+            ->assertSee('Export Periodic')
+            ->assertSee('export-periodic-csv')
+            ->assertSee('export-periodic-excel');
     }
 
     public function test_all_filter_presets_and_date_switches_render_cleanly(): void

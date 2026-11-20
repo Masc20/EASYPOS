@@ -27,6 +27,7 @@ class Order extends Model
         'tax_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
         'completed_at' => 'datetime',
+        'stock_consumed_at' => 'datetime',
     ];
 
     /**
