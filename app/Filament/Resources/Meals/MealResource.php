@@ -3,12 +3,10 @@
 namespace App\Filament\Resources\Meals;
 
 use App\Domains\Menu\Models\Meal;
-use App\Filament\Resources\Meals\Pages\CreateMeal;
-use App\Filament\Resources\Meals\Pages\EditMeal;
+use App\Filament\Concerns\AuthorizesResourcePermissions;
 use App\Filament\Resources\Meals\Pages\ListMeals;
 use App\Filament\Resources\Meals\Schemas\MealForm;
 use App\Filament\Resources\Meals\Tables\MealsTable;
-use App\Filament\Concerns\AuthorizesResourcePermissions;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -128,7 +126,17 @@ class MealResource extends Resource
 
     public static function getDeleteAuthorizationResponse(Model $record): Response
     {
-        return static::getEditAuthorizationResponse($record);
+        if (! static::canAccess()) {
+            return Response::deny('Unauthorized.');
+        }
+
+        $user = auth()->user();
+        if ($user->isBranchScoped() && $record->branch_id !== null
+            && (int) $record->branch_id !== $user->effectiveBranchId()) {
+            return Response::deny('Unauthorized.');
+        }
+
+        return Response::allow();
     }
 
     public static function getDeleteAnyAuthorizationResponse(): Response

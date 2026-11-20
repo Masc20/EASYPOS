@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Meals\Tables;
 
+use App\Domains\Menu\Actions\DeleteMealAction;
 use App\Domains\Menu\Models\Meal;
 use App\Filament\Resources\Meals\MealResource;
 use App\Support\Constants\SystemConstants;
@@ -17,6 +18,7 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 class MealsTable
 {
@@ -100,6 +102,15 @@ class MealsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make()
+                        ->label(fn () => auth()->user()?->isBranchScoped() ? 'Remove from branch' : 'Delete selected')
+                        ->modalDescription(fn () => auth()->user()?->isBranchScoped()
+                            ? 'Hide the selected meals from your branch. The global catalog keeps these meals.'
+                            : 'Archive the selected meals from the catalog.')
+                        ->using(function (DeleteBulkAction $action, Collection $records): void {
+                            foreach ($records as $record) {
+                                app(DeleteMealAction::class)->handle($record);
+                            }
+                        })
                         ->authorizeIndividualRecords()
                         ->authorize(fn (): bool => MealResource::canDeleteAny()),
                     ForceDeleteBulkAction::make()

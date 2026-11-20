@@ -5,6 +5,7 @@ namespace Tests\Feature\Security;
 use App\Domains\Branches\Models\Branch;
 use App\Domains\Identity\Models\User;
 use App\Domains\Menu\Actions\CreateMealAction;
+use App\Domains\Menu\Actions\DeleteMealAction;
 use App\Domains\Menu\Actions\UpdateBranchPortionsAction;
 use App\Domains\Menu\Events\MealAvailabilityToggled;
 use App\Domains\Menu\Livewire\CreateMealModal;
@@ -48,23 +49,41 @@ class BranchIsolationMenuTest extends TestCase
     use RefreshDatabase;
 
     protected Branch $branch1;
+
     protected Branch $branch2;
+
     protected User $owner;
+
     protected User $superAdmin;
+
     protected User $manager1;
+
     protected User $manager2;
+
     protected User $nullBranchManager;
+
     protected User $nullBranchChef;
+
     protected User $chef1;
+
     protected User $cashier1;
+
     protected User $cashier2;
+
     protected User $cook1;
+
     protected MealCategory $globalCat;
+
     protected MealCategory $branch1Cat;
+
     protected MealCategory $branch2Cat;
+
     protected Meal $globalMeal;
+
     protected Meal $branch1Meal;
+
     protected Meal $branch2Meal;
+
     protected Meal $branch2InGlobalCatMeal;
 
     protected function setUp(): void
@@ -98,6 +117,69 @@ class BranchIsolationMenuTest extends TestCase
         $this->branch1Meal = Meal::create(['branch_id' => $this->branch1->id, 'category_id' => $this->branch1Cat->id, 'name' => 'B1 Sisig', 'menu_code' => 'B1-M1', 'price' => 220.00, 'is_available' => true, 'is_active' => true]);
         $this->branch2Meal = Meal::create(['branch_id' => $this->branch2->id, 'category_id' => $this->branch2Cat->id, 'name' => 'B2 Lechon', 'menu_code' => 'B2-M1', 'price' => 350.00, 'is_available' => true, 'is_active' => true]);
         $this->branch2InGlobalCatMeal = Meal::create(['branch_id' => $this->branch2->id, 'category_id' => $this->globalCat->id, 'name' => 'B2 Global Cat Dish', 'menu_code' => 'B2-GM1', 'price' => 290.00, 'is_available' => true, 'is_active' => true]);
+    }
+
+    public function test_branch_removal_preserves_global_record_and_other_branch_visibility(): void
+    {
+        foreach ([$this->chef1, $this->manager1] as $actor) {
+            MealBranchAvailability::query()->delete();
+            Livewire::actingAs($actor)->test(MealCatalogTable::class)
+                ->call('deleteMeal', $this->globalMeal->id)
+                ->assertSuccessful();
+            $this->assertNotSoftDeleted('meals', ['id' => $this->globalMeal->id]);
+            $this->assertTrue(Meal::whereKey($this->globalMeal->id)->exists());
+            $this->assertFalse(Meal::forBranch($this->branch1->id)->whereKey($this->globalMeal->id)->exists());
+            $this->assertTrue(Meal::forBranch($this->branch2->id)->whereKey($this->globalMeal->id)->exists());
+            $this->assertFalse($this->globalMeal->fresh()->isAvailableForBranch($this->branch1->id));
+            $this->assertTrue($this->globalMeal->fresh()->isAvailableForBranch($this->branch2->id));
+            // Repeated removal remains a single branch override.
+            app(DeleteMealAction::class)->handle($this->globalMeal->id);
+            $this->assertSame(1, MealBranchAvailability::count());
+        }
+    }
+
+    public function test_branch_removal_rejects_foreign_branch_and_unprivileged_actors(): void
+    {
+        foreach ([$this->chef1, $this->manager1, $this->cashier1, $this->nullBranchChef] as $actor) {
+            $this->actingAs($actor);
+            try {
+                app(DeleteMealAction::class)->handle($this->branch2Meal->id);
+                $this->fail('Removal should have been denied.');
+            } catch (HttpException $exception) {
+                $this->assertSame(403, $exception->getStatusCode());
+            }
+            $this->assertNotSoftDeleted('meals', ['id' => $this->branch2Meal->id]);
+            $this->assertSame(0, MealBranchAvailability::count());
+        }
+    }
+
+    public function test_branch_owned_meal_removal_preserves_the_owner_catalog(): void
+    {
+        Livewire::actingAs($this->chef1)->test(MealCatalogTable::class)
+            ->call('deleteMeal', $this->branch1Meal->id)->assertSuccessful();
+        $this->assertNotSoftDeleted('meals', ['id' => $this->branch1Meal->id]);
+        $this->assertFalse($this->branch1Meal->fresh()->isAvailableForBranch($this->branch1->id));
+        $this->actingAs($this->owner);
+        $this->assertTrue(MealResource::getEloquentQuery()->whereKey($this->branch1Meal->id)->exists());
+        app(DeleteMealAction::class)->handle($this->branch1Meal->id);
+        $this->assertSoftDeleted('meals', ['id' => $this->branch1Meal->id]);
+    }
+
+    public function test_admin_bulk_removal_hides_shared_and_branch_meals_only_for_the_actor_branch(): void
+    {
+        foreach ([$this->manager1, $this->chef1] as $actor) {
+            MealBranchAvailability::query()->delete();
+            $actor->givePermissionTo('admin.access');
+            Livewire::actingAs($actor)->test(ListMeals::class)
+                ->selectTableRecords([$this->globalMeal->id, $this->branch1Meal->id])
+                ->callAction(TestAction::make(DeleteBulkAction::class)->table()->bulk())
+                ->assertHasNoActionErrors();
+            foreach ([$this->globalMeal, $this->branch1Meal] as $meal) {
+                $this->assertNotSoftDeleted('meals', ['id' => $meal->id]);
+                $this->assertFalse(Meal::forBranch($this->branch1->id)->whereKey($meal->id)->exists());
+            }
+            $this->assertTrue(Meal::forBranch($this->branch2->id)->whereKey($this->globalMeal->id)->exists());
+        }
     }
 
     private function makeUser(string $name, string $email, string $empId, ?int $branchId, StaffRole $role): User
@@ -153,7 +235,7 @@ class BranchIsolationMenuTest extends TestCase
 
         $beforeCount = Meal::count();
         try {
-            (new CreateMealAction())->handle(['name' => 'Rogue Null Dish', 'category_id' => $this->globalCat->id, 'branch_id' => null, 'price' => 100]);
+            (new CreateMealAction)->handle(['name' => 'Rogue Null Dish', 'category_id' => $this->globalCat->id, 'branch_id' => null, 'price' => 100]);
             $this->fail('Expected 403 for null-branch manager creating a meal.');
         } catch (HttpException $e) {
             $this->assertSame(403, $e->getStatusCode());
@@ -266,7 +348,7 @@ class BranchIsolationMenuTest extends TestCase
         $this->assertTrue(MealResource::canCreate());
         $this->assertFalse(MealResource::canEdit($this->globalMeal));
         $this->assertFalse(MealResource::canEdit($this->branch2Meal));
-        $this->assertFalse(MealResource::canDelete($this->globalMeal));
+        $this->assertTrue(MealResource::canDelete($this->globalMeal));
         $this->assertFalse(MealResource::canRestore($this->branch1Meal));
         $this->assertFalse(MealResource::canRestoreAny());
         $this->assertFalse(MealResource::canForceDelete($this->branch1Meal));
@@ -295,7 +377,7 @@ class BranchIsolationMenuTest extends TestCase
         $listMeals->selectTableRecords([$created->id, $this->globalMeal->id, $this->branch2Meal->id])
             ->callAction(TestAction::make(DeleteBulkAction::class)->table()->bulk());
 
-        $this->assertSoftDeleted('meals', ['id' => $created->id]);
+        $this->assertNotSoftDeleted('meals', ['id' => $created->id]);
         $this->assertNotSoftDeleted('meals', ['id' => $this->globalMeal->id]);
         $this->assertNotSoftDeleted('meals', ['id' => $this->branch2Meal->id]);
 
@@ -311,7 +393,7 @@ class BranchIsolationMenuTest extends TestCase
         $this->assertTrue(MealResource::getRestoreAuthorizationResponse($this->globalMeal)->denied());
         $this->assertTrue(MealResource::getForceDeleteAuthorizationResponse($this->globalMeal)->denied());
         $this->assertSoftDeleted('meals', ['id' => $this->globalMeal->id]);
-        $this->assertSoftDeleted('meals', ['id' => $created->id]);
+        $this->assertNotSoftDeleted('meals', ['id' => $created->id]);
 
         // Manager without menu.manage (retaining admin.access) is denied
         Role::findByName(StaffRole::BRANCH_MANAGER->value, 'web')->revokePermissionTo('menu.manage');
@@ -371,13 +453,13 @@ class BranchIsolationMenuTest extends TestCase
         Cache::forever('branch_global_menu_version', 3000);
 
         $this->actingAs($this->chef1);
-        (new UpdateBranchPortionsAction())->handle($this->globalMeal->id, true, 5);
+        (new UpdateBranchPortionsAction)->handle($this->globalMeal->id, true, 5);
 
         Event::assertDispatched(MealAvailabilityToggled::class, function (MealAvailabilityToggled $event) {
             return $event->meal->id === $this->globalMeal->id
                 && $event->branchId === $this->branch1->id
                 && $event->effectiveAvailability === true
-                && $event->broadcastOn()[0]->name === 'private-branch.' . $this->branch1->id
+                && $event->broadcastOn()[0]->name === 'private-branch.'.$this->branch1->id
                 && $event->broadcastWith()['branch_id'] === $this->branch1->id
                 && $event->broadcastWith()['is_available'] === true;
         });
@@ -399,7 +481,7 @@ class BranchIsolationMenuTest extends TestCase
         foreach ([[$this->chef1, $this->branch2Meal->id], [$this->cashier1, $this->globalMeal->id]] as [$actor, $mealId]) {
             $this->actingAs($actor);
             try {
-                (new UpdateBranchPortionsAction())->handle($mealId, true, 2);
+                (new UpdateBranchPortionsAction)->handle($mealId, true, 2);
                 $this->fail('Expected 403 for unauthorized portions update.');
             } catch (HttpException $e) {
                 $this->assertSame(403, $e->getStatusCode());

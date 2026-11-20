@@ -211,7 +211,7 @@
                                     </button>
                                     <button type="button"
                                         x-on:click="openDelete({{ $meal->id }}, @js($meal->name))"
-                                        title="Permanently remove branch dish"
+                                        title="Remove dish"
                                         class="rounded-sm px-1.5 py-1 font-semibold text-brand-error/70 hover:text-brand-error hover:bg-brand-error/10 transition cursor-pointer">
                                         <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor"
                                             viewBox="0 0 24 24">
@@ -221,6 +221,8 @@
                                     </button>
                                 </div>
                             @else
+                                <button type="button" x-on:click="openDelete({{ $meal->id }}, @js($meal->name))"
+                                    class="px-2 py-1 text-brand-error cursor-pointer">Remove from branch</button>
                                 <div class="inline-flex items-center gap-1.5 justify-end">
                                     <button type="button" wire:click="openPortionsModal({{ $meal->id }})"
                                         title="Adjust daily portions for your branch only"
@@ -266,15 +268,18 @@
         </div>
     @endif
 
-    <!-- Centralized Confirmation Modal for Permanently Removing Branch-Owned Dish -->
-    <x-ui.confirm-modal name="delete-meal-modal" title="Permanently Remove Dish from Catalog" maxWidth="md">
+    <!-- Meal removal confirmation -->
+    <x-ui.confirm-modal name="delete-meal-modal" title="Remove Dish" maxWidth="md">
         <p>
-            Are you sure you want to permanently remove <strong class="text-brand-text font-bold"
-                x-text="deleteMealName"></strong> from the catalog?
+            Are you sure you want to remove <strong class="text-brand-text font-bold"
+                x-text="deleteMealName"></strong> {{ $isBranchScoped ? "from your branch" : "from the catalog" }}?
         </p>
         <p class="mt-1.5 text-xs text-brand-text-muted">
-            To temporarily mark any active dish unavailable, use the <strong>In Stock / 86'd</strong> status toggle
-            instead. Historical sales, kitchen tickets, and reporting records will remain preserved in the database.
+            @if ($isBranchScoped)
+                This hides the dish from your branch. The global catalog keeps the meal.
+            @else
+                This archives the dish. Historical sales and kitchen tickets stay available.
+            @endif
         </p>
 
         <x-slot:action>

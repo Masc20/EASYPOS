@@ -225,11 +225,11 @@ class ChefMenuCatalogBugsTest extends TestCase
             ->test(MealCatalogTable::class)
             ->assertSee('Creamy Leche Flan')
             ->assertSee('Global')
-            ->assertDontSeeHtml("openDelete({$this->globalMeal->id},")
+            ->assertSeeHtml("openDelete({$this->globalMeal->id},")
             ->assertDontSeeHtml("Livewire.dispatch('edit-meal', { id: {$this->globalMeal->id} })")
             ->assertSeeHtml("openDelete({$this->branch1Meal->id},")
             ->assertSeeHtml("Livewire.dispatch('edit-meal', { id: {$this->branch1Meal->id} })")
-            ->assertSee('To temporarily mark any active dish unavailable');
+            ->assertSee('The global catalog keeps the meal.');
 
         // Chef marks global dish 86'd on active menu (without deleting the meal record)
         $table->call('toggleAvailability', $this->globalMeal->id)
@@ -366,11 +366,11 @@ class ChefMenuCatalogBugsTest extends TestCase
             ->call('editMeal', $this->globalMeal->id)
             ->assertStatus(403);
 
-        // Direct Livewire MealCatalogTable::deleteMeal on global dish -> 403, dish preserved
+        // Removing a shared dish hides it only from the chef's branch.
         Livewire::actingAs($this->chef1)
             ->test(MealCatalogTable::class)
             ->call('deleteMeal', $this->globalMeal->id)
-            ->assertStatus(403);
+            ->assertSuccessful();
 
         $this->assertNotSoftDeleted('meals', ['id' => $this->globalMeal->id]);
 
@@ -689,14 +689,14 @@ class ChefMenuCatalogBugsTest extends TestCase
 
         Livewire::actingAs($this->chef1)->test(MealCatalogTable::class)->assertOk();
         $menuOverrideQueries = collect(DB::getQueryLog())->filter(
-            fn ($q) => str_contains(strtolower($q['query']), 'meal_branch_availabilities')
+            fn ($q) => preg_match('/^select [^()]* from [\"`]meal_branch_availabilities[\"`]/i', $q['query']) === 1
         );
         $this->assertLessThanOrEqual(1, $menuOverrideQueries->count(), 'MealCatalogTable must eager-load branchAvailabilities in a single query.');
 
         DB::flushQueryLog();
         Livewire::actingAs($this->cashier1)->test(PosMealCatalog::class)->assertOk();
         $posOverrideQueries = collect(DB::getQueryLog())->filter(
-            fn ($q) => str_contains(strtolower($q['query']), 'meal_branch_availabilities')
+            fn ($q) => preg_match('/^select [^()]* from [\"`]meal_branch_availabilities[\"`]/i', $q['query']) === 1
         );
         $this->assertLessThanOrEqual(1, $posOverrideQueries->count(), 'POS MealCatalog must eager-load branchAvailabilities in a single query.');
     }

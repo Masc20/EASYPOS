@@ -123,7 +123,7 @@ class Meal extends Model
      */
     public function branchOverrideFor(?int $branchId): ?MealBranchAvailability
     {
-        if ($this->branch_id !== null || $branchId === null) {
+        if ($branchId === null) {
             return null;
         }
 
@@ -140,7 +140,7 @@ class Meal extends Model
     {
         $override = $this->branchOverrideFor($branchId);
         if ($override !== null) {
-            return (bool) $override->is_available;
+            return ! $override->is_hidden && (bool) ($this->branch_id !== null ? $this->is_available : $override->is_available);
         }
 
         return (bool) $this->is_available;
@@ -263,7 +263,9 @@ class Meal extends Model
             if ($branchId !== null) {
                 $q->orWhere('branch_id', $branchId);
             }
-        });
+        })->whereDoesntHave('branchAvailabilities', fn (Builder $override) => $override
+            ->where('branch_id', $branchId)
+            ->where('is_hidden', true));
     }
 
     /**

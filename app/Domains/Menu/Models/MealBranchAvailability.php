@@ -17,6 +17,7 @@ class MealBranchAvailability extends Model
         'meal_id' => 'integer',
         'branch_id' => 'integer',
         'is_available' => 'boolean',
+        'is_hidden' => 'boolean',
         'track_stock' => 'boolean',
         'stock_quantity' => 'integer',
     ];
