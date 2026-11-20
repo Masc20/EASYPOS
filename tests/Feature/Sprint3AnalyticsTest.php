@@ -425,13 +425,17 @@ class Sprint3AnalyticsTest extends TestCase
     public function test_livewire_sales_records_sprint3_tabs_and_audit_route(): void
     {
         // 1. Test Smart Executive Dashboard (Peak rush, best sellers, KPIs)
-        Livewire::actingAs($this->owner)
+        $dashboard = Livewire::actingAs($this->owner)
             ->test(Dashboard::class)
-            ->assertSuccessful()
-            ->assertSee('Peak Sales Rush')
-            ->assertSee('Lunch Rush (11 AM - 2 PM)')
-            ->assertSee('Dinner Rush (5 PM - 9 PM)')
-            ->assertSee('Top 5 Best-Selling Menu Items')
+            ->assertSuccessful();
+
+        $dashboardHtml = preg_replace('/\s+/', ' ', $dashboard->html());
+        $this->assertStringContainsString('Peak Sales Rush', $dashboardHtml);
+        $this->assertStringContainsString('Lunch Rush (11 AM - 2 PM)', $dashboardHtml);
+        $this->assertStringContainsString('Dinner Rush (5 PM - 9 PM)', $dashboardHtml);
+        $this->assertStringContainsString('Top Best-Selling Menu Items', $dashboardHtml);
+
+        $dashboard
             // Test sorting best sellers
             ->call('setBestSellerSort', 'revenue')
             ->assertSet('bestSellerSortBy', 'revenue')

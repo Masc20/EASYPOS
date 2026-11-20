@@ -301,7 +301,7 @@ class SalesRecordsTest extends TestCase
             ->test(Dashboard::class)
             ->assertSuccessful()
             ->assertSee('Revenue Trend')
-            ->assertSee('Top 5 Best-Selling Menu Items');
+            ->assertSee('Top Best-Selling Menu Items');
 
         Livewire::actingAs($this->owner)
             ->test(DailySalesRevenueChart::class)
